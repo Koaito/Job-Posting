@@ -1,0 +1,631 @@
+/* Trang /crawl (Crawl dữ liệu, chỉ admin) — 08/2026.
+   Tận dụng lại .dm-export-card, .dm-preview-summary/.dm-stat
+   (13-data-management.css), .form-grid/.form-actions (07-forms.css),
+   .activity-table*, .badge*, .pagination (12-activity-logs.css) —
+   file này CHỈ thêm phần crawl KHÔNG có sẵn: 2 card nguồn cạnh nhau,
+   badge-info (còn thiếu, badge cũ chỉ có success/warning/danger dành
+   cho action log Thêm/Sửa/Xoá), spinner cho trạng thái đang chạy. */
+
+/* 08/2026 (refactor #3 — xem "4 nguyên nhân gốc" đã thảo luận, điểm 3):
+   TRƯỚC ĐÂY .crawl-sources (base, dùng ở tab Crawl) và .maint-job-grid
+   (modifier đứng RIÊNG, không compound, dùng ở tab Bảo trì) có CÙNG độ
+   ưu tiên CSS trên property grid-template-columns — ai đứng SAU trong
+   file thắng, nhìn HTML (class="crawl-sources maint-job-grid") không
+   ai đoán được. Refactor: .crawl-sources giờ CHỈ giữ phần DÙNG CHUNG
+   cho cả 2 tab (display/gap/margin) — số cột tách hẳn ra 2 class biến
+   thể compound bên dưới (.crawl-sources--auto-fit /
+   .crawl-sources--fixed-2col), thắng bằng ĐỘ ƯU TIÊN CSS thật (2 class
+   > 1 class) chứ không phụ thuộc thứ tự khai báo nữa — đổi thứ tự 2
+   khối bên dưới cho nhau cũng KHÔNG đổi kết quả render. */
+.crawl-sources {
+  display: grid;
+  gap: var(--card-gap);
+  margin-bottom: 28px;
+}
+
+/* Biến thể "auto-fit" — tab Crawl (_crawl_tab.html, <div class=
+   "crawl-sources crawl-sources--auto-fit">): số card/hàng TỰ co giãn
+   theo bề rộng màn hình, mỗi card tối thiểu --card-min-w.
+   (08/2026, yêu cầu "mở rộng card ~30%": 340px -> 440px (~+30%),
+   padding 22/24 -> 29/31, tiêu đề 18px -> 23px. Card rộng hơn nên trên
+   màn hình thường sẽ tự co từ 3 xuống 2 card/hàng (đúng ý "to ra" thay
+   vì nhồi nhiều card nhỏ/hàng) — vẫn auto-fit nên màn hình hẹp hơn tự
+   xuống 1 card/hàng, không vỡ layout.
+   (08/2026, revert theo yêu cầu: bản "1 cột cố định + tràn padding"
+   thử trước đó không cho hiệu quả như mong đợi trên thực tế, quay lại
+   đúng bản auto-fit/minmax này — chỉ giữ lại phần bù zoom 90% ở
+   .crawl-live-widget bên dưới, không liên quan tới đoạn này.)
+   08/2026 (refactor #2): 440px giờ tham chiếu --card-min-w ở
+   00-tokens.css thay vì viết tay — GIÁ TRỊ giữ nguyên, không đổi giao
+   diện; đổi bề rộng card lần sau chỉ cần sửa 1 dòng ở 00-tokens.css,
+   không phải dò lại file này. */
+.crawl-sources.crawl-sources--auto-fit {
+  grid-template-columns: repeat(auto-fit, minmax(var(--card-min-w), 1fr));
+}
+
+.crawl-source-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 29px 31px;
+}
+
+.crawl-source-card h2 {
+  margin: 0 0 4px;
+  font-family: var(--font-display);
+  font-size: 23px;
+}
+
+.crawl-source-card .crawl-source-sub {
+  margin: 0 0 16px;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.crawl-source-card.is-busy {
+  opacity: 0.7;
+}
+
+/* Form trong .crawl-source-card cần thêm class .form-card (07-forms.css)
+   để kế thừa style label (flex-column, xuống dòng đúng) + input/select
+   (width 100%, padding, border) — thiếu class này là lý do label/input
+   không co giãn đúng (lỗi 08/2026). Nhưng .form-card tự có
+   background/border/padding riêng, trùng với .crawl-source-card đã có
+   sẵn 2 thứ đó -> override về 0/transparent để tránh viền đôi lồng nhau. */
+.crawl-source-card .form-card {
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+/* LỖI 08/2026 (ảnh chụp báo lỗi): 2 ô "Số trang"/"Tối đa job" bị bóp
+   nhỏ dị dạng, lệch hàng so với "Ngành" ngay khi trang tải xong (không
+   cần bấm gì). Nguyên nhân: .form-grid (07-forms.css) đổi số cột theo
+   BỀ RỘNG MÀN HÌNH (@media max-width: 1200px/900px/768px), không theo
+   bề rộng THẬT của card chứa nó. Ở trang /crawl, 2 card TopCV/
+   VietnamWorks đứng CẠNH NHAU trong .crawl-sources (mỗi card chỉ ~45-
+   48% màn hình) — nếu màn hình rộng hơn 1200px, .form-grid vẫn dùng
+   layout "desktop 4 cột" (thiết kế cho card full-width như add_job.html)
+   dù bề ngang thật của card lúc này chỉ đủ chỗ cho ~2 cột thoải mái ->
+   2 field span-1 cuối hàng bị ép rất hẹp.
+
+   Sửa: ép RIÊNG layout của .form-grid bên trong .crawl-source-card về
+   2 cột cố định (không đổi theo breakpoint viewport nữa) — khớp đúng
+   bề rộng thật của card (~340-600px, xem .crawl-sources ở trên): hàng 1
+   "Ngành" full-width, hàng 2 "Số trang" + "Tối đa job" chia đôi bằng
+   nhau. Đặt SAU khối @media của 07-forms.css trong thứ tự nạp CSS
+   (15-crawl.css nạp sau) nên tự nhiên thắng độ ưu tiên, không cần
+   !important.
+
+   CẬP NHẬT 08/2026 (refactor #1): 07-forms.css giờ đã có Container
+   Queries cho .form-grid (đo theo bề rộng CARD thật, không phải màn
+   hình) — với bề rộng .crawl-source-card hiện tại (~440-600px) thì
+   Container Query đó tự ra đúng 2 cột, nên về lý thuyết rule ép cứng
+   dưới đây không còn thật sự cần nữa. VẪN GIỮ NGUYÊN rule này (không
+   xoá) để không đổi hành vi trang /crawl đang chạy ổn định — coi đây
+   là "chốt an toàn" tường minh, phòng trường hợp sau này ai đó đổi lại
+   --card-min-w nhỏ hơn khiến card hẹp đi ngoài ý muốn. */
+.crawl-source-card .form-grid {
+  grid-template-columns: 1fr 1fr;
+}
+.crawl-source-card .form-grid > label.span-2 { grid-column: 1 / -1; }
+.crawl-source-card .form-grid > label.span-1 { grid-column: span 1; }
+.crawl-source-card .form-actions.span-4 { grid-column: 1 / -1; }
+
+/* 08/2026: khối checkbox dry-run/check-deadline (tab Bảo trì) là
+   <div class="span-2 maint-checkbox-col">, KHÔNG phải <label> nên 3
+   rule .span-* ngay trên (chỉ khớp tag label) bỏ sót nó -> div này rơi
+   về auto-placement, chỉ chiếm 1/2 cột thay vì full-width như ý đồ
+   "span-2" ban đầu, để trống hẳn nửa hàng bên cạnh. */
+.crawl-source-card .form-grid > .maint-checkbox-col.span-2 { grid-column: 1 / -1; }
+
+/* Khu A (08/2026) — khối checkbox nhiều category thay cho <select> đơn.
+   CỐ TÌNH không dùng class .span-* có sẵn (span-2 ở override 2-cột
+   ngay trên đã bị gán nghĩa "full-width", span-4 gốc của 07-forms.css
+   thì chưa được .crawl-source-card .form-grid nhận diện lại — thêm
+   1 class riêng ở đây đỡ phải đụng vào 2 hệ thống span đang lệch nghĩa
+   nhau đó, tự set grid-column: 1 / -1 thẳng cho div này). */
+.crawl-category-field {
+  grid-column: 1 / -1;
+}
+
+.crawl-category-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin-bottom: 6px;
+}
+
+.crawl-category-actions .btn-text {
+  padding: 2px 6px;
+  font-size: 12.5px;
+}
+
+.crawl-category-actions .btn-text:disabled {
+  color: var(--ink-soft);
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.crawl-category-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 6px 12px;
+  max-height: 160px;
+  overflow-y: auto;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  /* Khớp đúng nền input/select/textarea của .form-card (07-forms.css)
+     thay vì 1 tông xám riêng — tránh cảm giác "hộp xám trong card
+     trắng" lạc quẻ so với phần còn lại của form. */
+  background: #FBFCFB;
+}
+
+/* .checkbox-label (07-forms.css) đã lo layout hàng ngang (flex-direction:
+   row, align-items:center, gap:8px) — class này CHỈ thêm phần riêng của
+   crawl: cỡ chữ nhỏ hơn label thường (13px, khớp text ngành trong ô) +
+   accent-color cam để tick khớp màu CTA "Bắt đầu crawl" của trang, thay
+   vì checkbox đen mặc định trình duyệt trông lạc tông. */
+.crawl-category-item {
+  font-size: 13px;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.crawl-category-item input[type="checkbox"] {
+  width: auto;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.crawl-category-item input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+}
+
+.crawl-category-error {
+  margin: 6px 0 0;
+  font-size: 12.5px;
+  color: #C62828;  /* khớp .crawl-error-text ở dưới, không có token --danger riêng */
+  min-height: 15px;
+}
+
+/* Khu B (08/2026) — checklist trạng thái từng category trong 1 batch,
+   thay cho .crawl-progress (1 dòng "fetched/inserted") khi card này
+   đang chạy 1 batch nhiều category thay vì 1 run đơn lẻ. */
+.crawl-batch-checklist {
+  list-style: none;
+  margin: 14px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.crawl-batch-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.crawl-batch-item-label {
+  color: var(--ink);
+}
+
+/* Badge trạng thái 'queued'/'running' — action log cũ (12-activity-logs.css)
+   chỉ có success/warning/danger, không có màu trung tính cho "đang diễn
+   ra" (khác hẳn ý nghĩa "Sửa" của warning). */
+.badge-info {
+  background-color: rgba(58, 111, 176, 0.1);
+  color: #3A6FB0;
+}
+
+.badge-info .crawl-spinner {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: crawl-pulse 1.1s ease-in-out infinite;
+  vertical-align: middle;
+}
+
+@keyframes crawl-pulse {
+  0%, 100% { opacity: 0.35; transform: scale(0.85); }
+  50% { opacity: 1; transform: scale(1.1); }
+}
+
+/* Khu B — card "đang chạy", tối đa 2 (1/nguồn). Dùng lại .dm-export-card
+   làm khung ngoài (xem crawl.html), phần này chỉ style riêng nội dung
+   bên trong khi ở trạng thái running (chưa có .dm-stat để hiện). */
+.crawl-running-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.crawl-running-meta {
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.crawl-running-meta strong { color: var(--ink); }
+
+/* Khu B — 08/2026 x2: đợt trước tách "đang chạy" + "Log live" thành 2
+   cột cố định (260-340px + 720px) nằm CHUNG 1 hàng trong luồng trang.
+   Đợt này (theo yêu cầu thảo luận "khó theo dõi khi nằm ở đáy trang")
+   bỏ hẳn layout 2 cột đó: "Đang chạy" dời sang widget NỔI góc dưới-phải
+   (.crawl-live-widget, cuối file này), không còn chiếm chỗ trong luồng
+   trang -> Log live đứng ĐỘC LẬP, full-width (xem .crawl-log-card-standalone
+   ngay dưới) thay vì bị ép cố định 720px cạnh cột kia nữa. Rule
+   .crawl-running-log-row cũ đã XOÁ (không còn template nào dùng). */
+.crawl-log-card-standalone {
+  width: 100%;
+  margin-bottom: 32px;
+}
+
+.crawl-running-list {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.crawl-running-empty {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  font-size: 13.5px;
+}
+
+.crawl-running-card-wrap { display: flex; flex-direction: column; }
+
+/* Tiến độ real-time (heartbeat, 08/2026) — hiện trong CHÍNH card trạng
+   thái, ngay dưới badge/meta đã có, không tách card riêng để không
+   chiếm thêm chỗ dọc. */
+.crawl-progress {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.crawl-progress-line {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--ink);
+}
+
+.crawl-progress-updated {
+  margin: 4px 0 0;
+  font-size: 12px;
+}
+
+/* Khung "Log live" — cố tình style GIỐNG terminal thật (nền tối, font
+   monospace) để dễ phân biệt trực quan với phần còn lại của trang (nền
+   sáng) — đúng yêu cầu "xem log như log trong cmd khi crawl ở backend".
+   LUÔN HIỆN, chiều rộng CỐ ĐỊNH (xem .crawl-running-log-row ở trên) —
+   không co giãn theo nội dung 2 bên, tránh "nhảy" khi card trạng thái
+   bên trái đổi kích thước. */
+.crawl-log-card {
+  display: flex;
+  flex-direction: column;
+  background: #14171A;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  height: 340px;
+}
+
+.crawl-log-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #C8CDD2;
+  background: #1D2125;
+  border-bottom: 1px solid #2A2F34;
+  flex: none;
+}
+
+.crawl-log-autoscroll {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 400;
+  color: #9BA3AB;
+  cursor: pointer;
+}
+
+.crawl-log-body {
+  margin: 0;
+  padding: 12px 14px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: #D7DBDE;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.crawl-log-line { display: block; }
+.crawl-log-line.is-warning { color: #E0B94C; }
+.crawl-log-line.is-error { color: #E5726A; }
+
+/* Khu C — cột "Kết quả" trong bảng lịch sử: gộp 8 chỉ số vào 1 ô nhỏ
+   gọn (không dùng .dm-stat to như card summary, chật bảng) — hiện số
+   chính (inserted) to, phần còn lại ẩn trong <details> để không chiếm
+   quá nhiều chỗ mỗi dòng. */
+.crawl-result-main {
+  font-family: var(--font-display);
+  font-size: 15px;
+}
+
+.crawl-result-details {
+  margin-top: 4px;
+  font-size: 12px;
+}
+
+.crawl-result-details summary {
+  cursor: pointer;
+  color: var(--ink-soft);
+}
+
+.crawl-result-details dl {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 2px 10px;
+  margin: 6px 0 0;
+  color: var(--ink-soft);
+}
+
+.crawl-result-details dt { font-weight: 500; }
+.crawl-result-details dd { margin: 0; text-align: right; }
+
+.crawl-error-text {
+  color: #C62828;
+  font-size: 12.5px;
+  max-width: 320px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* 08/2026 (refactor #3): gộp chung 2 khối @media 720px (trước đây tách
+   riêng cho .crawl-sources và .maint-job-grid, nội dung y hệt nhau) —
+   giờ target thẳng 2 class biến thể compound, cùng độ ưu tiên với 2
+   khối định nghĩa cột ở trên nên vẫn thắng đúng theo breakpoint, không
+   phụ thuộc thứ tự khai báo. */
+@media (max-width: 720px) {
+  .crawl-sources.crawl-sources--auto-fit,
+  .crawl-sources.crawl-sources--fixed-2col {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ============================================================
+   Tab "Bảo trì dữ liệu" (08/2026, xem lịch sử trao đổi "phương án B —
+   generic runner dùng chung"). Tái dùng gần hết class ở trên
+   (.crawl-source-card, .crawl-running-card-wrap, .crawl-log-card...)
+   — chỉ thêm phần THẬT SỰ khác biệt: 5 card cố định (không cuộn
+   ngang như 2-3 nguồn crawl), badge "Tốn phí thật", cột checkbox
+   dry-run/check_deadline_only, và khung Log live THU NHỎ gắn ngay
+   trong từng card (khác khung Log live to, DUY NHẤT ở tab Crawl).
+   ============================================================ */
+
+/* Biến thể "cố định 2 cột" — tab Bảo trì (_maintenance_tab.html, <div
+   class="crawl-sources crawl-sources--fixed-2col">). Trước đây tên là
+   .maint-job-grid, đứng RIÊNG (không compound với .crawl-sources) nên
+   cùng độ ưu tiên với .crawl-sources gốc trên property
+   grid-template-columns — ai đứng SAU trong file thắng, nhìn HTML
+   không đoán được. Đổi tên + viết compound selector
+   (.crawl-sources.crawl-sources--fixed-2col) để thắng bằng ĐỘ ƯU TIÊN
+   thật (2 class > 1 class), không còn phụ thuộc thứ tự dòng nữa — xem
+   khối "refactor #3" ở đầu file.
+   08/2026 (báo lỗi ảnh chụp): auto-fit/minmax(320px,1fr) co card lại
+   theo bề rộng NỘI DUNG tối thiểu, không ép lấp đầy .content-full ->
+   trên màn hình rộng chỉ dựng đủ 2 card/hàng rồi để trống 2 bên rất
+   nhiều, kéo theo khung "Log live" (con của card, xem .maint-log-card
+   dưới) bị hẹp theo. Sửa: cố định LUÔN 2 cột chia đều 100% bề rộng
+   (không phụ thuộc minmax nữa) để 2 card/hàng lấp hết ngang trang. */
+.crawl-sources.crawl-sources--fixed-2col {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+/* Card LẺ cuối cùng (ví dụ 5 job -> card #5 đứng 1 mình ở hàng 3) bị
+   ép chỉ rộng bằng 1 cột, để trống hẳn nửa hàng bên phải -> cho nó
+   chiếm luôn cả 2 cột (grid-column: 1 / -1) khi vừa là con cuối cùng
+   (:nth-last-child(1)) vừa đứng ở vị trí lẻ (:nth-child(odd), tức
+   không có "bạn cùng hàng"). Số chẵn card thì :nth-last-child(1) luôn
+   rơi vào vị trí chẵn -> selector không khớp, giữ nguyên 2 cột như
+   thường, tự đúng bất kể sau này thêm/bớt job (không hardcode số 5). */
+.crawl-sources--fixed-2col .crawl-source-card:nth-last-child(1):nth-child(odd) {
+  grid-column: 1 / -1;
+}
+
+.maint-cost-badge {
+  margin-left: 8px;
+  font-size: 11px;
+  vertical-align: middle;
+}
+
+.maint-checkbox-col {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+/* Log live thu nhỏ, gắn trong card (khác .crawl-log-card to ở Khu B
+   tab Crawl) — thấp hơn hẳn để 5 card vẫn gọn trên 1 màn hình.
+   FIX 08/2026 (báo lỗi ảnh chụp): .crawl-log-card có height:340px CỐ
+   ĐỊNH — trước đây chỉ giới hạn .maint-log-body xuống 140px mà QUÊN
+   override luôn height của card cha, nên card vẫn cao 340px trong khi
+   nội dung/scrollbar bên trong chỉ chiếm 140px -> để trống hẳn khoảng
+   dưới, thanh cuộn nhìn như "cụt" giữa chừng. Đặt lại height: auto để
+   card co theo đúng header + body 140px, không dư khoảng trống. */
+.maint-log-card {
+  height: auto;
+  margin-top: 14px;
+}
+
+.maint-log-body {
+  max-height: 140px;
+}
+
+/* ============================================================
+   Widget nổi "Đang chạy" (08/2026, theo yêu cầu thảo luận) — DÙNG
+   CHUNG cho cả 2 tab (#crawl-live-widget bên _crawl_tab.html,
+   #maint-live-widget bên _maintenance_tab.html): nổi cố định góc
+   dưới-phải, đi theo khi cuộn trang (position: fixed, không phải
+   sticky — sticky vẫn cuộn mất khi hết vùng cha, fixed mới "đi theo
+   người dùng" đúng nghĩa xuyên suốt cả trang dài). Mỗi tab CHỈ hiện
+   job của chính tab đó (đã chốt lúc thảo luận, đơn giản hơn gộp cả
+   2 nguồn dữ liệu) — không đụng vào layout 2 cột card hiện có (Khu A),
+   chỉ thêm 1 lớp nổi TRÊN CÙNG của trang. Card list bên trong tái
+   dùng NGUYÊN .crawl-running-list/.crawl-running-card-wrap cũ nên
+   toàn bộ JS polling/xoá-card-khi-xong không cần sửa gì. */
+.crawl-live-widget {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  width: 360px;
+  /* bù zoom cho cả 2 đơn vị vw/vh — xem giải thích ở `html { zoom }`
+     trong 00-tokens.css; phần "- 32px" giữ nguyên vì px đã tự ăn theo
+     zoom rồi, không cần chia lại */
+  max-width: calc(100vw / var(--zoom-scale) - 32px);
+  max-height: calc(60vh / var(--zoom-scale));
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  /* Bóng đậm hơn card thường trong trang — cần TÁCH RÕ khỏi nội dung
+     bên dưới nó (nổi đè lên, không phải 1 phần bố cục bình thường). */
+  box-shadow: 0 12px 32px rgba(15, 23, 30, 0.18);
+  z-index: 40;
+  overflow: hidden;
+}
+
+.crawl-live-widget-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 14px 16px;
+  cursor: pointer;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex: none;
+  user-select: none;
+}
+
+.crawl-live-widget-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-display);
+  font-size: 15px;
+  color: var(--ink);
+}
+
+.crawl-live-widget-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.crawl-live-widget-count[hidden] { display: none; }
+
+.crawl-live-widget-toggle {
+  border: none;
+  background: transparent;
+  color: var(--ink-soft);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 4px 6px;
+  transition: transform 0.2s;
+}
+
+/* Thu gọn: chỉ ẩn phần thân, GIỮ NGUYÊN phần đầu (tiêu đề + số đếm)
+   để vẫn biết đang có mấy job chạy mà không chiếm chỗ màn hình — mũi
+   tên xoay ngược lại làm dấu hiệu trực quan cho biết đang thu gọn. */
+.crawl-live-widget-body {
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.crawl-live-widget.is-collapsed .crawl-live-widget-body { display: none; }
+.crawl-live-widget.is-collapsed .crawl-live-widget-toggle { transform: rotate(180deg); }
+
+/* Bên trong widget, .crawl-running-list vẫn dùng flex-column gốc —
+   chỉ bỏ margin/gap thừa vì giờ nó nằm gọn trong widget nhỏ, không
+   phải 1 khu to giữa trang như trước. */
+.crawl-live-widget .crawl-running-empty {
+  padding: 14px 16px;
+  font-size: 13px;
+}
+
+@media (max-width: 720px) {
+  .crawl-live-widget {
+    left: 16px;
+    right: 16px;
+    bottom: 16px;
+    width: auto;
+    max-width: none;
+  }
+}
+
+/* Tab "Tình trạng dữ liệu" (_status_tab.html, 08/2026). Tiêu đề mỗi
+   khối ("Company/Job đang thiếu dữ liệu...") to GẤP ĐÔI mặc định
+   .card h4 (14px, xem 06-detail-page.css) — dùng class riêng thay vì
+   sửa .card h4 toàn cục vì .card h4 đang dùng chung ở nhiều trang khác
+   (job_detail.html, company_detail.html...), sửa thẳng sẽ ảnh hưởng
+   ngoài ý muốn tới các trang đó. */
+.status-card-title {
+  font-size: 28px;
+}
+
+/* Tab "Lịch sử vận hành" (_history_tab.html, 08/2026) — biến thể TĨNH
+   của .crawl-live-widget, đặt ở đầu tab thay vì nổi cố định góc màn
+   hình. KHÁC .crawl-live-widget gốc: position static (nằm trong luồng
+   trang bình thường), width 100% (không phải 360px cố định), không
+   max-height/overflow:hidden (hiện đủ toàn bộ, không cần cuộn riêng —
+   trang này vốn đã cho phép cuộn dài để xem lịch sử), không box-shadow/
+   z-index (không cần "nổi đè" lên nội dung vì đây LÀ 1 phần bố cục
+   bình thường, không phải overlay). Tái dùng NGUYÊN các class con
+   (.crawl-live-widget-head/-title/-count/-body, .crawl-running-list,
+   .crawl-running-card-wrap...) — chỉ ghi đè đúng phần layout khác biệt
+   ở class cha, không định nghĩa lại từ đầu. */
+.crawl-live-widget.crawl-live-widget-static {
+  position: static;
+  width: 100%;
+  max-width: none;
+  max-height: none;
+  box-shadow: none;
+  z-index: auto;
+  overflow: visible;
+}
+
+.crawl-live-widget-static .crawl-live-widget-head {
+  cursor: default;
+}

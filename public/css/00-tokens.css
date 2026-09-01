@@ -1,0 +1,224 @@
+/* Used by: every page (base.html). Only global CSS variables, the CSS
+   reset, <body>, <a>, and the top-level .shell grid live here — nothing
+   page-specific. Change a --variable and it affects the whole site by
+   design; don't add component-specific rules to this file. */
+
+/* ============================================================
+   CHECKLIST NGẮN (08/2026, refactor #4) — đọc trước khi thêm CSS mới
+   liên quan tới kích thước/khoảng cách, tránh lặp lại các lỗi đã gặp:
+
+   1. Thêm đơn vị vh/vw mới? PHẢI chia cho var(--zoom-scale) — vd
+      `calc(100vh / var(--zoom-scale))`, KHÔNG dùng `100vh` trần. Lý
+      do: xem khối `html { zoom }` ở dưới, đây là lỗi đã gặp 2 lần.
+
+   2. Thêm 1 grid (form, card list...) nằm BÊN TRONG 1 card/container
+      có thể đổi bề rộng (không phải full viewport — vd trong sidebar,
+      trong 2 card cạnh nhau)? Dùng `container-type: inline-size` trên
+      phần tử CHA + `@container` cho số cột — xem ví dụ .form-card/
+      .form-grid ở 07-forms.css. KHÔNG dùng `@media (max-width)` để
+      đổi số cột của grid loại này — @media đo theo màn hình, không
+      đo theo bề rộng thật của card chứa nó (đây chính là gốc rễ bug
+      .form-grid ở .crawl-source-card từng gặp).
+
+   3. Padding/gap/bề rộng bạn sắp viết tay đã có ở thang đo bên dưới
+      chưa (--space-*, --card-pad-*, --card-gap, --card-min-w...)? Nếu
+      con số đó sẽ dùng LẶP LẠI ở nhiều chỗ với CÙNG ý nghĩa, thêm vào
+      thang đo và tham chiếu var() thay vì viết số mới. Số chỉ dùng
+      đúng 1 chỗ thì cứ viết tay, không ép vào token cho có.
+
+   4. 1 class cần dùng cho nhiều biến thể layout khác nhau (vd cùng
+      ".crawl-sources" nhưng tab Crawl xếp auto-fit, tab Bảo trì xếp cố
+      định 2 cột)? Đặt tên tường minh theo biến thể — class gốc +
+      modifier dạng `--ten-bien-the` (vd `.crawl-sources--fixed-2col`)
+      — viết compound selector `.crawl-sources.crawl-sources--...` để
+      thắng bằng ĐỘ ƯU TIÊN CSS thật sự, không phải chồng 2 class rời
+      rồi để cascade tự phân xử theo thứ tự dòng trong file (nhìn HTML
+      không đoán được cái nào thắng nếu làm vậy — xem 15-crawl.css để
+      thấy ví dụ thật).
+   ============================================================ */
+:root {
+  --bg: #EEF2F0;
+  --surface: #FFFFFF;
+  --ink: #101E1A;
+  --ink-soft: #52625C;
+  --muted: #8A968F;
+  --border: #DCE4DF;
+  --accent: #FF5A36;
+  --accent-soft: #FFE6DC;
+  --teal: #0F766E;
+  --teal-soft: #D9F0EB;
+  --amber: #B9790A;
+  --amber-soft: #FBEBD0;
+  --blue: #2454B8;
+  --blue-soft: #E1E9FA;
+  --radius: 14px;
+  --font-display: 'Space Grotesk', 'Inter', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --sidebar-width: 248px;
+  /* 08/2026: cùng 1 số dùng cho `html { zoom }` bên dưới VÀ để bù lại
+     mọi chỗ dùng đơn vị `vh` (xem 01-sidebar.css .sidebar, .shell bên
+     dưới) — lý do bắt buộc phải có biến này, xem giải thích chi tiết
+     ngay tại `html { zoom }`. Đổi tỉ lệ zoom chỉ cần sửa DUY NHẤT số
+     này, không phải sửa từng nơi dùng vh riêng lẻ. */
+  --zoom-scale: 0.9;
+
+  /* ---- Thang đo khoảng cách/bề rộng (thêm 08/2026, refactor #2) ----
+     Trước đây KHÔNG có "sổ tay" kích thước dùng chung — mọi padding/
+     gap/bề rộng card là số px viết tay rải rác 17 file, cùng 1 con số
+     (vd 440px) xuất hiện ở nhiều chỗ với Ý NGHĨA KHÁC NHAU nên không
+     ai dám sửa 1 chỗ vì sợ ảnh hưởng chỗ khác, mà sửa đúng chỗ cần thì
+     lại phải lục từng file tìm.
+     Quy ước: số nào LẶP LẠI nhiều nơi với CÙNG một ý nghĩa mới đưa vào
+     đây; số chỉ dùng đúng 1 chỗ thì cứ để viết tay, không ép vào token
+     cho có. Khai báo dưới đây giữ NGUYÊN giá trị hiện đang dùng (không
+     đổi bất kỳ hành vi/giao diện nào) — mục đích chỉ là gom 1 chỗ để
+     lần sau đổi kích thước không phải lục nhiều file. */
+  --space-1: 4px;
+  --space-2: 6px;
+  --space-3: 8px;
+  --space-4: 12px;
+  --space-5: 16px;
+  --space-6: 18px;
+  --space-7: 24px;
+  --space-8: 28px;
+
+  /* Padding mặc định (desktop) của các "card" chứa form/nội dung chính
+     — .form-card (07-forms.css), .dm-export-card (13-data-management),
+     .crawl-source-card dùng riêng số khác (29/31px) nên KHÔNG gộp vào
+     đây, xem ghi chú tại chỗ khai báo. */
+  --card-pad-y: 26px;
+  --card-pad-x: 28px;
+
+  /* Khoảng cách card-với-card khi nhiều card xếp cạnh nhau dạng grid
+     (.crawl-sources--auto-fit, .crawl-sources--fixed-2col...). */
+  --card-gap: 18px;
+
+  /* Bề rộng tối thiểu 1 "card nguồn" trước khi auto-fit tự xuống hàng
+     mới — hiện chỉ .crawl-sources dùng, nhưng khai báo tường minh ở
+     đây để lần sau cần đổi (vd "mở rộng card ~30%" đã từng làm) chỉ
+     sửa 1 dòng, không cần dò trong 15-crawl.css. */
+  --card-min-w: 900px; 
+
+  /* Gap của .form-grid (07-forms.css): hàng/cột không đều nhau nên
+     tách riêng 2 biến thay vì gộp vào --space-*. */
+  --form-grid-gap-row: 14px;
+  --form-grid-gap-col: 18px;
+}
+
+/* Set by the anti-FOUC script in base.html (before first paint) when the
+   user's last choice, read from localStorage, was "collapsed" — keeps
+   the sidebar from flashing wide then snapping narrow on reload. */
+html.sidebar-collapsed {
+  --sidebar-width: 76px;
+}
+
+/* 08/2026: rule --sidebar-width giảm 90% khi có #et-manager-form trong
+   DOM ĐÃ BỊ XOÁ (từng ở đây) — hồi đó dùng để nhường không gian ngang
+   cho .et-manager-form lúc nó còn set width:150% (tràn khỏi khu nội
+   dung). Sau khi đổi cách làm to card mẫu email (bỏ % ép buộc, cho
+   .et-manager-grid tự "nở" bằng minmax(560px,1fr) — xem 16-email-
+   template-manager.css) thì form không còn tràn nữa, nhưng rule thu
+   nhỏ sidebar bị bỏ quên không xoá theo -> sidebar bị ép hẹp lại
+   (248px -> 223px) không lý do mỗi khi mở tab "Quản lý mẫu email",
+   khiến chữ trong menu (vd "Hoạt động học viên") bị xuống dòng. Xoá
+   hẳn rule, sidebar giữ nguyên --sidebar-width mặc định như mọi trang
+   khác. */
+
+* { box-sizing: border-box; }
+
+/* 08/2026 (theo yêu cầu thảo luận: "100% giống hệt 90% hiện tại")
+   -- CSS `zoom` là cách TRUNG THỰC nhất để mô phỏng đúng ý browser
+   zoom thật: nó scale MỌI THỨ đồng nhất (px, border, khoảng cách,
+   input/select, scrollbar...) và cập nhật lại media query giống hệt
+   như người dùng tự bấm Ctrl+- 90% trong trình duyệt -- khác với
+   cách đổi `html { font-size: ... }` (chỉ ảnh hưởng đơn vị rem/em,
+   mà toàn bộ codebase này dùng px thuần cho hầu hết padding/width/
+   font-size nên sẽ KHÔNG khớp đúng tỉ lệ) hay `transform: scale()`
+   (không reflow layout, gây tràn/scroll sai). Hỗ trợ: Chrome/Edge/
+   Safari 15.4+ từ lâu, Firefox 126+ (2024) -- đã đủ an toàn cho
+   nội bộ Career Hub tháng 08/2026. Muốn tắt/đổi tỉ lệ khác chỉ cần
+   sửa 1 dòng này, không đụng tới component nào khác. */
+/* BUG 08/2026 (sidebar bị hụt, không chạm đáy màn hình): `zoom` scale
+   TOÀN BỘ box xuống 90% SAU khi trình duyệt đã tính layout xong — còn
+   đơn vị `vh` thì luôn được tính theo viewport THẬT (chưa zoom), không
+   tự bù theo `zoom`. Hệ quả: 1 element cao `100vh` (như .sidebar,
+   .shell ở dưới) chỉ LẤP ĐƯỢC 90% chiều cao màn hình thật sau khi bị
+   zoom co lại — thừa ra đúng 10% khoảng trắng ở đáy. Đây không phải
+   lỗi cũ của sidebar, mà là tác dụng phụ của chính dòng zoom:90% này.
+   Fix: mọi chỗ cần cao đúng-bằng-viewport phải dùng
+   `calc(100vh / var(--zoom-scale))` thay vì `100vh` trần — xem
+   .shell (ngay dưới) và .sidebar/.sidebar { height } trong
+   01-sidebar.css. */
+html {
+  zoom: var(--zoom-scale);
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: inherit; text-decoration: none; }
+
+/* ============================================================
+   PILL/BADGE DÙNG CHUNG (thêm 08/2026) — trước đây border-radius:999px
+   (hình viên thuốc) + white-space:nowrap được khai báo LẶP LẠI riêng lẻ
+   ở ~16 class chip/badge/tag rải rác 8 file CSS khác nhau (04, 05, 07,
+   08, 13, 14, 15). Hậu quả THẬT ĐÃ XẢY RA 2 LẦN trong cùng 1 đợt sửa:
+   sửa .ticket-industry (badge ngành ở job card) bị xuống dòng, tưởng
+   xong, hôm sau .fit-chip (chip "Chưa đánh giá" ở bảng công ty) bị y
+   hệt lỗi đó — vì đây là 2 khai báo ĐỘC LẬP, sửa 1 chỗ không tự sửa
+   chỗ kia.
+
+   Gom về đây: MỌI class chip/badge/tag hình viên thuốc liệt kê chung 1
+   selector list, dùng chung border-radius + white-space + font-weight.
+   Từng file CSS domain (04/05/07/08/13/14/15) CHỈ còn giữ lại phần đặc
+   thù của mình (màu nền/chữ, font-size, padding — vì các chip to nhỏ
+   khác nhau tuỳ chỗ dùng). Thêm 1 chip/badge MỚI ở đâu đó trong tương
+   lai? Thêm tên class vào danh sách dưới đây (1 dòng), KHÔNG viết lại
+   3 dòng border-radius/white-space/font-weight ở file domain riêng —
+   nếu quên thêm vào đây thì chip mới vẫn có nguy cơ bị xuống dòng y
+   hệt 2 lần trước, nên đây là nơi DUY NHẤT cần nhớ khi thêm chip mới. */
+.ticket-industry,
+.ticket-level,
+.status-chip,
+.fit-chip,
+.role-chip,
+.you-badge,
+.potential-suggestion,
+.pct-badge,
+.reason-tag,
+.dm-entity-tab,
+.dm-tag,
+.dm-modal-suggestion-score,
+.et-suggested-tag,
+.crawl-live-widget-count,
+.error-chip {
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.shell {
+  display: grid;
+  grid-template-columns: var(--sidebar-width) 1fr;
+  /* bù zoom — xem giải thích ở `html { zoom }` phía trên */
+  min-height: calc(100vh / var(--zoom-scale));
+  transition: grid-template-columns 0.18s ease;
+}
+
+/* CẢNH BÁO cho code sau này (08/2026, rút kinh nghiệm từ lỗi ".content
+   bị co nhỏ theo nội dung" — xem comment chi tiết tại .content ở
+   03-layout.css): .shell hiện chỉ có đúng 2 con trực tiếp: .sidebar
+   (width cố định — an toàn) và .content (margin auto để canh giữa —
+   PHẢI có width: 100% đi kèm max-width, đã fix). Nếu sau này thêm 1
+   phần tử MỚI làm con trực tiếp của .shell và dùng margin auto để
+   canh giữa nó, PHẢI kèm width: 100% (hoặc width cố định) — nếu chỉ
+   có margin auto + max-width mà thiếu width, trình duyệt sẽ co phần
+   tử đó lại theo đúng nội dung bên trong (shrink-to-fit) thay vì lấp
+   đầy cột Grid, gây lại đúng lỗi cũ dù CSS bên trong không sai gì. */

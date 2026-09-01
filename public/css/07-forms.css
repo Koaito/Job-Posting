@@ -1,0 +1,417 @@
+/* ---------------- Forms ---------------- */
+/* Used by: templates/add_job.html, add_company.html, add_contact.html,
+   staff_account_add.html (any page rendering .form-card). Independent
+   of 02-auth.css even though both style <input>/<select> — auth pages
+   use .auth-card, these use .form-card, so the two never collide. */
+
+/* Form card wrapper - add_job.html, add_company.html, add_contact.html */
+.form-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--card-pad-y) var(--card-pad-x);
+  /* BỎ max-width - để form fill hết chiều rộng .content (đã có max 1600px) */
+
+  /* 08/2026 (refactor #1, xem chi tiết tại khối "@container" bên dưới
+     phần .form-grid): biến .form-card thành 1 "query container" theo
+     bề rộng thật của chính nó — để .form-grid con có thể đổi số cột
+     dựa vào bề rộng CARD đang chứa nó, thay vì dựa vào bề rộng cả màn
+     hình (@media). Chỉ set containment kiểu inline-size (theo chiều
+     ngang) nên không ảnh hưởng chiều cao/nội dung bên trong — an toàn,
+     không đổi giao diện hiện tại của bất kỳ trang nào. */
+  container-type: inline-size;
+}
+
+.form-section {
+  font-family: var(--font-display);
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--accent);
+  margin: 22px 0 12px;
+}
+.form-section:first-child { margin-top: 0; }
+
+/* Badge "Gợi ý: …" cạnh dropdown "Tiềm năng hợp tác" (add_company.html)
+   — chỉ hiển thị ở trang SỬA công ty, tính bởi potential_score.py.
+   Màu theo mức gợi ý, dùng chung bảng màu --teal/--amber/--accent đã có
+   sẵn trong 00-tokens.css thay vì thêm biến màu mới.
+
+   Tooltip chi tiết (thêm 08/2026): trước đây dùng thuộc tính title=
+   (tooltip mặc định trình duyệt) — đổi sang tooltip HTML tự vẽ vì title=
+   chỉ hiện được text thuần, không xuống dòng/format được thành checklist
+   rõ ràng. .potential-suggestion-wrap là vùng hover (bao cả badge), box
+   .potential-suggestion-tooltip ẩn mặc định, hiện khi hover/focus vào
+   wrap — thuần CSS, không cần JS. */
+.potential-suggestion-wrap {
+  position: relative;
+  display: inline-block;
+  margin-top: 8px;
+}
+.potential-suggestion {
+  display: inline-block;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 4px 10px;
+  cursor: default;
+}
+.potential-suggestion-high   { color: var(--teal); background: var(--teal-soft); }
+.potential-suggestion-medium { color: var(--amber); background: var(--amber-soft); }
+.potential-suggestion-low    { color: var(--accent); background: var(--accent-soft); }
+
+.potential-suggestion-tooltip {
+  display: none;
+  position: absolute;
+  z-index: 20;
+  top: 100%;
+  left: 0;
+  margin-top: 6px;
+  width: 300px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  font-size: 12.5px;
+  font-weight: 400;
+  color: var(--ink);
+  white-space: normal;
+}
+.potential-suggestion-wrap:hover .potential-suggestion-tooltip,
+.potential-suggestion-wrap:focus-within .potential-suggestion-tooltip {
+  display: block;
+}
+
+/* Lật lên trên khi gần đáy viewport (thêm 08/2026, báo lỗi ảnh chụp:
+   tooltip mở xuống dưới đè lên dòng kế tiếp / khuất sau thanh phân
+   trang). Class này do JS (initTooltipAutoFlip, app.js) gắn/gỡ động
+   lúc hover/focus — không thể xử lý thuần CSS vì bảng phân trang phía
+   client (ẩn/hiện bằng display), "dòng cuối" hiển thị thay đổi theo
+   trang trong khi DOM order cố định, :last-child không phản ánh đúng. */
+.potential-suggestion-tooltip.tooltip-flip-up {
+  top: auto;
+  bottom: 100%;
+  margin-top: 0;
+  margin-bottom: 6px;
+}
+.potential-suggestion-tooltip strong {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--muted);
+}
+.potential-suggestion-tooltip ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.potential-suggestion-tooltip li {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 3px 0;
+  line-height: 1.4;
+}
+.potential-suggestion-tooltip li .tick {
+  flex: none;
+  font-weight: 700;
+}
+.potential-suggestion-tooltip li.is-met { color: var(--ink); }
+.potential-suggestion-tooltip li.is-met .tick { color: var(--teal); }
+.potential-suggestion-tooltip li.is-unmet { color: var(--muted); }
+.potential-suggestion-tooltip li.is-unmet .tick { color: var(--muted); }
+
+/* Danh sách job title trong tooltip "Job mới nhất" (dashboard, khu
+   "Đang mở rộng tuyển dụng") — KHÁC checklist tiêu chí gợi ý ở trên
+   (dùng icon .tick riêng nên tắt list-style: none). Danh sách job chỉ
+   là text thuần, không có icon -> phải tự bật lại dấu gạch đầu dòng,
+   tách class riêng (.tooltip-plain-list) để không ảnh hưởng checklist
+   ở add_company.html/companies.html đang dùng chung .potential-
+   suggestion-tooltip ul/li. 08/2026 (báo lỗi ảnh chụp: nhìn phẳng lì,
+   không phân biệt được từng dòng job). */
+.potential-suggestion-tooltip ul.tooltip-plain-list {
+  list-style: disc;
+  padding-left: 18px;
+}
+.potential-suggestion-tooltip ul.tooltip-plain-list li {
+  display: list-item;
+  padding: 2px 0;
+}
+
+/* Ghi chú nhỏ cuối tooltip — giải thích tooltip chỉ show tối đa N job
+   mới nhất (không phải TẤT CẢ job công ty đó đang tuyển), để người
+   dùng không hiểu lầm đây là danh sách đầy đủ. */
+.tooltip-footnote {
+  margin: 8px 0 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  font-size: 11.5px;
+  font-style: italic;
+  color: var(--muted);
+}
+
+.potential-suggestion-note {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* Form grid - 4 columns với manual span control */
+.form-grid {
+  display: grid;
+  /* Desktop: 4 cột bằng nhau
+     - Mỗi field có thể chiếm 1-4 cột tuỳ độ dài nội dung
+     - Dùng .span-1, .span-2, .span-3, .span-4 classes để control
+     - Responsive: 4→3→2→1 cột theo breakpoints */
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--form-grid-gap-row) var(--form-grid-gap-col);
+}
+
+/* Span classes - control số cột mỗi field chiếm */
+.form-grid > label.span-1 { grid-column: span 1; } /* 25% - Level, Địa điểm */
+.form-grid > label.span-2 { grid-column: span 2; } /* 50% - Ngành, Công ty */
+.form-grid > label.span-3 { grid-column: span 3; } /* 75% */
+.form-grid > label.span-4 { grid-column: span 4; } /* 100% - Mô tả, Yêu cầu */
+
+/* Same overflow fix as .two-col above: a <select> with a long option
+   (company name) can overflow its 1fr column and stick out past the
+   card edge instead of wrapping/truncating within it. */
+.form-grid > label { min-width: 0; }
+.form-card input, .form-card select, .form-card textarea { width: 100%; }
+
+.form-card label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--ink-soft);
+  font-weight: 500;
+}
+
+.form-card label.full { grid-column: 1 / -1; margin-top: 14px; }
+.form-card label.checkbox-label { flex-direction: row; align-items: center; gap: 8px; }
+
+/* 08/2026 (báo lỗi ảnh chụp): ".form-card input { width: 100% }" bên
+   dưới áp lên MỌI input, kể cả checkbox/radio nằm trong
+   .checkbox-label -> ô tick bị kéo giãn thành khối vô hình rộng bằng
+   cả hàng (chỉ vẽ tick nhỏ ở góc trái), đẩy chữ nhãn dạt hẳn sang phải
+   trông như "nút bị trôi/center lung tung". Trước đây chỉ tab Crawl
+   (ngành nghề) có riêng 1 dòng reset cho .crawl-category-item, còn mọi
+   .checkbox-label khác (vd 2 checkbox dry-run/check-deadline ở tab Bảo
+   trì) đều dính lỗi này -> sửa CHUNG tại nguồn ở đây để không phải vá
+   riêng từng chỗ dùng .checkbox-label mới sau này. */
+.form-card label.checkbox-label input[type="checkbox"],
+.form-card label.checkbox-label input[type="radio"] {
+  width: auto;
+  flex: none;
+  margin: 0;
+}
+
+.form-card input, .form-card select, .form-card textarea {
+  font-family: var(--font-body);
+  font-size: 14px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: #FBFCFB;
+  color: var(--ink);
+}
+
+.form-card textarea { resize: vertical; }
+
+.form-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+
+/* ---- Company combobox (search + scroll) ----------------------------- */
+/* Dùng ở add_job.html / add_contact.html thay cho <select> công ty dài.
+   Xem templates/_company_combobox.html (markup) + public/app.js
+   (initCompanyCombobox, hành vi gõ-lọc/scroll/phím mũi tên). */
+
+.cbx { position: relative; }
+
+.cbx-input {
+  /* Kế thừa style input chung từ .form-card input ở trên (font, padding,
+     border, bg) — chỉ thêm cursor để gợi ý đây là ô có thể bấm mở list. */
+  cursor: text;
+}
+
+.cbx.cbx-open .cbx-input {
+  border-color: var(--accent);
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.cbx-panel {
+  position: absolute;
+  z-index: 20;
+  left: 0;
+  right: 0;
+  top: 100%;
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  box-shadow: 0 10px 24px rgba(16, 30, 26, 0.12);
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.cbx-list {
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+}
+
+.cbx-opt {
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 14px;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.cbx-opt-sub { color: var(--muted); font-size: 13px; }
+
+.cbx-opt.cbx-active,
+.cbx-opt:hover {
+  background: var(--accent-soft);
+}
+
+.cbx-opt-new {
+  color: var(--accent);
+  font-weight: 600;
+  border-top: 1px solid var(--border);
+  border-radius: 0;
+  margin-top: 4px;
+  padding-top: 10px;
+}
+.cbx-opt-new.cbx-active,
+.cbx-opt-new:hover { background: var(--accent-soft); border-radius: 6px; }
+
+.cbx-empty {
+  margin: 0;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.cbx-error {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: #C0392B;
+}
+
+/* Responsive breakpoints */
+@media (max-width: 1200px) {
+  /* Large tablet: 3 cột */
+  .form-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  
+  /* Điều chỉnh span classes cho 3 cột */
+  .form-grid > label.span-1 { grid-column: span 1; } /* 33% */
+  .form-grid > label.span-2 { grid-column: span 2; } /* 66% */
+  .form-grid > label.span-3 { grid-column: span 3; } /* 100% */
+  .form-grid > label.span-4 { grid-column: span 3; } /* 100% */
+  
+  .form-card {
+    padding: 22px 24px;
+  }
+}
+
+@media (max-width: 900px) {
+  /* Tablet: 2 cột */
+  .form-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  /* Điều chỉnh span classes cho 2 cột */
+  .form-grid > label.span-1 { grid-column: span 1; } /* 50% */
+  .form-grid > label.span-2 { grid-column: span 2; } /* 100% */
+  .form-grid > label.span-3 { grid-column: span 2; } /* 100% */
+  .form-grid > label.span-4 { grid-column: span 2; } /* 100% */
+}
+
+@media (max-width: 768px) {
+  /* Mobile: 1 cột */
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  /* Tất cả fields chiếm full width */
+  .form-grid > label.span-1,
+  .form-grid > label.span-2,
+  .form-grid > label.span-3,
+  .form-grid > label.span-4 {
+    grid-column: span 1;
+  }
+  
+  .form-card {
+    padding: 18px 20px;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+  }
+  
+  .form-card input,
+  .form-card select,
+  .form-card textarea {
+    font-size: 16px; /* Prevent iOS zoom on focus */
+  }
+}
+
+/* ============================================================
+   08/2026 (refactor #1 — xem tóm tắt "4 nguyên nhân gốc" đã thảo
+   luận): 3 khối @media phía trên đổi số cột .form-grid theo BỀ RỘNG
+   MÀN HÌNH, không theo bề rộng THẬT của .form-card đang chứa nó — đây
+   chính là gốc rễ khiến .crawl-source-card .form-grid (15-crawl.css)
+   phải viết tay 1 rule đè riêng (ép cứng 2 cột) thay vì tự đúng.
+
+   CỐ TÌNH KHÔNG XOÁ 3 khối @media ở trên — giữ nguyên làm lưới an
+   toàn (fallback) cho trình duyệt cũ chưa hỗ trợ Container Queries,
+   và vì chúng đặt TRƯỚC khối này trong file nên khi cả 2 loại điều
+   kiện (@media lẫn @container) cùng đúng, khối @container dưới đây
+   (đứng SAU, cùng độ ưu tiên) sẽ thắng theo cascade — tức về đúng bề
+   rộng thật của card, không cần sửa gì thêm ở 3 khối cũ.
+
+   Cách dùng cho code mới: đặt `container-type: inline-size` lên phần
+   tử CHA của .form-grid (như .form-card ở trên đã làm) — không cần
+   động vào khối này. Ngưỡng chọn dưới đây tương đương đúng 3 mốc
+   1200/900/768px cũ nhưng đo trên bề rộng CARD ở layout mặc định
+   (sidebar mở, .content max 1800px, padding 40px) — không phải bề
+   rộng màn hình, nên card đặt trong container hẹp hơn (sidebar,
+   crawl...) giờ tự đổi cột đúng mà không cần rule đè riêng nào nữa. */
+@container (max-width: 860px) {
+  .form-grid { grid-template-columns: repeat(3, 1fr); }
+  .form-grid > label.span-1 { grid-column: span 1; } /* 33% */
+  .form-grid > label.span-2 { grid-column: span 2; } /* 66% */
+  .form-grid > label.span-3 { grid-column: span 3; } /* 100% */
+  .form-grid > label.span-4 { grid-column: span 3; } /* 100% */
+}
+
+@container (max-width: 620px) {
+  .form-grid { grid-template-columns: repeat(2, 1fr); }
+  .form-grid > label.span-1 { grid-column: span 1; } /* 50% */
+  .form-grid > label.span-2 { grid-column: span 2; } /* 100% */
+  .form-grid > label.span-3 { grid-column: span 2; } /* 100% */
+  .form-grid > label.span-4 { grid-column: span 2; } /* 100% */
+}
+
+@container (max-width: 440px) {
+  .form-grid { grid-template-columns: 1fr; }
+  .form-grid > label.span-1,
+  .form-grid > label.span-2,
+  .form-grid > label.span-3,
+  .form-grid > label.span-4 {
+    grid-column: span 1;
+  }
+}
+

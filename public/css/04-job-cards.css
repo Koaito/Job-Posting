@@ -1,0 +1,212 @@
+/* ---------------- Job ticket cards ---------------- */
+/* Used by: templates/index.html, my_applications.html, saved_jobs.html
+   (all three render `<div class="job-grid">...<article class="ticket">`).
+   The base .job-grid rule stays untouched on purpose so those two other
+   pages keep their original wrapping behavior. Layout changes meant for
+   ONLY the main /viec-lam listing (index.html) belong in the scoped
+   .job-grid-3col modifier below, not in the shared .job-grid rule. */
+
+/* Flexbox, not CSS Grid — deliberately. With `flex-wrap: wrap` and each
+   card `flex: 1 1 <basis>`, every row (INCLUDING a short trailing row)
+   independently divides its own leftover space among the cards actually
+   on it. A grid's `auto-fit`/`minmax()` can't do this: the number of
+   tracks is fixed for the whole grid from the widest row, so a shorter
+   last row (e.g. 2 cards left over on a grid that fits 4 per row) leaves
+   genuine empty cells on the right — that's what previously required a
+   JS pass (fillLastJobGridRow) to fix by measuring the resolved column
+   count and manually stretching the short row's cards with
+   grid-column-end. Flexbox needs none of that: no JS, no resize
+   listener, no risk of a layout flash before JS runs. Cards are not
+   guaranteed pixel-perfect column alignment across rows the way grid
+   tracks are, but with uniform card content that's not visually
+   noticeable and the tradeoff is worth the simplicity. */
+.job-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.job-grid > * {
+  flex: 1 1 320px;
+}
+
+/* /viec-lam listing (templates/index.html) only — same mechanism as
+   .job-grid above, just a smaller basis so more cards fit per row. */
+.job-grid.job-grid-3col > * {
+  flex-basis: 300px;
+}
+
+.ticket {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+
+.ticket:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(16,32,26,0.08); }
+
+.ticket-stub {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-bottom: 1px dashed var(--border);
+  background: #FAFBFA;
+}
+
+.ticket-code {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--muted);
+  margin-right: auto;
+}
+
+.ticket-industry {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 3px 8px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+/* Màu badge ngành — CỐ ĐỊNH theo tên ngành (xem helpers.industry_class()
+   ở backend Flask, mindx-jobs/helpers.py), KHÔNG còn xoay vòng theo vị
+   trí card như trước (ind-0/1/2 cũ). Mỗi ngành trong 6 ngành chuẩn
+   (constants.INDUSTRIES, khớp matching_industry ở Scrap JD/config.py)
+   có đúng 1 màu duy nhất, dùng xuyên suốt mọi trang/mọi lần load —
+   người dùng học màu 1 lần là nhận diện được mãi. Bảng màu đối chiếu ở
+   chú thích .industry-legend bên dưới. */
+.ind-code { background: var(--accent-soft); color: var(--accent); }
+.ind-business-analysis { background: var(--blue-soft); color: var(--blue); }
+.ind-data-analysis { background: var(--teal-soft); color: var(--teal); }
+.ind-data-engineer { background: #EDE6FB; color: #7C3AED; }
+.ind-data-scientist { background: var(--amber-soft); color: var(--amber); }
+.ind-ui-ux-design { background: #FBE3EE; color: #C22B7A; }
+
+/* Fallback cho industry lạ ngoài 6 giá trị chuẩn (dữ liệu cũ/nhập tay
+   lệch chính tả) — xám trung tính, không mượn nhầm màu của ngành khác. */
+.ind-other { background: #EDEFEC; color: var(--muted); }
+
+/* ---------------- Chú thích màu ngành (industry legend) ---------------- */
+/* Dải nhỏ phía trên job-grid (templates/index.html) giải thích mỗi màu
+   badge .ticket-industry tương ứng ngành nào — thêm 08/2026 cùng lúc với
+   việc đổi màu badge từ "xoay vòng theo vị trí" sang "cố định theo
+   ngành" (xem comment ở .ind-code trở lên), vì đổi màu cố định chỉ có
+   tác dụng nếu người dùng có nơi tra cứu màu nào ứng với ngành nào. */
+.industry-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin: 0 0 16px;
+  padding: 10px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+.industry-legend-label {
+  font-weight: 600;
+  color: var(--ink);
+  margin-right: 2px;
+}
+
+.industry-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Ô vuông 10x10 trong chú thích: mượn LUÔN class .ind-* (background +
+   color) của chính badge thật để không phải khai báo lại 6 mã màu lần
+   thứ 2 ở đây — nhưng nền nhạt (--*-soft) của .ind-* khó thấy ở ô bé
+   xíu 10x10px nên đảo ngược: swatch dùng chính `color` (màu đậm) của
+   .ind-* LÀM NỀN, còn text ngành đứng ngoài span này (xem index.html)
+   nên không bị ảnh hưởng. */
+.industry-legend-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  background: currentColor;
+}
+
+.ticket-level {
+  font-size: 11px;
+  color: var(--ink-soft);
+  border: 1px solid var(--border);
+  padding: 3px 8px;
+  flex-shrink: 0;
+}
+
+.ticket-body { padding: 16px; flex: 1; display: flex; flex-direction: column; gap: 10px; }
+
+.ticket-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+
+.ticket-top h3 { font-family: var(--font-display); font-size: 16.5px; margin: 0; line-height: 1.3; }
+.ticket-top h3 a:hover { color: var(--accent); }
+
+.ticket-company { margin: 0; color: var(--ink-soft); font-size: 13.5px; }
+
+.skill-row { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.skill-tag {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  background: #F1F4F2;
+  border: 1px solid var(--border);
+  color: var(--ink-soft);
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+.ticket-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+/* Khối nút "Xem JD gốc" + "Lưu job" dưới mỗi ticket (templates/index.html,
+   templates/saved_jobs.html) — trước đây KHÔNG có rule nào cho
+   .ticket-actions nên 2 phần tử con (<a> và <form><button>) dồn cục theo
+   layout mặc định của trình duyệt (nằm sát nhau/không đều hàng), đúng
+   như đã thấy trên UI thật (08/2026). Bọc lại thành hàng ngang, cách đều,
+   tự xuống dòng khi chật (flex-wrap) để không tràn ra ngoài card ở màn
+   hẹp — và margin-top: auto để khối nút LUÔN dính đáy ticket dù nội dung
+   phía trên (mô tả/skill) dài ngắn khác nhau giữa các job. */
+.ticket-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.ticket-actions form { margin: 0; }
+
+.status-chip {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 9px;
+}
+
+.status-Đang-tuyển { background: var(--teal-soft); color: var(--teal); }
+.status-Đã-đóng { background: #EDEFEC; color: var(--muted); }
+.status-Chưa-xác-minh { background: var(--amber-soft); color: var(--amber); }
+.status-Đã-gửi-cho-học-viên { background: var(--blue-soft); color: var(--blue); }
+
+.potential-Cao { background: var(--teal-soft); color: var(--teal); }
+.potential-Trung-bình { background: var(--amber-soft); color: var(--amber); }
+.potential-Thấp { background: #F1EDF0; color: #8A6E80; }
+.potential-Chưa-đánh-giá { background: #EDEFEC; color: var(--muted); }
+

@@ -1,0 +1,159 @@
+/* ---------------- Content ---------------- */
+/* Used by: every page — the .content wrapper, .page-head header, .btn-*
+   button variants, and .filter-bar. Shared building blocks: a button
+   style change here affects buttons everywhere. For a page-specific
+   button/filter tweak, add a scoped modifier class instead of editing
+   the base .btn/.filter-bar rules. */
+
+.content {
+  /* Giảm horizontal padding từ 56px → 40px mỗi bên
+     - Tăng usable width: 1800px - 80px = 1720px (tăng từ 1520px)
+     - Vẫn đủ breathing room, không sát mép
+     - Tối ưu cho form 4 cột và job detail sidebar rộng hơn */
+  padding: 40px 40px 64px;
+  max-width: 1800px;
+  margin: 0 auto;
+
+  /* FIX 08/2026 (báo lỗi ảnh chụp: card "Sửa mẫu email" bị thu nhỏ lại
+     so với lúc chỉ xem danh sách). .content là 1 ô trong .shell
+     (display:grid, xem 00-tokens.css). Ô lưới có margin:auto 2 bên +
+     KHÔNG có width tường minh (mặc định width:auto) sẽ bị trình duyệt
+     bỏ hành vi "kéo giãn lấp đầy cột" (stretch) mặc định, chuyển sang
+     "co theo đúng nội dung" (shrink-to-fit) — DÙ ĐÃ có max-width:1800px.
+     Hệ quả: bề rộng thật của .content phụ thuộc vào dòng nào bên trong
+     nó "đòi" nhiều chỗ nhất tại thời điểm đó, không cố định. Trang có
+     nhiều card/bảng rộng thì tình cờ trông full-width (đủ nội dung để
+     "đòi" hết chỗ), còn khung nào ít nội dung hơn (như form Sửa mẫu
+     email) thì bị co lại theo — dù CSS của form/card đó không sai gì
+     cả. Thêm width: 100% để LUÔN lấp đầy cột lưới trước, sau đó mới bị
+     max-width giới hạn lại như thiết kế ban đầu — không còn phụ thuộc
+     nội dung bên trong nữa, nhất quán trên mọi trang. (Đã verify bằng
+     Chromium headless: không có width:100% thì .content co xuống chỉ
+     ~400-900px dù max-width 1800px, kể cả ở trang khác không phải
+     riêng form mẫu email — chỉ là các trang đó tình cờ đủ nội dung
+     rộng để che mất triệu chứng.) */
+  width: 100%;
+}
+
+/* Opt-in per page via {% block content_class %}content-full{% endblock %}
+   (see base.html) — for pages made almost entirely of grids (job cards,
+   KPI/report cards) rather than paragraph text, capping width doesn't
+   help readability, so these are allowed to fill the entire available
+   space next to the sidebar instead of stopping at 1600px. */
+.content.content-full {
+  max-width: none;
+}
+
+.page-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 24px;
+  margin-bottom: 26px;
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.page-head h1 {
+  font-family: var(--font-display);
+  font-size: 30px;
+  margin: 8px 0 6px;
+  letter-spacing: -0.01em;
+}
+
+.lede {
+  color: var(--ink-soft);
+  max-width: 640px;
+  margin: 0;
+}
+
+.back-link {
+  display: inline-block;
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin-bottom: 18px;
+}
+
+.back-link:hover { color: var(--accent); }
+
+/* ---------------- Buttons ---------------- */
+
+.btn {
+  display: inline-block;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 14px;
+  padding: 10px 18px;
+  border-radius: 9px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-primary { background: var(--accent); color: #16130E; }
+.btn-primary:hover { background: #E64D28; }
+
+.btn-ghost { background: var(--surface); border-color: var(--border); color: var(--ink); }
+.btn-ghost:hover { border-color: var(--ink); }
+
+.btn-text { background: none; color: var(--ink-soft); padding: 10px 6px; }
+.btn-text:hover { color: var(--accent); }
+
+.btn-danger { background: #FBE7E4; color: #B23A22; border-color: #F2C9C1; }
+.btn-danger-text { color: #B23A22; }
+
+/* ---------------- Filter bar ---------------- */
+
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 14px;
+  border-radius: var(--radius);
+  margin-bottom: 10px;
+}
+
+.filter-bar input[type="text"] {
+  flex: 1 1 220px;
+}
+
+.filter-bar input, .filter-bar select {
+  padding: 9px 11px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: #FBFCFB;
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  color: var(--ink);
+}
+
+.result-count {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--muted);
+  margin: 8px 2px 20px;
+}
+
+/* Ghi chú hướng dẫn "bấm vào tên job để xem chi tiết & ứng tuyển"
+   (index.html, thêm 08/2026) — cố tình đặt NGAY TRÊN lưới job (thay vì
+   chung dòng với .result-count) để không bị đọc lướt qua như 1 dòng
+   thống kê thuần, đồng thời không cần thêm badge/note lặp lại trên
+   từng .ticket (66 job/trang) gây rối mắt. */
+.list-hint {
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  background: var(--teal-soft);
+  border: 1px solid #BFE5DD;
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin: -10px 2px 20px;
+}
+

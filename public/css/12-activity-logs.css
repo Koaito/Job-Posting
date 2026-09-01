@@ -1,0 +1,278 @@
+/* Activity Logs Page — full-width layout + custom table styling */
+
+/* Tab navigation */
+.tab-nav {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 2px solid var(--border);
+}
+
+.tab-nav a {
+  padding: 0.75rem 1.5rem;
+  text-decoration: none;
+  color: var(--text-secondary);
+  font-weight: 500;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: all 0.2s;
+}
+
+.tab-nav a:hover {
+  color: var(--text-primary);
+}
+
+.tab-nav a.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+/* Activity table specific styling */
+.activity-table-wrap {
+  overflow-x: auto;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: white;
+}
+
+.activity-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.activity-table thead {
+  background: var(--bg-secondary);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.activity-table th {
+  padding: 12px 16px;
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-secondary);
+  border-bottom: 2px solid var(--border);
+  white-space: nowrap;
+}
+
+.activity-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.activity-table td a {
+  word-break: break-word;
+}
+
+.activity-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.activity-table tbody tr:hover {
+  background-color: rgba(0, 0, 0, 0.02);
+}
+
+.activity-table .note-text {
+  max-width: 400px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.activity-table .actions-cell {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.activity-table .highlight-required {
+  background-color: rgba(255, 193, 7, 0.08);
+}
+
+.activity-table .highlight-required:hover {
+  background-color: rgba(255, 193, 7, 0.12);
+}
+
+/* Badge styling */
+.badge {
+  display: inline-block;
+  padding: 0.25rem 0.6rem;
+  border-radius: 4px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.badge-success {
+  background-color: rgba(76, 175, 80, 0.1);
+  color: #2E7D32;
+}
+
+.badge-warning {
+  background-color: rgba(255, 152, 0, 0.1);
+  color: #F57C00;
+}
+
+.badge-danger {
+  background-color: rgba(244, 67, 54, 0.1);
+  color: #C62828;
+}
+
+/* Pagination */
+.pagination {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2rem;
+  padding: 1.5rem;
+}
+
+.page-link {
+  padding: 0.5rem 1rem;
+  text-decoration: none;
+  color: var(--primary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  transition: all 0.2s;
+  font-weight: 500;
+}
+
+.page-link:hover {
+  background-color: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+.page-info {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+  .activity-table {
+    font-size: 0.85rem;
+  }
+  
+  .activity-table th,
+  .activity-table td {
+    padding: 10px 12px;
+  }
+}
+
+@media (max-width: 768px) {
+  .activity-table-wrap {
+    border-radius: 0;
+    margin: 0 -16px;
+  }
+  
+  .activity-table {
+    font-size: 0.8rem;
+  }
+  
+  .activity-table th,
+  .activity-table td {
+    padding: 8px 10px;
+  }
+  
+  /* Stack table cho mobile - ẩn bớt cột */
+  .activity-table th:nth-child(5),
+  .activity-table td:nth-child(5) {
+    display: none; /* Ẩn cột "Công ty" trên mobile */
+  }
+}
+
+/* Modal "Sửa ghi chú" (thay window.prompt() cũ, 08/2026) — cố ý dùng
+   ĐÚNG bộ design token thật của app (var(--surface)/var(--radius)/
+   var(--ink)/var(--border)/var(--accent)...), KHÔNG dùng var(--primary)/
+   var(--text-secondary)/var(--bg-secondary) như phần còn lại của file
+   này — 3 biến đó KHÔNG được khai báo ở đâu trong 00-tokens.css (file
+   này viết TRƯỚC khi hệ thống token hiện tại chuẩn hoá, chưa từng được
+   dọn lại), css trình duyệt coi property tương ứng là invalid nên rơi về
+   giá trị mặc định/kế thừa — khiến tab-nav/badge ở trang này lệch màu
+   nhẹ so với phần còn lại của app dù không lỗi rõ ràng. Modal MỚI này
+   theo đúng token thật, khớp visual với .dm-modal (data-management) và
+   .et-modal (mẫu email) đang dùng ở nơi khác trong app. */
+.note-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(16, 30, 26, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 20px;
+}
+
+.note-modal-overlay[hidden] { display: none; }
+
+.note-modal {
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  width: 100%;
+  max-width: 480px;
+  box-shadow: 0 12px 40px rgba(16, 30, 26, 0.2);
+}
+
+.note-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.note-modal-head h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 17px;
+  color: var(--ink);
+}
+
+.note-modal-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 22px;
+  line-height: 1;
+  color: var(--muted);
+  padding: 4px;
+  border-radius: 6px;
+}
+
+.note-modal-close:hover { background: var(--bg); color: var(--ink); }
+
+#note-modal-form { padding: 16px 20px 20px; }
+
+#note-modal-textarea {
+  width: 100%;
+  font-family: var(--font-body);
+  font-size: 14px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: #FBFCFB;
+  color: var(--ink);
+  resize: vertical;
+}
+
+#note-modal-textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.note-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 14px;
+}

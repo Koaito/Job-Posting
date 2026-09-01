@@ -1,0 +1,154 @@
+/* ---------------- Contact table ---------------- */
+/* Used by: templates/contacts.html, company_detail.html (applicant/CRM
+   tables). Independent of the job-cards grid in 04 — safe to restyle
+   the table without touching job listing pages. */
+
+.contact-table-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.contact-table { width: 100%; border-collapse: collapse; }
+
+.contact-table th {
+  text-align: left;
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  padding: 12px 14px;
+  background: #FAFBFA;
+  border-bottom: 1px solid var(--border);
+}
+
+.contact-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13.5px;
+  vertical-align: middle;
+}
+
+.contact-table tr:last-child td { border-bottom: none; }
+
+/* Standalone cell values (e.g. <td class="muted">) keep the table's normal font size,
+   so they line up with sibling cells regardless of content length ("—" vs long text). */
+.contact-table td.muted,
+.contact-table td span.muted:only-child { color: var(--muted); }
+
+/* A muted line stacked under a heading (e.g. company name + industry) stays small/blocky. */
+.contact-table td strong + .muted { display: block; font-size: 11.5px; color: var(--muted); }
+
+.note-row td {
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  background: #FBFCFB;
+  padding: 8px 14px 12px;
+}
+
+.fit-chip {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 9px;
+  display: inline-block;
+}
+
+/* Give the "Tiềm năng" column enough room for its widest chip
+   (Chưa đánh giá) so it never has to wrap and get clipped. */
+.col-potential { min-width: 130px; }
+
+/* Tooltip tiêu chí gợi ý ngay trên danh sách công ty (thêm 08/2026) —
+   để ss_team xem được lý do gợi ý mà KHÔNG cần bấm vào Sửa. Bọc chip
+   .fit-chip có sẵn trong 1 wrap để định vị tooltip, tái dùng nguyên
+   box .potential-suggestion-tooltip đã có ở 07-forms.css (trang Sửa
+   công ty) — tránh lặp lại CSS cho cùng 1 kiểu tooltip.
+   tabindex="0" trên wrap để bàn phím (Tab) cũng mở được tooltip qua
+   :focus, không chỉ hover chuột. */
+.fit-chip-wrap {
+  position: relative;
+  display: inline-block;
+  cursor: default;
+}
+
+/* Sửa nhanh "Tiềm năng" ngay tại bảng (thêm 08/2026) — .fit-chip-wrap
+   giờ nằm trong <summary> (xem templates/companies.html) nên bấm được
+   để mở popover đổi mức, không chỉ hover xem gợi ý như trước. Bỏ tam
+   giác mặc định của <summary> vì đã có chip đóng vai trò nút bấm rồi,
+   tam giác thêm vào chỉ thừa/rối mắt. */
+.potential-edit {
+  position: relative;
+}
+.potential-edit > summary {
+  list-style: none;
+  cursor: pointer;
+}
+.potential-edit > summary::-webkit-details-marker { display: none; }
+.potential-edit > summary .fit-chip-wrap { cursor: pointer; }
+
+.potential-edit-form {
+  position: absolute;
+  z-index: 20;
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 220px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px;
+  box-shadow: 0 10px 24px rgba(16,32,26,0.12);
+}
+.potential-edit-form textarea {
+  width: 100%;
+  resize: vertical;
+  font: inherit;
+}
+.fit-chip-wrap:hover .potential-suggestion-tooltip,
+.fit-chip-wrap:focus .potential-suggestion-tooltip,
+.fit-chip-wrap:focus-within .potential-suggestion-tooltip {
+  display: block;
+}
+/* Danh sách công ty là bảng dài, chip nằm giữa cột — căn tooltip theo
+   giữa chip (không phải left:0 như ở form Sửa) để đỡ tràn ra ngoài
+   bảng khi chip ở gần mép trái. */
+.fit-chip-wrap .potential-suggestion-tooltip {
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* Role chip (staff_activity.html "Vai trò" column) + "Bạn" badge next to
+   your own name in the same table — small, neutral, reuses .fit-chip's
+   sizing but its own color (not tied to partnership-potential meaning). */
+.role-chip {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 9px;
+  background: var(--blue-soft);
+  color: var(--blue);
+}
+
+.you-badge {
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 2px 7px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+
+
+.status-inline select {
+  font-size: 12.5px;
+  padding: 5px 7px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: #FBFCFB;
+  box-sizing: border-box;
+  line-height: 1.4;
+  vertical-align: middle;
+}
+
