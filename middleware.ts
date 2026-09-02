@@ -21,7 +21,15 @@ export function middleware(request: NextRequest) {
                           pathname.startsWith('/staff') ||
                           pathname.startsWith('/messages') ||
                           pathname.startsWith('/activity') ||
-                          pathname.startsWith('/profile');
+                          pathname.startsWith('/profile') ||
+                          // BUG FIX (audit 09/2026 #3): /change-password cần
+                          // access_token (đọc từ cookie thô, KHÔNG gọi API ở
+                          // middleware) như mọi trang khác — nhưng CỐ TÌNH
+                          // không đưa vào isAuthPage bên dưới, vì trang này
+                          // phải giữ cho cả user must_change_password=true
+                          // truy cập được, không bị đá thẳng sang /dashboard
+                          // chỉ vì đang có access_token hợp lệ.
+                          pathname.startsWith('/change-password');
 
   // Redirect to login if accessing protected page without token
   if (isProtectedPage && !accessToken) {

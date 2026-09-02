@@ -240,7 +240,27 @@ export async function getCurrentUser() {
       // /auth/me đúng 1 lần, chỉ đá về /login nếu refresh cũng fail
       // (refresh_token cũng hết hạn/bị thu hồi — vd sau khi logout ở
       // thiết bị khác).
-      const refreshToken = cookieStore.get('refresh_token')?.value;
+      //
+      // BUG FIX (audit 09/2026 #2): KHÔNG được refresh mù quáng với MỌI
+      // lỗi 401 — backend (api/deps.py::get_current_user) phân biệt rõ
+      // 3 loại lỗi qua "error_code" trong body: "token_expired" (đúng
+      // trường hợp nên refresh), "session_replaced" (tài khoản vừa đăng
+      // nhập ở nơi khác — single-session, xem
+      // sql/migration_add_single_session.sql) và "session_revoked"/
+      // "missing_auth_header". Với "session_replaced"/"session_revoked",
+      // refresh_token đang cầm trên thiết bị NÀY chắc chắn đã bị backend
+      // thu hồi từ lúc phiên mới được tạo (login()/refresh() luôn revoke
+      // hết token cũ). Nếu vẫn cố gọi /auth/refresh bằng token đã revoke,
+      // auth_session.py::refresh() sẽ hiểu nhầm đây là dấu hiệu token bị
+      // ĐÁNH CẮP và thu hồi TOÀN BỘ token của user — kể cả phiên vừa
+      // đăng nhập hợp lệ ở thiết bị/tab khác. Vì vậy chỉ thử refresh khi
+      // error_code CHÍNH XÁC là "token_expired"; mọi error_code khác coi
+      // như phiên đã chết thật, xoá cookie ngay, không refresh.
+      const errorBody = await response.json().catch(() => null);
+      const errorCode = errorBody?.detail?.error_code;
+      const shouldTryRefresh = errorCode === 'token_expired';
+
+      const refreshToken = shouldTryRefresh ? cookieStore.get('refresh_token')?.value : undefined;
       const newTokens = refreshToken ? await refreshAccessToken(refreshToken) : null;
 
       if (!newTokens) {
@@ -287,4 +307,74 @@ export async function getCurrentUser() {
 export async function isAuthenticated(): Promise<boolean> {
   const cookieStore = await cookies();
   return !!cookieStore.get('access_token')?.value;
+}
+
+/**
+ * BUG FIX (audit 09/2026 #3): backend trả "must_change_password" ở cả
+ * TokenPairOut (POST /auth/login) lẫn UserOut (GET /auth/me) — cờ này
+ * báo tài khoản đang dùng mật khẩu TẠM do admin cấp (POST /auth/users)
+ * hoặc vừa bị admin reset, và PHẢI đổi trước khi dùng tiếp (xem
+ * schemas/auth.py::UserOut, auth_session.py::change_password()). Trước
+ * đây FE khai field này trong interface nhưng không đọc/redirect ở bất
+ * kỳ đâu — người dùng mật khẩu tạm dùng app bình thường vô thời hạn,
+ * không hề bị nhắc đổi mật khẩu. Hàm này gọi POST /auth/change-password
+ * — cho /change-password (xem app/(auth)/change-password/page.tsx) và
+ * (dashboard)/layout.tsx (chặn truy cập nếu must_change_password=true).
+ *
+ * Theo đúng hợp đồng backend (ChangePasswordRequest): old_password chỉ
+ * BẮT BUỘC khi must_change_password hiện tại là false — khi đang
+ * must_change_password=true (trường hợp chính hàm này phục vụ), người
+ * dùng chỉ có mật khẩu tạm admin đưa, không có "mật khẩu cũ của riêng
+ * họ" theo đúng nghĩa nên được phép bỏ qua old_password.
+ *
+ * Đổi mật khẩu thành công -> backend thu hồi TOÀN BỘ refresh token +
+ * clear active_session_id (kể cả của chính request này, xem
+ * change_password() trong auth_session.py) -> access_token hiện tại
+ * hết hiệu lực ngay từ request kế tiếp. Vì vậy hàm này luôn xoá cookie
+ * và để người gọi tự điều hướng về /login, KHÔNG cố giữ phiên cũ.
+ */
+export async function changePassword(newPassword: string, oldPassword?: string) {
+  try {
+    const cookieStore = await cookies();
+    const accessToken = cookieStore.get('access_token')?.value;
+
+    if (!accessToken) {
+      return { success: false, error: 'Chưa đăng nhập.' };
+    }
+
+    const response = await fetch(`${API_BASE}/auth/change-password`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+        'X-API-Key': API_KEY!,
+      },
+      body: JSON.stringify({
+        old_password: oldPassword || undefined,
+        new_password: newPassword,
+      }),
+      cache: 'no-store',
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'Đổi mật khẩu thất bại' }));
+      const message = typeof error.detail === 'string' ? error.detail : error.detail?.message;
+      return {
+        success: false,
+        error: message || 'Đổi mật khẩu thất bại',
+      };
+    }
+
+    // Backend đã thu hồi hết token của phiên này — xoá cookie ngay,
+    // buộc đăng nhập lại bằng mật khẩu mới (đúng hành vi bảo mật chuẩn
+    // sau khi đổi mật khẩu, xem docstring change_password()).
+    cookieStore.delete('access_token');
+    cookieStore.delete('refresh_token');
+    cookieStore.delete('user_data');
+
+    return { success: true };
+  } catch (error) {
+    console.error('Change password error:', error);
+    return { success: false, error: 'Đã xảy ra lỗi. Vui lòng thử lại.' };
+  }
 }
