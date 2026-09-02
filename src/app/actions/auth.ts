@@ -17,14 +17,24 @@ interface LoginResponse {
   token_type: string;
 }
 
+// BUG FIX (audit 09/2026): interface cũ bịa ra "id: number" và
+// "is_staff: boolean" — 2 field này KHÔNG tồn tại trong response thật
+// của GET/PATCH /auth/me (schemas/auth.py::UserOut chỉ có "ss_user_id",
+// "role", không có "is_staff"). Vì TypeScript chỉ ép kiểu lên JSON.parse
+// (không validate runtime), "is_staff" luôn là undefined ở mọi nơi dùng
+// nó trước đây — khiến staff/admin bị đối xử như student sau khi login.
 interface UserResponse {
-  id: number;
+  ss_user_id: string;
   email: string;
   full_name: string;
   role: string;
-  is_staff: boolean;
+  is_active: boolean;
   must_change_password: boolean;
 }
+
+// Lưu ý: helper isStaffRole() được đặt ở lib/auth/roles.ts (KHÔNG khai ở
+// đây) — file này có "use server" ở đầu, Next.js chỉ cho phép export hàm
+// async từ file "use server" (build sẽ lỗi nếu export thêm hàm sync).
 
 export async function login(email: string, password: string) {
   try {
@@ -85,12 +95,14 @@ export async function login(email: string, password: string) {
     });
 
     // Store user data for client-side access (non-sensitive info only)
+    // BUG FIX: dùng đúng field thật (ss_user_id), bỏ "is_staff" (không
+    // tồn tại ở backend) — nơi cần biết staff/admin hay không phải tự
+    // tính từ "role" bằng isStaffRole() (lib/auth/roles.ts).
     cookieStore.set('user_data', JSON.stringify({
-      id: userData.id,
+      ss_user_id: userData.ss_user_id,
       email: userData.email,
       full_name: userData.full_name,
       role: userData.role,
-      is_staff: userData.is_staff,
     }), {
       httpOnly: false, // Allow client-side access
       secure: process.env.NODE_ENV === 'production',
@@ -118,8 +130,12 @@ export async function logout() {
     const refreshToken = cookieStore.get('refresh_token')?.value;
 
     // Call FastAPI logout endpoint if refresh token exists
+    // BUG FIX: path đúng là "/auth/logout" (auth_session.py, prefix
+    // "/auth") — trước đây gọi "/logout" (404, lỗi bị .catch() nuốt im
+    // lặng) khiến refresh_token KHÔNG BAO GIỜ bị thu hồi ở server khi
+    // người dùng bấm "Đăng xuất".
     if (refreshToken) {
-      await fetch(`${API_BASE}/logout`, {
+      await fetch(`${API_BASE}/auth/logout`, {
         method: 'POST',
         headers: {
           'X-API-Key': API_KEY!,

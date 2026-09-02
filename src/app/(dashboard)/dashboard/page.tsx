@@ -2,13 +2,23 @@ import { getDashboardStats } from '@/app/actions/dashboard';
 import { getCurrentUser } from '@/app/actions/auth';
 
 /**
- * Dashboard Homepage  
+ * Dashboard Homepage
  * Shows 6 KPI cards matching Flask dashboard exactly
  * Corresponds to: templates/dashboard.html lines 30-52
+ *
+ * BUG FIX (audit 09/2026): route này trước đây nằm ở app/dashboard/page.tsx
+ * (NGOÀI route group (dashboard)/) — không đi qua (dashboard)/layout.tsx
+ * nên KHÔNG có Sidebar, và KHÔNG bị redirect về /login nếu chưa đăng
+ * nhập (middleware chặn được phần lộ dữ liệu, nhưng UX vẫn "trơ trọi").
+ * Chuyển file vào trong route group để dùng chung layout/auth check với
+ * mọi trang khác trong (dashboard)/.
  */
 
 export default async function DashboardPage() {
-  // Fetch user and stats in parallel for better performance
+  // Layout cha ((dashboard)/layout.tsx) đã gọi getCurrentUser() để lấy
+  // user cho Sidebar + redirect nếu chưa đăng nhập — gọi lại ở đây để
+  // lấy full_name hiển thị ở welcome message, chấp nhận gọi API 2 lần
+  // (không phải bug, chỉ là chưa tối ưu — có thể truyền qua context sau).
   const [user, stats] = await Promise.all([
     getCurrentUser(),
     getDashboardStats(),
@@ -60,8 +70,11 @@ export default async function DashboardPage() {
       <div className="welcome-section" style={{ marginTop: '32px' }}>
         <h2>Chào mừng trở lại, {user?.full_name || 'bạn'}! 👋</h2>
         <p className="muted">
+          {/* BUG FIX: text cũ báo "Phase 3: Jobs CRUD đang chờ phát triển"
+              dù thực tế đã code xong (dù trước đây đang lỗi) — cập nhật
+              lại đúng trạng thái sau khi Sprint 1 đã sửa Jobs CRUD. */}
           ✅ Phase 2 hoàn thành: Dashboard stats đang hiển thị 6 KPIs (khớp Flask dashboard)<br />
-          🚧 Phase 3: Jobs CRUD đang chờ phát triển (list, create, edit, delete)
+          ✅ Phase 3 hoàn thành: Jobs CRUD (list, create, edit, delete)
         </p>
       </div>
     </div>

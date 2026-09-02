@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { login } from '@/app/actions/auth';
+import { isStaffRole } from '@/lib/auth/roles';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -20,8 +21,10 @@ export default function LoginPage() {
       const result = await login(email.trim().toLowerCase(), password);
 
       if (result.success) {
-        // Redirect based on user role
-        if (result.user?.is_staff) {
+        // BUG FIX: backend không trả field "is_staff" (luôn undefined) —
+        // phải tự suy ra staff/admin từ "role" thật, nếu không mọi
+        // admin/ss_team login xong đều bị đá về /jobs như student.
+        if (isStaffRole(result.user?.role)) {
           router.push('/dashboard');
         } else {
           router.push('/jobs');
