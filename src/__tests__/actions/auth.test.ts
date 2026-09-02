@@ -5,15 +5,27 @@
  * c94828b tự ghi rõ "logic cũ getCurrentUser() chưa có test riêng") —
  * đây là nguyên nhân chính khiến bug #1 (session_replaced bị hiểu nhầm
  * là token hết hạn, tự refresh bằng token đã bị revoke -> backend coi
- * là bị đánh cắp -> thu hồi toàn bộ token) và bug #3 (must_change_password
- * bị bỏ qua hoàn toàn) không bị phát hiện qua CI dù `next build`/`tsc`/
- * jest cũ đều xanh.
+ * là bị đánh cắp -> thu hồi toàn bộ token), bug #2 (race condition khi
+ * layout.tsx + page.tsx cùng gọi getCurrentUser() song song trong 1
+ * request) và bug #3 (must_change_password bị bỏ qua hoàn toàn) không
+ * bị phát hiện qua CI dù `next build`/`tsc`/jest cũ đều xanh.
  *
  * Test dưới đây mock trực tiếp response thật của backend (kể cả
  * error_code trong body 401, đúng theo api/deps.py::get_current_user
  * và api/routers/auth_session.py) thay vì chỉ mock ok/not-ok chung
  * chung, để không lặp lại kiểu test "xanh nhưng không phản ánh đúng
  * hợp đồng API thật" như bộ test jobs cũ đã từng mắc.
+ *
+ * LƯU Ý về bug #2: bản sửa dùng React cache() để dedupe getCurrentUser()
+ * trong 1 request — cache() chỉ dedupe đúng nghĩa khi chạy TRONG 1
+ * React Server Component render tree thật, KHÔNG dedupe khi gọi trực
+ * tiếp ngoài ngữ cảnh đó (đã verify: cache(fn) gọi 2 lần song song
+ * ngoài render tree ra đúng 2 lần thực thi). Vì repo hiện chỉ có
+ * @testing-library/react (render Client Component trong jsdom, không
+ * dựng được Server Component render tree), KHÔNG unit test nào ở đây
+ * có thể verify "chỉ gọi network 1 lần" một cách trung thực — xem chi
+ * tiết ở describe('...race condition...') phía dưới về việc test đó
+ * verify được gì và không verify được gì.
  */
 
 import { login, logout, getCurrentUser, changePassword } from '@/app/actions/auth';
@@ -335,6 +347,76 @@ describe('Auth Server Actions', () => {
       // trước đây field có khai trong interface nhưng không nơi nào
       // dùng, nên việc trả đúng giá trị là điều kiện cần để layout xử lý.
       expect(result?.must_change_password).toBe(true);
+    });
+  });
+
+  describe('getCurrentUser() — race condition khi refresh_token đã bị rotate trước đó (bug #2)', () => {
+    /**
+     * GIỚI HẠN QUAN TRỌNG CỦA NHÓM TEST NÀY (đọc trước khi sửa/xoá):
+     *
+     * Bản sửa thật cho bug #2 là bọc getCurrentUser() bằng React
+     * cache() (xem actions/auth.ts) — cache() CHỈ dedupe các lệnh gọi
+     * song song khi chạy THẬT SỰ bên trong 1 React Server Component
+     * render tree (dùng cơ chế request-scoped nội bộ của React).
+     * Ngoài ngữ cảnh đó — kể cả gọi trực tiếp hàm trong Node/Jest như
+     * test dưới đây — cache() không dedupe gì cả, chạy y hệt hàm
+     * thường. Đã verify thủ công: gọi cache(fn) 2 lần song song ngoài
+     * render tree ra đúng 2 lần thực thi, không phải 1.
+     *
+     * Vì @testing-library/react (bộ test hiện có của repo) chỉ render
+     * Client Component trong jsdom, KHÔNG có công cụ nào trong repo
+     * hiện tại dựng được 1 Server Component render tree thật để verify
+     * cache() dedupe đúng nghĩa. Việc dedupe (không bắn 2 request
+     * /auth/refresh song song trong 1 request) CHỈ có thể verify bằng
+     * test tích hợp thật (Next.js dev server + network log) hoặc thủ
+     * công — KHÔNG thể verify bằng unit test Jest với setup hiện tại.
+     * Không viết test giả vờ assert "chỉ gọi 1 lần" ở đây vì test đó
+     * sẽ luôn pass bất kể cache() có hoạt động hay không (false
+     * positive), không phát hiện được regression nếu ai đó lỡ bỏ
+     * cache() đi sau này.
+     *
+     * Test dưới đây verify phần CÓ THỂ verify bằng unit test: dù
+     * request refresh xảy ra tuần tự (không dedupe), hệ thống vẫn xử
+     * lý đúng — không có nhánh nào âm thầm dùng nhầm refresh_token cũ
+     * sau khi cookie đã được ghi đè bởi 1 lượt refresh trước đó.
+     */
+    it('should use the freshest refresh_token cookie value on each call (no stale token reused)', async () => {
+      // Mô phỏng: lệnh gọi getCurrentUser() ĐẦU đã refresh xong và ghi
+      // đè cookie (rotation) — mockCookieGet trả refresh_token MỚI cho
+      // lệnh gọi kế tiếp, đúng như cookie thật sẽ phản ánh sau khi
+      // setAuthCookies() chạy. Nếu code lỡ giữ 1 biến refresh_token cũ
+      // ở đâu đó (đọc 1 lần rồi tái sử dụng nhiều lần) thay vì luôn đọc
+      // lại cookie mới nhất, request thứ 2 sẽ gửi nhầm token cũ.
+      let currentRefreshToken = 'refresh-token-rotated-by-first-call';
+      mockCookieGet.mockImplementation((name: string) => {
+        if (name === 'access_token') return { value: 'expired-access-token' };
+        if (name === 'refresh_token') return { value: currentRefreshToken };
+        return undefined;
+      });
+      mockCookieSet.mockImplementation((name: string, value: string) => {
+        if (name === 'refresh_token') currentRefreshToken = value;
+      });
+
+      (global.fetch as jest.Mock)
+        .mockImplementationOnce(() => mock401('token_expired')) // GET /auth/me
+        .mockImplementationOnce(() =>
+          mockJsonSuccess({
+            access_token: 'access-after-refresh',
+            refresh_token: 'refresh-token-after-second-rotation',
+            token_type: 'bearer',
+          })
+        ) // POST /auth/refresh
+        .mockImplementationOnce(() => mockJsonSuccess(mockUser)); // GET /auth/me lần 2
+
+      const result = await getCurrentUser();
+
+      expect(result).toEqual(mockUser);
+      const refreshCallBody = JSON.parse((global.fetch as jest.Mock).mock.calls[1][1].body);
+      // Request /auth/refresh PHẢI dùng đúng giá trị cookie đọc được
+      // TẠI THỜI ĐIỂM gọi, không phải giá trị cứng từ đầu hàm.
+      expect(refreshCallBody.refresh_token).toBe('refresh-token-rotated-by-first-call');
+      // Và cookie sau cùng phải phản ánh đúng lần rotation MỚI NHẤT.
+      expect(currentRefreshToken).toBe('refresh-token-after-second-rotation');
     });
   });
 

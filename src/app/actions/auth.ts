@@ -1,5 +1,6 @@
 'use server';
 
+import { cache } from 'react';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
@@ -212,7 +213,31 @@ async function refreshAccessToken(refreshToken: string): Promise<RefreshResponse
   }
 }
 
-export async function getCurrentUser() {
+/**
+ * BUG FIX (audit 09/2026 #2, race condition): (dashboard)/layout.tsx và
+ * dashboard/page.tsx CÙNG gọi getCurrentUser() song song trong 1 request
+ * (qua Promise.all ở page.tsx) — mọi trang khác trong (dashboard)/ cũng
+ * gọi lại 1 lần nữa qua layout cha. Vì backend rotate CẢ access_token
+ * lẫn refresh_token mỗi lần gọi /auth/refresh (auth_session.py::refresh()),
+ * nếu access_token vừa hết hạn đúng lúc có ≥2 lệnh gọi song song trong
+ * CÙNG 1 request, cả 2 đều đọc cùng 1 refresh_token cũ từ cookie và cùng
+ * gọi /auth/refresh — request đến sau gửi refresh_token ĐÃ BỊ THU HỒI
+ * bởi request đến trước, rơi đúng vào nhánh "token bị đánh cắp" ở
+ * backend (cùng cơ chế đã sửa ở bug #1), tự làm hỏng chính phiên vừa
+ * refresh xong.
+ *
+ * React cache() dedupe các lệnh gọi hàm không tham số trong CÙNG 1
+ * request/render pass (tự reset ở request tiếp theo, không rò rỉ chéo
+ * user/request khác) — layout.tsx và page.tsx gọi getCurrentUser() bao
+ * nhiêu lần trong 1 request cũng chỉ thực sự chạy network 1 lần, 2 nơi
+ * gọi dùng chung đúng 1 promise/kết quả. Đây là cách Next.js khuyến
+ * nghị để dedupe fetch trong 1 request (KHÔNG giải quyết race giữa 2
+ * request HTTP tách biệt thật sự, ví dụ 2 tab khác nhau — trường hợp đó
+ * đã được xử lý an toàn ở bug #1: request thua sẽ nhận session_replaced/
+ * session_revoked và bị đăng xuất đúng thiết bị đó, không kéo theo thu
+ * hồi toàn bộ token của user).
+ */
+export const getCurrentUser = cache(async function getCurrentUser() {
   try {
     const cookieStore = await cookies();
     const accessToken = cookieStore.get('access_token')?.value;
@@ -298,7 +323,7 @@ export async function getCurrentUser() {
     console.error('Get current user error:', error);
     return null;
   }
-}
+});
 
 /**
  * Server Action to check if user is authenticated
