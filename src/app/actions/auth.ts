@@ -17,6 +17,45 @@ interface LoginResponse {
   token_type: string;
 }
 
+/**
+ * Khớp AccessTokenOut (schemas/auth.py) — response của POST /auth/refresh.
+ * LƯU Ý: refresh_token cũng bị đổi mới (xoay vòng/rotation) — token cũ bị
+ * thu hồi ngay, KHÔNG dùng lại được (auth_session.py::refresh(), nếu gửi
+ * lại token cũ sau khi đã xoay vòng sẽ bị coi là dấu hiệu bị đánh cắp và
+ * thu hồi TOÀN BỘ token của user). Vì vậy phải ghi đè cả 2 cookie mỗi lần
+ * refresh, không phải chỉ access_token.
+ */
+interface RefreshResponse {
+  access_token: string;
+  refresh_token: string;
+  token_type: string;
+}
+
+/**
+ * Ghi cookie access_token + refresh_token — dùng chung cho login() và
+ * auto-refresh trong getCurrentUser(), tránh lặp lại options cookie ở 2
+ * chỗ (dễ lệch nhau nếu sửa 1 chỗ quên chỗ kia).
+ */
+async function setAuthCookies(accessToken: string, refreshToken: string) {
+  const cookieStore = await cookies();
+
+  cookieStore.set('access_token', accessToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 60 * 60 * 24 * 7, // 7 days
+    path: '/',
+  });
+
+  cookieStore.set('refresh_token', refreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 60 * 60 * 24 * 30, // 30 days
+    path: '/',
+  });
+}
+
 // BUG FIX (audit 09/2026): interface cũ bịa ra "id: number" và
 // "is_staff: boolean" — 2 field này KHÔNG tồn tại trong response thật
 // của GET/PATCH /auth/me (schemas/auth.py::UserOut chỉ có "ss_user_id",
@@ -77,22 +116,7 @@ export async function login(email: string, password: string) {
 
     // Step 3: Set HTTP-only cookies
     const cookieStore = await cookies();
-    
-    cookieStore.set('access_token', tokenData.access_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7, // 7 days
-      path: '/',
-    });
-
-    cookieStore.set('refresh_token', tokenData.refresh_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 30, // 30 days
-      path: '/',
-    });
+    await setAuthCookies(tokenData.access_token, tokenData.refresh_token);
 
     // Store user data for client-side access (non-sensitive info only)
     // BUG FIX: dùng đúng field thật (ss_user_id), bỏ "is_staff" (không
@@ -159,6 +183,35 @@ export async function logout() {
   }
 }
 
+/**
+ * Đổi refresh_token lấy 1 cặp token mới — POST /auth/refresh (30/minute
+ * rate limit theo IP, xem auth_session.py::refresh()). Trả null nếu
+ * refresh_token không hợp lệ/đã hết hạn/đã bị thu hồi — gọi nơi dùng tự
+ * xử lý (xoá cookie, coi như chưa đăng nhập), KHÔNG throw.
+ */
+async function refreshAccessToken(refreshToken: string): Promise<RefreshResponse | null> {
+  try {
+    const response = await fetch(`${API_BASE}/auth/refresh`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': API_KEY!,
+      },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+      cache: 'no-store',
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Refresh access token error:', error);
+    return null;
+  }
+}
+
 export async function getCurrentUser() {
   try {
     const cookieStore = await cookies();
@@ -168,7 +221,7 @@ export async function getCurrentUser() {
       return null;
     }
 
-    const response = await fetch(`${API_BASE}/auth/me`, {
+    let response = await fetch(`${API_BASE}/auth/me`, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
         'X-API-Key': API_KEY!,
@@ -177,11 +230,46 @@ export async function getCurrentUser() {
     });
 
     if (!response.ok) {
-      // Token expired or invalid, clear cookies
-      cookieStore.delete('access_token');
-      cookieStore.delete('refresh_token');
-      cookieStore.delete('user_data');
-      return null;
+      // BUG FIX (audit 09/2026, Sprint gốc #3): access_token hết hạn sau
+      // 30 phút (ACCESS_TOKEN_EXPIRE_MINUTES, api/security.py) — trước
+      // đây cứ 401 là xoá cookie + đá về /login ngay, dù cookie
+      // access_token còn sống tới 7 ngày và refresh_token còn tới 30
+      // ngày. Bản Flask cũ (app.py::load_user) tự refresh êm bằng
+      // refresh_token trước khi chịu thua — làm lại đúng pattern đó ở
+      // đây: thử đổi refresh_token lấy access_token mới rồi gọi lại
+      // /auth/me đúng 1 lần, chỉ đá về /login nếu refresh cũng fail
+      // (refresh_token cũng hết hạn/bị thu hồi — vd sau khi logout ở
+      // thiết bị khác).
+      const refreshToken = cookieStore.get('refresh_token')?.value;
+      const newTokens = refreshToken ? await refreshAccessToken(refreshToken) : null;
+
+      if (!newTokens) {
+        cookieStore.delete('access_token');
+        cookieStore.delete('refresh_token');
+        cookieStore.delete('user_data');
+        return null;
+      }
+
+      // refresh_token cũng bị xoay vòng (rotation) — PHẢI ghi đè cả 2
+      // cookie, không chỉ access_token, nếu không lần hết hạn kế tiếp
+      // sẽ gửi refresh_token đã bị thu hồi -> bị coi là token bị đánh
+      // cắp -> backend tự thu hồi toàn bộ token, buộc đăng nhập lại.
+      await setAuthCookies(newTokens.access_token, newTokens.refresh_token);
+
+      response = await fetch(`${API_BASE}/auth/me`, {
+        headers: {
+          Authorization: `Bearer ${newTokens.access_token}`,
+          'X-API-Key': API_KEY!,
+        },
+        cache: 'no-store',
+      });
+
+      if (!response.ok) {
+        cookieStore.delete('access_token');
+        cookieStore.delete('refresh_token');
+        cookieStore.delete('user_data');
+        return null;
+      }
     }
 
     const userData: UserResponse = await response.json();
