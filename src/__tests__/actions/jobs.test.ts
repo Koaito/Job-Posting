@@ -56,10 +56,15 @@ describe('Jobs Server Actions', () => {
     it('should fetch jobs with filters', async () => {
       (global.fetch as jest.Mock).mockImplementation(() => mockFetchSuccess(mockJobsResponse));
 
+      // BUG FIX (audit 09/2026): JobFilters trước đây có "search"/
+      // "company_id" — không khớp query param thật của GET /jobs
+      // (api/routers/jobs.py::list_jobs chỉ nhận keyword/industry/
+      // province/level/work_type/status/created_by). "search" khiến ô
+      // tìm kiếm trên UI bị bỏ qua trong im lặng; "company_id" không
+      // tồn tại trên route này. Test đổi theo field đúng: "keyword".
       await getJobs({
         status: 'OPEN',
-        search: 'Backend',
-        company_id: 'company-1',
+        keyword: 'Backend',
         limit: 20,
         offset: 0,
       });
@@ -69,7 +74,7 @@ describe('Jobs Server Actions', () => {
         expect.any(Object)
       );
       expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('search=Backend'),
+        expect.stringContaining('keyword=Backend'),
         expect.any(Object)
       );
     });

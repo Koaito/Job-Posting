@@ -9,7 +9,6 @@ import Link from 'next/link';
 
 interface SearchParams {
   search?: string;
-  company_id?: string;
   status?: string;
   page?: string;
 }
@@ -27,9 +26,12 @@ export default async function JobsPage({
   const limit = 50;
   const offset = (page - 1) * limit;
 
+  // BUG FIX (audit 09/2026): ô "Tìm theo tên job" gửi field "search"
+  // (tên form input, giữ nguyên cho UI) nhưng backend GET /jobs chờ
+  // param "keyword" — map lại đúng tên khi gọi getJobs(), nếu không lọc
+  // bị bỏ qua trong im lặng dù form không báo lỗi gì.
   const { items: jobs, total } = await getJobs({
-    search: resolvedSearchParams.search,
-    company_id: resolvedSearchParams.company_id,
+    keyword: resolvedSearchParams.search,
     status: resolvedSearchParams.status,
     limit,
     offset,

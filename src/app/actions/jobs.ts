@@ -33,13 +33,26 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
   return headers;
 }
 
+/**
+ * BUG FIX (audit 09/2026): field trước đây (matching_industry/level_id/
+ * province_id/search/company_id) KHÔNG khớp query param thật của
+ * GET /jobs (api/routers/jobs.py::list_jobs) — backend chỉ đọc
+ * industry/level/province/keyword/status/work_type/created_by/
+ * include_content. Param lạ trên query string GET không gây lỗi (FastAPI
+ * chỉ bỏ qua), nên bug này im lặng: ô "Tìm theo tên job" trước đây gửi
+ * "search=..." nhưng backend chờ "keyword=...", lọc luôn bị bỏ qua dù
+ * giao diện không báo lỗi gì. company_id không tồn tại trong list_jobs()
+ * — bỏ hẳn khỏi filter (không lọc job theo công ty ở list, chỉ có ở
+ * data-health).
+ */
 interface JobFilters {
-  company_id?: string;
+  industry?: string;
+  province?: string;
+  level?: string;
+  work_type?: string;
   status?: string;
-  matching_industry?: string;
-  level_id?: number;
-  province_id?: number;
-  search?: string;
+  keyword?: string;
+  created_by?: string;
   limit?: number;
   offset?: number;
 }
@@ -79,14 +92,16 @@ interface JobsResponse {
  */
 export async function getJobs(filters?: JobFilters): Promise<JobsResponse> {
   try {
-    // Build query params
+    // Build query params — PHẢI đúng tên param thật của GET /jobs, xem
+    // ghi chú ở interface JobFilters phía trên.
     const params = new URLSearchParams();
-    if (filters?.company_id) params.append('company_id', filters.company_id);
+    if (filters?.industry) params.append('industry', filters.industry);
+    if (filters?.province) params.append('province', filters.province);
+    if (filters?.level) params.append('level', filters.level);
+    if (filters?.work_type) params.append('work_type', filters.work_type);
     if (filters?.status) params.append('status', filters.status);
-    if (filters?.matching_industry) params.append('matching_industry', filters.matching_industry);
-    if (filters?.level_id) params.append('level_id', filters.level_id.toString());
-    if (filters?.province_id) params.append('province_id', filters.province_id.toString());
-    if (filters?.search) params.append('search', filters.search);
+    if (filters?.keyword) params.append('keyword', filters.keyword);
+    if (filters?.created_by) params.append('created_by', filters.created_by);
     params.append('limit', (filters?.limit || 50).toString());
     params.append('offset', (filters?.offset || 0).toString());
 
