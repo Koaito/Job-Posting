@@ -4,27 +4,34 @@
  * Reusable mock data for tests
  */
 
+// BUG FIX (audit 09/2026): fixtures trước đây dùng field "id"/"company"/
+// "level"/"location" — đúng bằng tên field SAI mà production code (actions/
+// jobs.ts, JobForm.tsx, jobs/page.tsx...) từng dùng nhầm. Vì test mock
+// fetch trả thẳng object này, test luôn xanh dù backend thật (schemas/
+// jobs.py::JobOut) trả "job_id"/"company_name"/"level_code"/"province_name".
+// Sửa lại đúng theo JobOut thật để test không tiếp tục hợp thức hoá bug.
 export const mockJob = {
-  id: 'job-1',
+  job_id: 'job-1',
   job_title: 'Backend Developer',
   company_id: 'company-1',
-  company: 'ACME Corp',
+  company_name: 'ACME Corp',
   matching_industry: 'CNTT - Phần mềm',
-  level: 'Middle',
-  location: 'Hà Nội',
+  level_code: 'Middle',
+  province_name: 'Hà Nội',
   salary_min: 15000000,
   salary_max: 25000000,
   salary_type: 'RANGE',
   currency: 'VNĐ',
   deadline: '2026-12-31',
   job_status: 'OPEN',
+  ss_team_notes: null,
   created_at: '2026-08-01T00:00:00Z',
   updated_at: '2026-08-01T00:00:00Z',
 };
 
 export const mockJobClosed = {
   ...mockJob,
-  id: 'job-2',
+  job_id: 'job-2',
   job_title: 'Frontend Developer',
   job_status: 'CLOSED',
 };
@@ -37,21 +44,22 @@ export const mockJobsResponse = {
 };
 
 export const mockCompany = {
-  id: 'company-1',
+  company_id: 'company-1',
   company_name: 'ACME Corp',
   industry: 'Technology',
   city: 'Hà Nội',
 };
 
+// ss_user_id (không phải "id") — khớp schemas/auth.py::UserOut thật.
 export const mockUser = {
-  id: 'user-1',
+  ss_user_id: 'user-1',
   email: 'staff@example.com',
   full_name: 'Staff User',
   role: 'ss_team',
 };
 
 export const mockStudentUser = {
-  id: 'user-2',
+  ss_user_id: 'user-2',
   email: 'student@example.com',
   full_name: 'Student User',
   role: 'user',

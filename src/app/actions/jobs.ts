@@ -1,5 +1,7 @@
 'use server';
 
+import { cookies } from 'next/headers';
+
 /**
  * Server Actions for Jobs
  * Corresponds to Flask blueprint: blueprints/jobs.py
@@ -7,6 +9,29 @@
 
 const API_BASE = process.env.FASTAPI_URL;
 const API_KEY = process.env.CRAWLER_API_KEY;
+
+/**
+ * Các route ghi dữ liệu (POST/PATCH /jobs) yêu cầu require_role("ss_team")
+ * ở backend (api/deps.py::get_current_user dùng HTTPBearer) — PHẢI gắn
+ * Authorization: Bearer <access_token> song song X-API-Key, giống pattern
+ * đã dùng đúng ở actions/auth.ts. Thiếu header này sẽ luôn nhận
+ * 401 missing_auth_header dù X-API-Key hợp lệ.
+ */
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  const cookieStore = await cookies();
+  const accessToken = cookieStore.get('access_token')?.value;
+
+  const headers: Record<string, string> = {
+    'X-API-Key': API_KEY!,
+    'Content-Type': 'application/json',
+  };
+
+  if (accessToken) {
+    headers['Authorization'] = `Bearer ${accessToken}`;
+  }
+
+  return headers;
+}
 
 interface JobFilters {
   company_id?: string;
@@ -20,19 +45,23 @@ interface JobFilters {
 }
 
 interface Job {
-  id: string;
+  // BUG FIX: backend (schemas/jobs.py::JobOut) trả về "job_id", KHÔNG
+  // PHẢI "id" — field "id" không tồn tại trong response thật, khiến
+  // job.id luôn undefined ở mọi trang dùng interface này trước đây.
+  job_id: string;
   job_title: string;
   company_id: string;
-  company?: string; // Company name (joined)
+  company_name?: string; // BUG FIX: backend trả "company_name", không phải "company"
   matching_industry?: string;
-  level?: string;
-  location?: string;
+  level_code?: string; // BUG FIX: backend trả "level_code", không phải "level"
+  province_name?: string; // BUG FIX: backend trả "province_name", không phải "location"
   salary_min?: number;
   salary_max?: number;
   salary_type?: string;
   currency?: string;
   deadline?: string;
   job_status: string;
+  ss_team_notes?: string;
   created_at: string;
   updated_at: string;
 }
@@ -134,10 +163,7 @@ export async function createJob(data: any): Promise<{ success: boolean; job?: Jo
     try {
       const response = await fetch(`${API_BASE}/jobs`, {
         method: 'POST',
-        headers: {
-          'X-API-Key': API_KEY!,
-          'Content-Type': 'application/json',
-        },
+        headers: await getAuthHeaders(),
         body: JSON.stringify(data),
         signal: controller.signal,
       });
@@ -169,10 +195,7 @@ export async function updateJob(id: string, data: any): Promise<{ success: boole
     try {
       const response = await fetch(`${API_BASE}/jobs/${id}`, {
         method: 'PATCH',
-        headers: {
-          'X-API-Key': API_KEY!,
-          'Content-Type': 'application/json',
-        },
+        headers: await getAuthHeaders(),
         body: JSON.stringify(data),
         signal: controller.signal,
       });
@@ -209,10 +232,7 @@ export async function deleteJob(id: string): Promise<{ success: boolean; error?:
       // Soft delete: PATCH status to CLOSED
       const response = await fetch(`${API_BASE}/jobs/${id}`, {
         method: 'PATCH',
-        headers: {
-          'X-API-Key': API_KEY!,
-          'Content-Type': 'application/json',
-        },
+        headers: await getAuthHeaders(),
         body: JSON.stringify({ job_status: 'CLOSED' }),
         signal: controller.signal,
       });

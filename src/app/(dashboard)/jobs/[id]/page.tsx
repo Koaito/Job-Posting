@@ -12,9 +12,12 @@ import DeleteJobButton from '@/components/features/DeleteJobButton';
 export default async function JobDetailPage({
   params,
 }: {
-  params: { id: string };
+  // BUG FIX: Next.js 15/16 — params là Promise, phải await trước khi
+  // đọc params.id, nếu không getJobById(undefined) sẽ luôn notFound().
+  params: Promise<{ id: string }>;
 }) {
-  const job = await getJobById(params.id);
+  const { id } = await params;
+  const job = await getJobById(id);
 
   if (!job) {
     notFound();
@@ -28,10 +31,10 @@ export default async function JobDetailPage({
             <Link href="/jobs">← Quay lại danh sách</Link>
           </span>
           <h1>{job.job_title}</h1>
-          <p className="lede">{job.company || 'Công ty chưa xác định'}</p>
+          <p className="lede">{job.company_name || 'Công ty chưa xác định'}</p>
         </div>
         <div className="page-head-actions">
-          <Link href={`/jobs/${job.id}/edit`} className="btn btn-primary">
+          <Link href={`/jobs/${job.job_id}/edit`} className="btn btn-primary">
             Sửa Job
           </Link>
         </div>
@@ -57,17 +60,17 @@ export default async function JobDetailPage({
                 </>
               )}
 
-              {job.level && (
+              {job.level_code && (
                 <>
                   <dt>Level</dt>
-                  <dd>{job.level}</dd>
+                  <dd>{job.level_code}</dd>
                 </>
               )}
 
-              {job.location && (
+              {job.province_name && (
                 <>
                   <dt>Địa điểm</dt>
-                  <dd>{job.location}</dd>
+                  <dd>{job.province_name}</dd>
                 </>
               )}
 
@@ -110,7 +113,7 @@ export default async function JobDetailPage({
             <h4>Thông tin hệ thống</h4>
             <dl className="detail-list">
               <dt>ID</dt>
-              <dd className="font-mono">{job.id}</dd>
+              <dd className="font-mono">{job.job_id}</dd>
 
               <dt>Ngày tạo</dt>
               <dd>{new Date(job.created_at).toLocaleDateString('vi-VN')}</dd>
@@ -134,10 +137,10 @@ export default async function JobDetailPage({
           <section className="card">
             <h4>Hành động</h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <Link href={`/jobs/${job.id}/edit`} className="btn btn-block">
+              <Link href={`/jobs/${job.job_id}/edit`} className="btn btn-block">
                 ✏️ Sửa Job
               </Link>
-              <DeleteJobButton jobId={job.id} jobTitle={job.job_title} />
+              <DeleteJobButton jobId={job.job_id} jobTitle={job.job_title} />
             </div>
           </section>
         </aside>

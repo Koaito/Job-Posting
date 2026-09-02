@@ -55,7 +55,7 @@ describe('JobForm Component', () => {
     it('should submit form with valid data', async () => {
       (createJob as jest.Mock).mockResolvedValue({
         success: true,
-        job: { ...mockJob, id: 'new-job-id' },
+        job: { ...mockJob, job_id: 'new-job-id' },
       });
 
       render(<JobForm mode="create" />);
@@ -84,7 +84,7 @@ describe('JobForm Component', () => {
     it('should redirect to job detail on success', async () => {
       (createJob as jest.Mock).mockResolvedValue({
         success: true,
-        job: { ...mockJob, id: 'new-job-id' },
+        job: { ...mockJob, job_id: 'new-job-id' },
       });
 
       render(<JobForm mode="create" />);
@@ -97,6 +97,8 @@ describe('JobForm Component', () => {
       });
       fireEvent.click(screen.getByRole('button', { name: /Tạo Job/i }));
 
+      // BUG FIX: redirect thật dùng job.job_id (backend field thật),
+      // không phải job.id (field không tồn tại trong response thật).
       await waitFor(() => {
         expect(mockPush).toHaveBeenCalledWith('/jobs/new-job-id');
       });

@@ -26,28 +26,41 @@ export default function JobForm({ mode, initialData }: JobFormProps) {
     setError(null);
 
     const formData = new FormData(e.currentTarget);
-    const data = {
+
+    // BUG FIX: backend JobCreate/JobUpdate (schemas/jobs.py) dùng
+    // extra="forbid" — gửi field lạ (level_id/province_id kiểu số) sẽ bị
+    // 422 ngay lập tức. Schema thật chỉ nhận level_code/province_name
+    // (chuỗi text), KHÔNG có field *_id nào cho 2 mục này.
+    const basePayload = {
       job_title: formData.get('job_title'),
       company_id: formData.get('company_id'),
       matching_industry: formData.get('matching_industry') || null,
-      level_id: formData.get('level_id') ? parseInt(formData.get('level_id') as string) : null,
-      province_id: formData.get('province_id') ? parseInt(formData.get('province_id') as string) : null,
+      level_code: formData.get('level_code') || null,
+      province_name: formData.get('province_name') || null,
       salary_min: formData.get('salary_min') ? parseInt(formData.get('salary_min') as string) : null,
       salary_max: formData.get('salary_max') ? parseInt(formData.get('salary_max') as string) : null,
       salary_type: formData.get('salary_type') || 'NEGOTIABLE',
       currency: formData.get('currency') || 'VNĐ',
       deadline: formData.get('deadline') || null,
-      job_status: formData.get('job_status') || 'OPEN',
-      ss_team_notes: formData.get('ss_team_notes') || null,
     };
 
     try {
-      const result = mode === 'create' 
-        ? await createJob(data)
-        : await updateJob(initialData.id, data);
-      
+      let result;
+      if (mode === 'create') {
+        // BUG FIX: JobCreate KHÔNG có field job_status/ss_team_notes —
+        // gửi 2 field này khi tạo mới cũng bị 422 (extra="forbid").
+        result = await createJob(basePayload);
+      } else {
+        // JobUpdate CÓ job_status/ss_team_notes — chỉ hợp lệ khi sửa.
+        result = await updateJob(initialData.job_id, {
+          ...basePayload,
+          job_status: formData.get('job_status') || 'OPEN',
+          ss_team_notes: formData.get('ss_team_notes') || null,
+        });
+      }
+
       if (result.success && result.job) {
-        router.push(`/jobs/${result.job.id}`);
+        router.push(`/jobs/${result.job.job_id}`);
       } else {
         setError(result.error || 'Có lỗi xảy ra');
       }
@@ -121,33 +134,40 @@ export default function JobForm({ mode, initialData }: JobFormProps) {
 
         {/* Level - TODO: Load from backend /enums */}
         <div className="form-field">
-          <label htmlFor="level_id">Level</label>
+          <label htmlFor="level_code">Level</label>
           <select
-            id="level_id"
-            name="level_id"
-            defaultValue={initialData?.level_id || ''}
+            id="level_code"
+            name="level_code"
+            defaultValue={initialData?.level_code || ''}
           >
             <option value="">-- Chọn level --</option>
-            <option value="1">Intern</option>
-            <option value="2">Fresher</option>
-            <option value="3">Junior</option>
-            <option value="4">Middle</option>
-            <option value="5">Senior</option>
+            {/* BUG FIX: backend JobCreate/JobUpdate chỉ nhận level_code
+                dạng chuỗi (Intern|Fresher|Junior|Middle|Senior|Lead|Manager),
+                KHÔNG phải id số — value phải khớp đúng chuỗi backend mong đợi */}
+            <option value="Intern">Intern</option>
+            <option value="Fresher">Fresher</option>
+            <option value="Junior">Junior</option>
+            <option value="Middle">Middle</option>
+            <option value="Senior">Senior</option>
+            <option value="Lead">Lead</option>
+            <option value="Manager">Manager</option>
           </select>
         </div>
 
         {/* Province - TODO: Load from backend */}
         <div className="form-field">
-          <label htmlFor="province_id">Địa điểm</label>
+          <label htmlFor="province_name">Địa điểm</label>
           <select
-            id="province_id"
-            name="province_id"
-            defaultValue={initialData?.province_id || ''}
+            id="province_name"
+            name="province_name"
+            defaultValue={initialData?.province_name || ''}
           >
             <option value="">-- Chọn tỉnh/thành --</option>
-            <option value="12">Hà Nội</option>
-            <option value="29">Hồ Chí Minh</option>
-            <option value="21">Đà Nẵng</option>
+            {/* BUG FIX: backend nhận province_name dạng chuỗi tên tỉnh,
+                KHÔNG phải province_id số */}
+            <option value="Hà Nội">Hà Nội</option>
+            <option value="Hồ Chí Minh">Hồ Chí Minh</option>
+            <option value="Đà Nẵng">Đà Nẵng</option>
           </select>
         </div>
 
