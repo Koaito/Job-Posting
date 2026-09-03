@@ -1,7 +1,11 @@
 import { getCompanyById } from '@/app/actions/companies';
+import { getContactsByCompany } from '@/app/actions/contacts';
+import { getCurrentUser } from '@/app/actions/auth';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import DeleteCompanyButton from '@/components/features/DeleteCompanyButton';
+import CompanyContactsManager from '@/components/features/CompanyContactsManager';
+import { isStaffRole } from '@/lib/auth/roles';
 import { partnershipPotentialClass, partnershipPotentialLabel } from '@/lib/companies/potential';
 
 /**
@@ -9,9 +13,12 @@ import { partnershipPotentialClass, partnershipPotentialLabel } from '@/lib/comp
  * Corresponds to Flask: templates/company_detail.html
  * Route: /companies/[id]
  *
- * Phần "Người liên hệ HR" của template Flask gốc CHƯA đưa vào đây —
- * đó là việc của actions/contacts.ts (vẫn còn stub, TODO riêng), không
- * gộp vào đợt companies này để giữ phạm vi rõ ràng.
+ * Mới 09/2026 — phần "Người liên hệ HR" giờ đã dựng (trước đây TODO
+ * chờ actions/contacts.ts). Backend /companies/{id}/contacts yêu cầu
+ * role 'ss_team' trở lên (khác GET /companies/{id} công khai cho mọi
+ * role đã đăng nhập) — CHỈ gọi + hiện section này với staff, học viên
+ * ('user') không thấy thông tin liên hệ HR (đúng thiết kế: dữ liệu
+ * nhạy cảm, không phải lỗi ẩn nhầm).
  */
 export default async function CompanyDetailPage({
   params,
@@ -19,11 +26,14 @@ export default async function CompanyDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const company = await getCompanyById(id);
+  const [company, currentUser] = await Promise.all([getCompanyById(id), getCurrentUser()]);
 
   if (!company) {
     notFound();
   }
+
+  const isStaff = isStaffRole(currentUser?.role);
+  const contacts = isStaff ? await getContactsByCompany(company.company_id) : [];
 
   return (
     <div className="page-container">
@@ -71,10 +81,12 @@ export default async function CompanyDetailPage({
             </Link>
           </section>
 
-          <section className="card">
-            <h4>Người liên hệ HR</h4>
-            <p className="muted">🚧 Chưa dựng (chờ actions/contacts.ts — xem TODO chung).</p>
-          </section>
+          {isStaff && (
+            <section className="card">
+              <h4>Người liên hệ HR</h4>
+              <CompanyContactsManager companyId={company.company_id} initialContacts={contacts} />
+            </section>
+          )}
         </div>
 
         <aside className="detail-sidebar">

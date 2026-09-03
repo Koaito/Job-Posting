@@ -67,9 +67,9 @@ export function Sidebar({ user }: SidebarProps) {
           👥 Liên hệ
         </Link>
 
-        {/* TODO (cập nhật 09/2026): /students, /staff giờ đã có page.tsx
-            thật (xem CHANGES_09-2026.md, việc 2) — chỉ còn /crawl,
-            /activity là chưa dựng trang, bấm vào vẫn sẽ 404. */}
+        {/* Cập nhật 09/2026: /students, /staff, /crawl, /activity đều đã
+            có page.tsx thật — không còn route nào 404 trong nhóm này.
+            /contacts (link riêng phía trên) cũng đã dựng cùng đợt. */}
         {isStaff && (
           <>
             <Link
