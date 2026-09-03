@@ -43,11 +43,73 @@ export const mockJobsResponse = {
   offset: 0,
 };
 
+// BUG FIX (đợt viết test 09/2026): mockCompany trước đây tự bịa field
+// (industry/city thẳng, thiếu company_id đúng nghĩa/partnership_potential/
+// is_active/created_at/updated_at) — không khớp CompanyOut thật (xem
+// types/companies.ts). Không gây lỗi vì companies.ts chưa có test nào
+// dùng field này trước đó. Viết lại đúng shape trước khi viết
+// companies.test.ts.
 export const mockCompany = {
   company_id: 'company-1',
   company_name: 'ACME Corp',
-  industry: 'Technology',
-  city: 'Hà Nội',
+  tax_id: '0123456789',
+  website: 'https://acme.example.com',
+  industry: 'CNTT - Phần mềm',
+  company_size: '50-100',
+  address: '123 Đường ABC, Quận 1',
+  fanpage_url: null,
+  linkedin_url: null,
+  partnership_potential: 'HIGH',
+  province_name: 'Hồ Chí Minh',
+  created_at: '2026-08-01T00:00:00Z',
+  updated_at: '2026-08-01T00:00:00Z',
+  created_by: 'user-1',
+  updated_by: null,
+  is_active: true,
+};
+
+export const mockCompanyDetail = {
+  ...mockCompany,
+  jobs: [],
+};
+
+export const mockCompaniesResponse = {
+  items: [mockCompany],
+  total: 1,
+  limit: 50,
+  offset: 0,
+};
+
+export const mockContact = {
+  contact_id: 'contact-1',
+  company_id: 'company-1',
+  contact_name: 'Nguyễn Văn HR',
+  job_title: 'Talent Acquisition',
+  work_email: 'hr@acme.example.com',
+  social_link: null,
+  phone_number: '0901234567',
+  found_source: 'LinkedIn',
+  collected_date: '2026-08-01',
+  last_contacted_date: null,
+  contact_status: 'UNCONTACTED',
+  is_active: true,
+  assigned_ss_user: null,
+  created_by: 'user-1',
+  updated_by: null,
+  created_at: '2026-08-01T00:00:00Z',
+  updated_at: '2026-08-01T00:00:00Z',
+};
+
+export const mockContactWithCompany = {
+  ...mockContact,
+  company_name: 'ACME Corp',
+};
+
+export const mockContactsResponse = {
+  items: [mockContactWithCompany],
+  total: 1,
+  limit: 50,
+  offset: 0,
 };
 
 // ss_user_id (không phải "id") — khớp schemas/auth.py::UserOut thật.
