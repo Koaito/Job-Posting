@@ -21,11 +21,12 @@ export interface User {
   created_at: string;
   /** Chỉ có ý nghĩa với role='user' (học viên) — luôn null với ss_team/admin. */
   phone?: string | null;
-  /**
-   * BUG FIX (audit 09/2026 #14): UserOut thật (schemas/auth.py) có field
-   * này — trước đây types/auth.ts thiếu, khiến trang /students không đọc
-   * được. Cùng ý nghĩa với phone: chỉ có giá trị với role='user'.
-   */
+  // BUG FIX (audit 09/2026): field "track" (khớp UserOut thật —
+  // sql/migration_add_phone_track.sql) bị bỏ sót lúc viết file này lần
+  // đầu, dù đứng ngay cạnh "phone" trong backend và cùng chung ý nghĩa
+  // "chỉ có giá trị với role='user'". Không có field này thì trang
+  // /students không hiển thị được track (lớp học) của học viên dù
+  // backend đã trả sẵn.
   track?: string | null;
 }
 

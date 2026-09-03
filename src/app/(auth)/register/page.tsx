@@ -1,20 +1,17 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { register } from '@/app/actions/auth';
 
 /**
- * Trang đăng ký tài khoản (audit 09/2026 #15) — trước đây link "Đăng ký
- * tài khoản mới" ở /login trỏ tới route KHÔNG tồn tại (404), dù backend
- * (POST /auth/register) đã có sẵn đầy đủ. Luôn tạo role='user' — muốn
- * lên ss_team/admin phải nhờ admin nâng cấp sau qua /staff (xem
- * docstring register() ở auth_registration.py, không có ô chọn role
- * ở form này).
+ * Trang đăng ký công khai — mới 09/2026.
  *
- * Đăng ký xong KHÔNG login được ngay — backend chặn login trước khi xác
- * thực email (gửi qua GET /auth/verify-email?token=..., landing lại ở
- * /verify-email sau khi backend redirect) — nên form không đá về
- * /dashboard, chỉ hiện thông báo kiểm tra email.
+ * POST /auth/register luôn tạo role='user', KHÔNG trả token — tài
+ * khoản phải xác thực email (link gửi tới hộp thư, hết hạn sau 24h)
+ * trước khi login được (xem docstring register() ở backend). Vì vậy
+ * sau khi đăng ký thành công, trang này CHỈ hiện thông báo "kiểm tra
+ * email", KHÔNG tự chuyển tới /dashboard hay /jobs.
  */
 export default function RegisterPage() {
   const [fullName, setFullName] = useState('');
@@ -24,8 +21,8 @@ export default function RegisterPage() {
   const [phone, setPhone] = useState('');
   const [track, setTrack] = useState('');
   const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,28 +32,23 @@ export default function RegisterPage() {
       setError('Mật khẩu phải có ít nhất 8 ký tự.');
       return;
     }
-
     if (password !== confirmPassword) {
       setError('Xác nhận mật khẩu không khớp.');
       return;
     }
 
     setLoading(true);
-
     try {
       const result = await register({
         full_name: fullName.trim(),
         email: email.trim().toLowerCase(),
         password,
-        phone: phone.trim() || null,
-        track: track.trim() || null,
+        phone: phone.trim() || undefined,
+        track: track.trim() || undefined,
       });
 
       if (result.success) {
-        setSuccessMessage(
-          result.message ||
-            'Đăng ký thành công — kiểm tra email để xác thực tài khoản trước khi đăng nhập.'
-        );
+        setMessage(result.message || 'Đăng ký thành công — kiểm tra email để xác thực tài khoản trước khi đăng nhập.');
       } else {
         setError(result.error || 'Đăng ký thất bại');
       }
@@ -67,16 +59,16 @@ export default function RegisterPage() {
     }
   };
 
-  if (successMessage) {
+  if (message) {
     return (
       <div className="auth-wrapper">
         <div className="auth-card">
           <div className="auth-header">
             <h1>Kiểm tra email của bạn</h1>
-            <p>{successMessage}</p>
           </div>
+          <div className="flash flash-success">{message}</div>
           <div className="auth-footer">
-            <a href="/login" className="link-muted">Quay lại đăng nhập</a>
+            <Link href="/login" className="link-muted">Về trang đăng nhập</Link>
           </div>
         </div>
       </div>
@@ -88,7 +80,7 @@ export default function RegisterPage() {
       <div className="auth-card">
         <div className="auth-header">
           <h1>Đăng ký tài khoản</h1>
-          <p>Tạo tài khoản học viên trên MindX Jobs</p>
+          <p>Tạo tài khoản học viên để ứng tuyển và lưu job trên MindX Jobs</p>
         </div>
 
         {error && <div className="flash flash-error">{error}</div>}
@@ -134,13 +126,12 @@ export default function RegisterPage() {
           </div>
 
           <div className="form-group">
-            <label htmlFor="track">Track học (không bắt buộc)</label>
+            <label htmlFor="track">Lớp / track (không bắt buộc)</label>
             <input
               type="text"
               id="track"
               value={track}
               onChange={(e) => setTrack(e.target.value)}
-              placeholder="VD: Data Analysis"
               disabled={loading}
             />
           </div>
@@ -180,7 +171,7 @@ export default function RegisterPage() {
         </form>
 
         <div className="auth-footer">
-          <a href="/login" className="link-muted">Đã có tài khoản? Đăng nhập</a>
+          <Link href="/login" className="link-muted">Đã có tài khoản? Đăng nhập</Link>
         </div>
       </div>
     </div>

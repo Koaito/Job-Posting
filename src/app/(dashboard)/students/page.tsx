@@ -1,16 +1,19 @@
 import { getStudents } from '@/app/actions/students';
+import Link from 'next/link';
 
 /**
- * Students (Học viên) List Page
- * Corresponds to Flask: templates/student_activity.html
- * Route: /students — chỉ hiện trên Sidebar cho isStaffRole()==true, nhưng
- * TỰ NÓ chưa chặn truy cập trực tiếp (xem ghi chú cuối file) vì đằng nào
- * GET /auth/users ở backend đã chặn cứng role<'ss_team' (403 -> listUsers()
- * trả mảng rỗng, không lộ dữ liệu).
+ * Students List Page (Học viên)
+ * Corresponds to Flask: blueprints/students.py (templates/students/index.html)
+ * Route: /students
+ *
+ * Mới 09/2026 — trước đây thư mục students/ hoàn toàn rỗng, menu Sidebar
+ * có link nhưng bấm vào ra 404 thật (xem CHANGES_09-2026.md). Dữ liệu lấy
+ * qua getStudents() (actions/students.ts, mới thêm cùng đợt) — lọc
+ * role==='user' từ GET /auth/users, KHÔNG có endpoint backend riêng.
  */
 
 interface SearchParams {
-  keyword?: string;
+  search?: string;
 }
 
 export default async function StudentsPage({
@@ -19,7 +22,7 @@ export default async function StudentsPage({
   searchParams: Promise<SearchParams>;
 }) {
   const resolvedSearchParams = await searchParams;
-  const students = await getStudents({ keyword: resolvedSearchParams.keyword });
+  const students = await getStudents({ keyword: resolvedSearchParams.search });
 
   return (
     <div className="page-container">
@@ -27,7 +30,7 @@ export default async function StudentsPage({
         <div>
           <span className="eyebrow">Career Hub / Quản lý</span>
           <h1>Học viên</h1>
-          <p className="lede">Tổng {students.length} học viên đã đăng ký</p>
+          <p className="lede">Tổng {students.length} tài khoản học viên</p>
         </div>
       </div>
 
@@ -35,14 +38,14 @@ export default async function StudentsPage({
         <form method="get" action="/students" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
           <input
             type="search"
-            name="keyword"
+            name="search"
             placeholder="Tìm theo tên hoặc email..."
-            defaultValue={resolvedSearchParams.keyword}
+            defaultValue={resolvedSearchParams.search}
             style={{ flex: '1 1 300px', minWidth: '200px' }}
           />
           <button type="submit" className="btn">Lọc</button>
-          {resolvedSearchParams.keyword && (
-            <a href="/students" className="btn">Xóa bộ lọc</a>
+          {resolvedSearchParams.search && (
+            <Link href="/students" className="btn">Xóa bộ lọc</Link>
           )}
         </form>
       </div>
@@ -54,26 +57,32 @@ export default async function StudentsPage({
               <tr>
                 <th>Họ tên</th>
                 <th>Email</th>
-                <th>Điện thoại</th>
-                <th>Track</th>
+                <th>SĐT</th>
+                <th>Lớp (track)</th>
                 <th>Trạng thái</th>
-                <th>Đăng ký lúc</th>
+                <th>Đăng nhập gần nhất</th>
               </tr>
             </thead>
             <tbody>
-              {students.map((student) => (
-                <tr key={student.ss_user_id}>
-                  <td><strong>{student.full_name}</strong></td>
-                  <td>{student.email}</td>
-                  <td className={student.phone ? '' : 'muted'}>{student.phone || '—'}</td>
-                  <td className={student.track ? '' : 'muted'}>{student.track || '—'}</td>
+              {students.map((s) => (
+                <tr key={s.ss_user_id}>
                   <td>
-                    <span className={`fit-chip ${student.is_active ? '' : 'muted'}`}>
-                      {student.is_active ? 'Đang hoạt động' : 'Đã khoá'}
-                    </span>
+                    <Link href={`/students/${s.ss_user_id}`}>
+                      <strong>{s.full_name}</strong>
+                    </Link>
+                  </td>
+                  <td className="muted">{s.email}</td>
+                  <td className="muted">{s.phone || '—'}</td>
+                  <td className="muted">{s.track || '—'}</td>
+                  <td>
+                    {s.is_active ? (
+                      <span className="status-chip status-open">Hoạt động</span>
+                    ) : (
+                      <span className="status-chip status-closed">Đã khoá</span>
+                    )}
                   </td>
                   <td className="muted">
-                    {new Date(student.created_at).toLocaleDateString('vi-VN')}
+                    {s.last_login_at ? new Date(s.last_login_at).toLocaleString('vi-VN') : 'Chưa đăng nhập'}
                   </td>
                 </tr>
               ))}
@@ -81,12 +90,7 @@ export default async function StudentsPage({
           </table>
         </div>
       ) : (
-        <div className="empty-state">
-          <p>Không tìm thấy học viên nào.</p>
-          {resolvedSearchParams.keyword && (
-            <a href="/students" className="btn">Xóa bộ lọc</a>
-          )}
-        </div>
+        <div className="empty-state">Không tìm thấy học viên nào.</div>
       )}
     </div>
   );

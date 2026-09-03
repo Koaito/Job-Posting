@@ -4,7 +4,7 @@ import { cache } from 'react';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { getApiKey } from '@/lib/api/client';
-import type { User, UserCreatePayload, UserCreated } from '@/types/auth';
+import type { User, UserCreatePayload, UserCreated, JobApplication, SavedJob } from '@/types/auth';
 
 /**
  * Server Actions for Authentication
@@ -170,143 +170,6 @@ export async function login(email: string, password: string) {
       success: false,
       error: 'Đã xảy ra lỗi khi đăng nhập. Vui lòng thử lại.',
     };
-  }
-}
-
-// ------------------------------------------------------------------
-// Đăng ký công khai + quên mật khẩu (audit 09/2026 #15) — corresponds to
-// Flask blueprint auth.py (register/forgot-password/reset-password).
-// Backend thật (api/routers/auth_registration.py::public_router) —
-// KHÔNG cần Bearer token (route công khai), CHỈ cần X-API-Key giống mọi
-// route khác. Cả 3 route đều có rate limit riêng theo IP ở backend
-// (5/hour register, 3/hour forgot-password, 10/hour reset-password) —
-// lỗi 429 sẽ đi qua đúng nhánh !response.ok bên dưới như lỗi bình
-// thường, không cần tự đếm số lần gọi ở FE.
-// ------------------------------------------------------------------
-
-export interface RegisterPayload {
-  full_name: string;
-  email: string;
-  password: string;
-  phone?: string | null;
-  track?: string | null;
-}
-
-/**
- * Tự đăng ký — POST /auth/register. Luôn tạo role='user', KHÔNG trả
- * token (backend chặn login trước khi xác thực email — xem
- * docstring register() ở auth_registration.py) — chỉ trả message hướng
- * dẫn kiểm tra email.
- */
-export async function register(
-  data: RegisterPayload
-): Promise<{ success: boolean; message?: string; error?: string }> {
-  try {
-    const response = await fetch(`${API_BASE}/auth/register`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-API-Key': getApiKey(),
-      },
-      body: JSON.stringify(data),
-      cache: 'no-store',
-      signal: AbortSignal.timeout(30000),
-    });
-
-    const body = await response.json().catch(() => null);
-
-    if (!response.ok) {
-      // 409 (email đã có tài khoản) trả detail dạng string — 422 (thiếu
-      // field/mật khẩu <8 ký tự) trả dạng mảng, xem formatErrorDetail
-      // pattern đã dùng ở actions/jobs.ts.
-      const detail = body?.detail;
-      const message = Array.isArray(detail)
-        ? detail.map((item) => (item && typeof item === 'object' && 'msg' in item ? String(item.msg) : String(item))).join('; ')
-        : detail;
-      return { success: false, error: message || 'Đăng ký thất bại' };
-    }
-
-    return { success: true, message: body?.message };
-  } catch (error) {
-    console.error('Register error:', error);
-    return { success: false, error: 'Đã xảy ra lỗi khi đăng ký. Vui lòng thử lại.' };
-  }
-}
-
-/**
- * Xin link đặt lại mật khẩu — POST /auth/forgot-password. Backend LUÔN
- * trả cùng 1 message dù email có tồn tại hay không (chống dò email hàng
- * loạt) — vì vậy hàm này gần như luôn success:true, KHÔNG dùng kết quả
- * để suy luận "email này có tồn tại trong hệ thống hay không".
- */
-export async function forgotPassword(
-  email: string
-): Promise<{ success: boolean; message?: string; error?: string }> {
-  try {
-    const response = await fetch(`${API_BASE}/auth/forgot-password`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-API-Key': getApiKey(),
-      },
-      body: JSON.stringify({ email }),
-      cache: 'no-store',
-      signal: AbortSignal.timeout(30000),
-    });
-
-    const body = await response.json().catch(() => null);
-
-    if (!response.ok) {
-      return { success: false, error: body?.detail || 'Không thể gửi yêu cầu. Vui lòng thử lại.' };
-    }
-
-    return { success: true, message: body?.message };
-  } catch (error) {
-    console.error('Forgot password error:', error);
-    return { success: false, error: 'Đã xảy ra lỗi. Vui lòng thử lại.' };
-  }
-}
-
-/**
- * Đặt mật khẩu mới bằng token nhận từ email — POST /auth/reset-password.
- * token lấy từ query string ?token=... của link trong email (xem
- * app/(auth)/reset-password/page.tsx) — LUÔN là token thô, route tự hash
- * lại phía backend trước khi tra DB, FE không cần tự xử lý gì thêm.
- * Thành công -> backend thu hồi toàn bộ refresh token cũ của user, đúng
- * hành vi bảo mật giống changePassword() ở trên.
- */
-export async function resetPassword(
-  token: string,
-  newPassword: string
-): Promise<{ success: boolean; message?: string; error?: string }> {
-  try {
-    const response = await fetch(`${API_BASE}/auth/reset-password`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-API-Key': getApiKey(),
-      },
-      body: JSON.stringify({ token, new_password: newPassword }),
-      cache: 'no-store',
-      signal: AbortSignal.timeout(30000),
-    });
-
-    const body = await response.json().catch(() => null);
-
-    if (!response.ok) {
-      // Token hết hạn/không hợp lệ trả detail dạng string (400/404) —
-      // mật khẩu mới <8 ký tự trả 422 dạng mảng.
-      const detail = body?.detail;
-      const message = Array.isArray(detail)
-        ? detail.map((item) => (item && typeof item === 'object' && 'msg' in item ? String(item.msg) : String(item))).join('; ')
-        : detail;
-      return { success: false, error: message || 'Không thể đặt lại mật khẩu.' };
-    }
-
-    return { success: true, message: body?.message };
-  } catch (error) {
-    console.error('Reset password error:', error);
-    return { success: false, error: 'Đã xảy ra lỗi. Vui lòng thử lại.' };
   }
 }
 
@@ -653,18 +516,14 @@ export async function changePassword(newPassword: string, oldPassword?: string) 
 }
 
 // ------------------------------------------------------------------
-// Quản lý tài khoản (audit 09/2026 #13) — corresponds to Flask blueprints
-// students.py + staff.py. Đối chiếu bản gốc: CẢ HAI blueprint không có
-// entity/router riêng nào ở backend, chỉ cùng gọi 1 endpoint
-// GET /auth/users (list_users(), require_role("ss_team")) rồi tự lọc
-// theo role ở tầng FE — "Học viên" = role=='user', "Nhân viên" = role
-// khác 'user'. 3 hàm ghi (createUser/updateUserRole/updateUserActiveStatus)
-// đều admin-only ở backend (require_admin) — gọi bằng role thấp hơn sẽ
-// nhận 403, không phải lỗi FE.
-//
-// Đặt ở đây (không phải students.ts/staff.ts) vì cùng domain "auth" với
-// login/getCurrentUser, và để 2 file kia chỉ còn là lớp filter mỏng gọi
-// lại, giống pattern types/auth.ts đã dùng chung cho cả 2.
+// Quản lý tài khoản người khác (api/routers/auth_users.py) — thêm
+// 09/2026 để mở khoá actions/students.ts + actions/staff.ts, vốn chỉ
+// throw new Error('Not implemented'). Đối chiếu Flask gốc
+// (mindx-jobs/blueprints/students.py, staff.py): CẢ HAI không có
+// entity/router backend riêng, chỉ cùng gọi GET /auth/users rồi lọc
+// role ở tầng FE (students: role==='user', staff: role!=='user') —
+// nên các hàm dùng chung này đặt ở auth.ts (đúng domain thật của
+// endpoint /auth/users), KHÔNG đặt ở students.ts/staff.ts.
 // ------------------------------------------------------------------
 
 function formatUserErrorDetail(detail: unknown): string {
@@ -681,160 +540,277 @@ function formatUserErrorDetail(detail: unknown): string {
   return 'Có lỗi xảy ra';
 }
 
-async function getUserManagementHeaders(): Promise<Record<string, string>> {
-  const cookieStore = await cookies();
-  const accessToken = cookieStore.get('access_token')?.value;
-
-  const headers: Record<string, string> = {
-    'X-API-Key': getApiKey(),
-    'Content-Type': 'application/json',
-  };
-
-  if (accessToken) {
-    headers['Authorization'] = `Bearer ${accessToken}`;
-  }
-
-  return headers;
-}
-
 /**
- * Lấy TOÀN BỘ danh sách tài khoản (mọi role trộn chung) — GET /auth/users,
- * yêu cầu đăng nhập với role 'ss_team' trở lên. KHÔNG phân trang ở backend
- * (response_model=list[UserOut] thẳng, không phải PaginatedX) — trả mảng
- * rỗng nếu lỗi thay vì throw, để trang gọi hàm này tự quyết định hiển thị
- * "không có dữ liệu" thay vì crash trắng trang.
+ * GET /auth/users — yêu cầu role ss_team trở lên (backend tự chặn 403
+ * nếu gọi bằng token role='user', route này KHÔNG kiểm tra role phía
+ * FE — dựa hoàn toàn vào backend, giống mọi action khác trong app).
+ * Trả TOÀN BỘ user mọi role trong 1 lần gọi — không có filter server-
+ * side (list_users() không nhận query param nào) nên students.ts/
+ * staff.ts tự lọc lại theo role ở tầng gọi hàm này.
  */
 export async function listUsers(): Promise<User[]> {
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
+    const cookieStore = await cookies();
+    const accessToken = cookieStore.get('access_token')?.value;
+    if (!accessToken) return [];
 
-    try {
-      const response = await fetch(`${API_BASE}/auth/users`, {
-        headers: await getUserManagementHeaders(),
-        cache: 'no-store',
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
+    const response = await fetch(`${API_BASE}/auth/users`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'X-API-Key': getApiKey(),
+      },
+      cache: 'no-store',
+      signal: AbortSignal.timeout(30000),
+    });
 
-      if (!response.ok) {
-        console.error('Failed to fetch users:', response.status, response.statusText);
-        return [];
-      }
-      return await response.json();
-    } finally {
-      clearTimeout(timeoutId);
+    if (!response.ok) {
+      console.error('Failed to list users:', response.status, response.statusText);
+      return [];
     }
+    return await response.json();
   } catch (error) {
-    console.error('Error fetching users:', error);
+    console.error('Error listing users:', error);
     return [];
   }
 }
 
 /**
- * Tạo tài khoản mới (admin-only) — POST /auth/users. Backend tự sinh mật
- * khẩu tạm, trả về ĐÚNG 1 LẦN trong response (temp_password) — nơi gọi
- * PHẢI tự hiển thị/lưu lại ngay, gọi lại listUsers() sau đó sẽ KHÔNG còn
- * thấy mật khẩu này nữa (backend không lưu bản đọc được).
+ * POST /auth/users — admin-only (backend trả 403 nếu gọi bằng role
+ * khác). temp_password chỉ xuất hiện ĐÚNG 1 LẦN trong response này —
+ * nơi gọi phải tự hiển thị cho admin copy lại ngay, không có cách nào
+ * lấy lại sau (xem docstring UserCreatedOut).
  */
 export async function createUser(
   data: UserCreatePayload
 ): Promise<{ success: boolean; user?: UserCreated; error?: string }> {
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
-    try {
-      const response = await fetch(`${API_BASE}/auth/users`, {
-        method: 'POST',
-        headers: await getUserManagementHeaders(),
-        body: JSON.stringify(data),
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
+    const cookieStore = await cookies();
+    const accessToken = cookieStore.get('access_token')?.value;
+    if (!accessToken) return { success: false, error: 'Chưa đăng nhập.' };
 
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ detail: response.statusText }));
-        return { success: false, error: formatUserErrorDetail(error.detail) || 'Không thể tạo tài khoản' };
-      }
-      const user = await response.json();
-      return { success: true, user };
-    } finally {
-      clearTimeout(timeoutId);
+    const response = await fetch(`${API_BASE}/auth/users`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+        'X-API-Key': getApiKey(),
+      },
+      body: JSON.stringify(data),
+      signal: AbortSignal.timeout(30000),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: response.statusText }));
+      return { success: false, error: formatUserErrorDetail(error.detail) || 'Không thể tạo tài khoản' };
     }
+    const user = await response.json();
+    return { success: true, user };
   } catch (error) {
     console.error('Error creating user:', error);
     return { success: false, error: 'Network error' };
   }
 }
 
-/**
- * Đổi role của 1 tài khoản khác (admin-only) — PATCH /auth/users/{id}/role.
- * Backend tự chặn admin đổi role CHÍNH MÌNH (400) — lỗi đó sẽ trả về qua
- * nhánh !response.ok bên dưới, không cần tự kiểm tra lại ở FE.
- */
+/** PATCH /auth/users/{id}/role — admin-only. Backend tự chặn admin tự đổi role chính mình (400). */
 export async function updateUserRole(
-  id: string,
+  ssUserId: string,
   role: string
 ): Promise<{ success: boolean; user?: User; error?: string }> {
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
-    try {
-      const response = await fetch(`${API_BASE}/auth/users/${id}/role`, {
-        method: 'PATCH',
-        headers: await getUserManagementHeaders(),
-        body: JSON.stringify({ role }),
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
+    const cookieStore = await cookies();
+    const accessToken = cookieStore.get('access_token')?.value;
+    if (!accessToken) return { success: false, error: 'Chưa đăng nhập.' };
 
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ detail: response.statusText }));
-        return { success: false, error: formatUserErrorDetail(error.detail) || 'Không thể đổi role' };
-      }
-      const user = await response.json();
-      return { success: true, user };
-    } finally {
-      clearTimeout(timeoutId);
+    const response = await fetch(`${API_BASE}/auth/users/${ssUserId}/role`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+        'X-API-Key': getApiKey(),
+      },
+      body: JSON.stringify({ role }),
+      signal: AbortSignal.timeout(30000),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: response.statusText }));
+      return { success: false, error: formatUserErrorDetail(error.detail) || 'Không thể đổi vai trò' };
     }
+    const user = await response.json();
+    return { success: true, user };
   } catch (error) {
     console.error('Error updating user role:', error);
     return { success: false, error: 'Network error' };
   }
 }
 
-/**
- * Khoá/mở khoá VĨNH VIỄN 1 tài khoản khác (admin-only) — PATCH
- * /auth/users/{id}/active-status. Cùng lý do updateUserRole() ở trên,
- * backend tự chặn admin tự khoá chính mình.
- */
+/** PATCH /auth/users/{id}/active-status — admin-only. Backend tự chặn admin tự khoá chính mình (400). */
 export async function updateUserActiveStatus(
-  id: string,
+  ssUserId: string,
   isActive: boolean
 ): Promise<{ success: boolean; user?: User; error?: string }> {
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
-    try {
-      const response = await fetch(`${API_BASE}/auth/users/${id}/active-status`, {
-        method: 'PATCH',
-        headers: await getUserManagementHeaders(),
-        body: JSON.stringify({ is_active: isActive }),
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
+    const cookieStore = await cookies();
+    const accessToken = cookieStore.get('access_token')?.value;
+    if (!accessToken) return { success: false, error: 'Chưa đăng nhập.' };
 
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ detail: response.statusText }));
-        return { success: false, error: formatUserErrorDetail(error.detail) || 'Không thể cập nhật trạng thái tài khoản' };
-      }
-      const user = await response.json();
-      return { success: true, user };
-    } finally {
-      clearTimeout(timeoutId);
+    const response = await fetch(`${API_BASE}/auth/users/${ssUserId}/active-status`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+        'X-API-Key': getApiKey(),
+      },
+      body: JSON.stringify({ is_active: isActive }),
+      signal: AbortSignal.timeout(30000),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: response.statusText }));
+      return { success: false, error: formatUserErrorDetail(error.detail) || 'Không thể đổi trạng thái tài khoản' };
     }
+    const user = await response.json();
+    return { success: true, user };
   } catch (error) {
     console.error('Error updating user active status:', error);
     return { success: false, error: 'Network error' };
+  }
+}
+
+/** GET /auth/users/{id}/applications — ss_team trở lên. */
+export async function getUserApplications(ssUserId: string): Promise<JobApplication[]> {
+  try {
+    const cookieStore = await cookies();
+    const accessToken = cookieStore.get('access_token')?.value;
+    if (!accessToken) return [];
+
+    const response = await fetch(`${API_BASE}/auth/users/${ssUserId}/applications`, {
+      headers: { Authorization: `Bearer ${accessToken}`, 'X-API-Key': getApiKey() },
+      cache: 'no-store',
+      signal: AbortSignal.timeout(30000),
+    });
+    if (!response.ok) return [];
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching user applications:', error);
+    return [];
+  }
+}
+
+/** GET /auth/users/{id}/saved-jobs — ss_team trở lên. */
+export async function getUserSavedJobs(ssUserId: string): Promise<SavedJob[]> {
+  try {
+    const cookieStore = await cookies();
+    const accessToken = cookieStore.get('access_token')?.value;
+    if (!accessToken) return [];
+
+    const response = await fetch(`${API_BASE}/auth/users/${ssUserId}/saved-jobs`, {
+      headers: { Authorization: `Bearer ${accessToken}`, 'X-API-Key': getApiKey() },
+      cache: 'no-store',
+      signal: AbortSignal.timeout(30000),
+    });
+    if (!response.ok) return [];
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching user saved jobs:', error);
+    return [];
+  }
+}
+
+// ------------------------------------------------------------------
+// Đăng ký công khai / quên mật khẩu (api/routers/auth_registration.py,
+// public_router — KHÔNG cần JWT). Thêm 09/2026 để mở khoá 4 trang
+// /register, /forgot-password, /reset-password, /verify-email — trước
+// đây /login có sẵn <a href="/register">, <a href="/forgot-password">
+// trỏ tới trang KHÔNG TỒN TẠI (404 thật) dù backend đã có đủ 3 route
+// POST /auth/register, POST /auth/forgot-password, POST
+// /auth/reset-password từ trước — chỉ thiếu phía FE.
+// ------------------------------------------------------------------
+
+/**
+ * POST /auth/register — luôn tạo role='user', KHÔNG trả token (phải
+ * xác thực email qua link gửi tới hộp thư trước khi login được, xem
+ * docstring register() ở backend). 409 nếu email đã có tài khoản.
+ */
+export async function register(data: {
+  full_name: string;
+  email: string;
+  password: string;
+  phone?: string;
+  track?: string;
+}): Promise<{ success: boolean; message?: string; error?: string }> {
+  try {
+    const response = await fetch(`${API_BASE}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-API-Key': getApiKey() },
+      body: JSON.stringify(data),
+      signal: AbortSignal.timeout(30000),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: response.statusText }));
+      return { success: false, error: formatUserErrorDetail(error.detail) || 'Đăng ký thất bại' };
+    }
+    const body = await response.json();
+    return { success: true, message: body.message };
+  } catch (error) {
+    console.error('Register error:', error);
+    return { success: false, error: 'Đã xảy ra lỗi. Vui lòng thử lại.' };
+  }
+}
+
+/**
+ * POST /auth/forgot-password — LUÔN trả message thành công dù email có
+ * tồn tại hay không (chống dò email hàng loạt — xem docstring backend).
+ * Vì vậy nơi gọi KHÔNG nên coi success:false là "email không tồn tại",
+ * chỉ dùng cho lỗi mạng/rate-limit thật sự.
+ */
+export async function forgotPassword(email: string): Promise<{ success: boolean; message?: string; error?: string }> {
+  try {
+    const response = await fetch(`${API_BASE}/auth/forgot-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-API-Key': getApiKey() },
+      body: JSON.stringify({ email }),
+      signal: AbortSignal.timeout(30000),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: response.statusText }));
+      return { success: false, error: formatUserErrorDetail(error.detail) || 'Không thể gửi email đặt lại mật khẩu' };
+    }
+    const body = await response.json();
+    return { success: true, message: body.message };
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    return { success: false, error: 'Đã xảy ra lỗi. Vui lòng thử lại.' };
+  }
+}
+
+/**
+ * POST /auth/reset-password — token THÔ lấy từ query string link email
+ * (?token=...). Token dùng đúng 1 lần, hết hạn sau 1h (xem
+ * PASSWORD_RESET_EXPIRE_HOURS ở backend).
+ */
+export async function resetPassword(
+  token: string,
+  newPassword: string
+): Promise<{ success: boolean; message?: string; error?: string }> {
+  try {
+    const response = await fetch(`${API_BASE}/auth/reset-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-API-Key': getApiKey() },
+      body: JSON.stringify({ token, new_password: newPassword }),
+      signal: AbortSignal.timeout(30000),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: response.statusText }));
+      return { success: false, error: formatUserErrorDetail(error.detail) || 'Đặt lại mật khẩu thất bại' };
+    }
+    const body = await response.json();
+    return { success: true, message: body.message };
+  } catch (error) {
+    console.error('Reset password error:', error);
+    return { success: false, error: 'Đã xảy ra lỗi. Vui lòng thử lại.' };
   }
 }

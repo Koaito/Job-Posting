@@ -1,51 +1,56 @@
 'use server';
 
-import { listUsers } from '@/app/actions/auth';
-import type { User } from '@/types/auth';
+import { listUsers, getUserApplications, getUserSavedJobs } from './auth';
+import type { User, JobApplication, SavedJob } from '@/types/auth';
 
 /**
- * Server Actions for Students
+ * Server Actions for Students (Học viên)
  * Corresponds to Flask blueprint: blueprints/students.py
  *
- * BUG FIX (audit 09/2026 #13): trước đây throw new Error('Not implemented').
- * Đối chiếu bản Flask gốc (students.py::activity_index()) — "Học viên"
- * KHÔNG phải 1 entity/router riêng ở backend, chỉ là GET /auth/users lọc
- * theo role=='user' ở tầng FE (xem listUsers() trong actions/auth.ts).
- * Không cần thêm route mới nào ở backend cho file này.
+ * BUG FIX (audit 09/2026): trước đây throw new Error('Not implemented')
+ * cho cả 2 hàm. Đối chiếu Flask gốc (mindx-jobs/blueprints/students.py)
+ * xác nhận KHÔNG có entity/router "student" riêng ở backend — Flask cũ
+ * cũng chỉ gọi chung GET /auth/users rồi tự lọc role==='user'. Vì vậy
+ * KHÔNG cần thêm route backend mới, chỉ cần lớp filter mỏng gọi lại
+ * listUsers() (đã có sẵn ở actions/auth.ts, đợt sửa này mới thêm).
  */
 
 export interface StudentFilters {
   keyword?: string;
 }
 
-/**
- * Lọc role=='user' từ danh sách chung — KHÔNG có endpoint /students
- * riêng ở backend, xem docstring đầu file.
- */
+/** role==='user' = "học viên" trong toàn bộ hệ thống này. */
 export async function getStudents(filters?: StudentFilters): Promise<User[]> {
   const users = await listUsers();
-  let students = users.filter((u) => u.role === 'user');
+  const students = users.filter((u) => u.role === 'user');
 
-  if (filters?.keyword) {
-    const keyword = filters.keyword.trim().toLowerCase();
-    if (keyword) {
-      students = students.filter(
-        (u) =>
-          u.full_name.toLowerCase().includes(keyword) ||
-          u.email.toLowerCase().includes(keyword)
-      );
-    }
-  }
+  if (!filters?.keyword) return students;
 
-  return students;
+  const kw = filters.keyword.trim().toLowerCase();
+  if (!kw) return students;
+
+  return students.filter(
+    (s) => s.full_name.toLowerCase().includes(kw) || s.email.toLowerCase().includes(kw)
+  );
 }
 
 /**
- * Lấy 1 học viên theo id — vẫn gọi listUsers() (không có GET
- * /auth/users/{id} riêng ở backend) rồi tự tìm trong mảng, cùng cách
- * Flask gốc chưa từng có trang chi tiết riêng cho 1 học viên.
+ * KHÔNG có GET /auth/users/{id} đơn lẻ ở backend — chỉ có GET
+ * /auth/users (danh sách) + GET /auth/users/{id}/applications + GET
+ * /auth/users/{id}/saved-jobs. Lấy thông tin cơ bản bằng cách lọc lại
+ * từ listUsers(), 2 hàm còn lại gọi thẳng endpoint theo id.
  */
-export async function getStudentById(id: string): Promise<User | null> {
-  const users = await listUsers();
-  return users.find((u) => u.ss_user_id === id && u.role === 'user') || null;
+export async function getStudentById(
+  id: string
+): Promise<{ student: User; applications: JobApplication[]; savedJobs: SavedJob[] } | null> {
+  const [users, applications, savedJobs] = await Promise.all([
+    listUsers(),
+    getUserApplications(id),
+    getUserSavedJobs(id),
+  ]);
+
+  const student = users.find((u) => u.ss_user_id === id && u.role === 'user');
+  if (!student) return null;
+
+  return { student, applications, savedJobs };
 }

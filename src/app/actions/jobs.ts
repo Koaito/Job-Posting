@@ -10,7 +10,7 @@ import { getApiKey } from '@/lib/api/client';
 // KHÔNG được import ở đâu cả (dead code, 2 nguồn sự thật cho cùng 1
 // entity). Sửa: dùng chung types/jobs.ts, xoá hẳn interface Job/JobFilters
 // tự khai ở đây — không còn 2 nguồn sự thật nữa.
-import type { Job, JobDetail, JobFilters, JobCreatePayload, JobUpdatePayload, PaginatedJobs } from '@/types/jobs';
+import type { JobDetail, JobFilters, JobCreatePayload, JobUpdatePayload, PaginatedJobs } from '@/types/jobs';
 
 /**
  * Server Actions for Jobs
@@ -265,10 +265,10 @@ export async function deleteJob(id: string): Promise<{ success: boolean; error?:
       if (!response.ok) {
         const error = await response.json().catch(() => ({ detail: response.statusText }));
         console.error('Failed to delete job:', response.status, error);
-        // BUG FIX (audit 09/2026 #12): thiếu formatErrorDetail() ở đây —
-        // 3 hàm ghi dữ liệu còn lại (createJob/updateJob) đã dùng đúng,
-        // riêng deleteJob() vẫn gán thẳng error.detail (có thể là ARRAY
-        // nếu 422), để lọt "[object Object]" ra UI. Đồng bộ lại cho khớp.
+        // BUG FIX (audit 09/2026): deleteJob() là hàm DUY NHẤT trong file
+        // còn gán thẳng error.detail (bỏ sót khi thêm formatErrorDetail()
+        // cho createJob/updateJob đợt trước) — cùng lỗi "[object Object],
+        // [object Object]" nếu route PATCH job_status trả 422 dạng mảng.
         return { success: false, error: formatErrorDetail(error.detail) || 'Failed to delete job' };
       }
 

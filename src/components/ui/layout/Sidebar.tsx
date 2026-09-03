@@ -67,10 +67,9 @@ export function Sidebar({ user }: SidebarProps) {
           👥 Liên hệ
         </Link>
 
-        {/* TODO (chưa thuộc Sprint 3): /students, /staff, /crawl, /activity
-            chưa có page.tsx nào trong app/ — bấm vào các link này vẫn sẽ
-            404 dù is_staff đã được tính đúng. Cần build page hoặc ẩn tạm
-            link trước khi phase này lên production, xem audit #10. */}
+        {/* TODO (cập nhật 09/2026): /students, /staff giờ đã có page.tsx
+            thật (xem CHANGES_09-2026.md, việc 2) — chỉ còn /crawl,
+            /activity là chưa dựng trang, bấm vào vẫn sẽ 404. */}
         {isStaff && (
           <>
             <Link

@@ -13,11 +13,10 @@ export function isStaffRole(role: string | undefined | null): boolean {
 }
 
 /**
- * Thêm (audit 09/2026 #13) — dùng ở trang /staff: 3 route ghi
- * (POST /auth/users, PATCH .../role, PATCH .../active-status) đều
- * require_admin ở backend, CHẶT hơn require_role("ss_team") của
- * GET /auth/users — ss_team xem được danh sách nhưng không tạo/sửa
- * được tài khoản người khác.
+ * Mới 09/2026 — dùng để ẩn/hiện nút tạo tài khoản, đổi role, khoá/mở
+ * khoá ở trang /staff (backend require_admin cho cả 3 thao tác đó,
+ * xem api/routers/auth_users.py — ss_team chỉ có quyền XEM danh sách
+ * qua GET /auth/users, KHÔNG được tự tạo/sửa tài khoản người khác).
  */
 export function isAdminRole(role: string | undefined | null): boolean {
   return role === 'admin';
