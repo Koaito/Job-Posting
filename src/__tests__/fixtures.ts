@@ -58,6 +58,39 @@ export const mockUser = {
   role: 'ss_team',
 };
 
+export const mockChatMessage = {
+  id: 1,
+  sender_id: 'user-1',
+  receiver_id: 'partner-1',
+  content: 'Chào bạn',
+  created_at: '2026-09-01T08:00:00Z',
+  read_at: null,
+};
+
+export const mockConversation = {
+  partner_id: 'partner-1',
+  partner_name: 'Nguyễn Văn A',
+  partner_role: 'user',
+  last_message_preview: 'Chào bạn',
+  last_message_at: '2026-09-01T08:00:00Z',
+  unread_count: 2,
+  relationship_status: 'accepted',
+  relationship_id: 'rel-1',
+};
+
+export const mockPendingRequest = {
+  relationship_id: 'rel-2',
+  student_id: 'partner-2',
+  student_name: 'Trần Thị B',
+  requested_at: '2026-09-01T09:00:00Z',
+};
+
+export const mockPersonSearchResult = {
+  id: 'partner-3',
+  full_name: 'Lê Văn C',
+  role: 'ss_team',
+};
+
 export const mockStudentUser = {
   ss_user_id: 'user-2',
   email: 'student@example.com',
@@ -87,4 +120,20 @@ export function mockFetchError(status: number, message: string) {
 
 export function mockFetchNetworkError() {
   return Promise.reject(new Error('Network error'));
+}
+
+/**
+ * Helper linh hoạt hơn mockFetchSuccess/mockFetchError — cần cho các
+ * route trả status code KHÔNG chuẩn 200/OK (vd sendMessage() 201 vs
+ * 202 CÙNG là thành công nhưng khác shape response, hardDeleteContact()
+ * 204 không có body...). Dùng khi 2 helper trên không đủ diễn tả case
+ * cần test.
+ */
+export function mockFetchStatus(status: number, data?: unknown) {
+  return Promise.resolve({
+    ok: status >= 200 && status < 300,
+    status,
+    statusText: `Status ${status}`,
+    json: async () => data ?? {},
+  } as Response);
 }

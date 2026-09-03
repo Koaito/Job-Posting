@@ -315,7 +315,17 @@ export async function sendMessage(
     if (response.status === 409) fallback = 'Trạng thái hội thoại vừa thay đổi, tải lại trang để xem mới nhất.';
     if (response.status === 403) fallback = 'Bạn không có quyền nhắn tin với người này.';
     if (response.status === 404) fallback = 'Không tìm thấy người nhận.';
-    return { success: false, error: formatErrorDetail(error.detail) || fallback };
+    // BUG FIX (phát hiện lúc viết test): formatErrorDetail(undefined)
+    // KHÔNG trả falsy — nhánh cuối của nó trả cứng 'Có lỗi xảy ra' (string
+    // luôn truthy), nên `formatErrorDetail(error.detail) || fallback`
+    // không bao giờ rơi vào fallback dù backend không trả detail gì cả,
+    // 4 thông báo tiếng Việt cụ thể ở trên (429/409/403/404) im lặng
+    // không bao giờ hiện ra được. Chỉ gọi formatErrorDetail khi THỰC SỰ
+    // có detail, còn không thì dùng thẳng fallback theo status code.
+    return {
+      success: false,
+      error: error.detail != null ? formatErrorDetail(error.detail) : fallback,
+    };
   } catch (error) {
     console.error('Error sending message:', error);
     return { success: false, error: 'Network error' };
