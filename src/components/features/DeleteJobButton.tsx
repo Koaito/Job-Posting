@@ -56,7 +56,10 @@ export default function DeleteJobButton({ jobId, jobTitle }: DeleteJobButtonProp
       </p>
 
       {error && (
-        <div className="alert alert-error" style={{ marginBottom: '12px' }}>
+        // BUG FIX (đợt dọn nợ 09/2026): "alert alert-error" không tồn
+        // tại trong public/css/ — đổi sang "flash flash-error" (class
+        // thật có style, cùng đợt sửa với JobForm.tsx).
+        <div className="flash flash-error" style={{ marginBottom: '12px' }}>
           {error}
         </div>
       )}

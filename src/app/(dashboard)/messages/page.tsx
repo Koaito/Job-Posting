@@ -1,18 +1,49 @@
-/**
- * Messages Page
- * TODO: Implement in Phase 6
- */
+import Link from 'next/link';
+import { getConversations, getPendingRequests } from '@/app/actions/messages';
+import { getCurrentUser } from '@/app/actions/auth';
+import { isStaffRole } from '@/lib/auth/roles';
+import { MessagesInbox } from '@/components/features/MessagesInbox';
 
-export default function MessagesPage() {
+/**
+ * Messages Inbox Page
+ * Corresponds to Flask: blueprints/messages.py::inbox() (templates/messages.html)
+ * Route: /messages
+ *
+ * Trước đây là placeholder "TODO: Implement in Phase 6" — dựng đủ theo
+ * layout Flask gốc: mục "Yêu cầu đang chờ" CHỈ hiện với staff (ss_team/
+ * admin), danh sách hội thoại chung cho mọi role.
+ */
+export default async function MessagesPage() {
+  const currentUser = await getCurrentUser();
+  const isStaff = isStaffRole(currentUser?.role);
+
+  const [conversations, pendingRequests] = await Promise.all([
+    getConversations(),
+    isStaff ? getPendingRequests() : Promise.resolve([]),
+  ]);
+
   return (
     <div className="page-container">
-      <div className="page-head">
-        <h1>Tin nhắn</h1>
-      </div>
+      <header className="page-head">
+        <div>
+          <span className="eyebrow">Career Hub / Nhắn tin</span>
+          <h1>Tin nhắn</h1>
+          <p className="lede">
+            {isStaff
+              ? 'Hội thoại với học viên và team SS khác. Yêu cầu nhắn tin mới từ học viên sẽ hiện ở mục riêng bên dưới.'
+              : 'Hội thoại với team SS. Gửi yêu cầu nhắn tin mới nếu chưa từng liên hệ với ai đó.'}
+          </p>
+        </div>
+        <Link className="btn btn-primary" href="/messages/new">
+          ✎ Nhắn tin mới
+        </Link>
+      </header>
 
-      <div className="empty-state">
-        <p>🚧 Trang này đang được phát triển (Phase 6)</p>
-      </div>
+      <MessagesInbox
+        initialConversations={conversations}
+        initialPendingRequests={pendingRequests}
+        isStaff={isStaff}
+      />
     </div>
   );
 }

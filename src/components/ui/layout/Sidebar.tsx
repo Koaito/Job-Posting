@@ -1,9 +1,15 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { logout } from '@/app/actions/auth';
+import { getUnreadCount } from '@/app/actions/messages';
 import { isStaffRole } from '@/lib/auth/roles';
+
+// Poll ~25-30s (xem public/app.js gốc) — badge chỉ cần gần đúng, không
+// cần realtime như khung chat (poll 5s riêng trong MessageThread.tsx).
+const UNREAD_POLL_INTERVAL_MS = 25000;
 
 interface SidebarProps {
   // BUG FIX (audit 09/2026): backend (schemas/auth.py::UserOut) không có
@@ -22,6 +28,21 @@ export function Sidebar({ user }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const isStaff = isStaffRole(user.role);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    const poll = async () => {
+      const count = await getUnreadCount();
+      if (!cancelled) setUnreadCount(count);
+    };
+    poll();
+    const interval = setInterval(poll, UNREAD_POLL_INTERVAL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, []);
 
   const handleLogout = async () => {
     await logout();
@@ -107,6 +128,9 @@ export function Sidebar({ user }: SidebarProps) {
           className={`nav-item ${isActive('/messages') ? 'active' : ''}`}
         >
           💬 Tin nhắn
+          <span className="nav-badge" hidden={unreadCount === 0}>
+            {unreadCount <= 99 ? unreadCount : '99+'}
+          </span>
         </Link>
 
         <Link

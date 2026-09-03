@@ -49,6 +49,16 @@ export default function JobForm({ mode, initialData }: JobFormProps) {
       salary_type: (formData.get('salary_type') as string) || 'NEGOTIABLE',
       currency: (formData.get('currency') as string) || 'VNĐ',
       deadline: (formData.get('deadline') as string) || null,
+      // BUG FIX (đợt dọn nợ 09/2026, đi cùng CompanyForm.tsx): 2 field
+      // này tồn tại sẵn trong JobCreatePayload/JobUpdatePayload
+      // (types/jobs.ts) và trong form _job_form.html gốc bên Flask,
+      // nhưng form React trước đây bỏ sót hoàn toàn — job tạo/sửa qua
+      // web luôn gửi work_type=null và salary_period mặc định "MONTH"
+      // phía backend dù người dùng chọn khác trên UI (vì UI còn không
+      // có ô để chọn). work_type "" (chưa chọn) gửi null, khớp hành vi
+      // matching_industry/level_code/province_name ở trên.
+      work_type: (formData.get('work_type') as string) || null,
+      salary_period: (formData.get('salary_period') as string) || 'MONTH',
     };
 
     try {
@@ -83,7 +93,11 @@ export default function JobForm({ mode, initialData }: JobFormProps) {
       <h3>{mode === 'create' ? 'Thông tin Job mới' : 'Sửa thông tin Job'}</h3>
 
       {error && (
-        <div className="alert alert-error">
+        // BUG FIX (đợt dọn nợ 09/2026): "alert alert-error" không tồn
+        // tại trong public/css/ — không style, lỗi hiện ra "chìm" hoàn
+        // toàn không ai nhìn thấy. "flash flash-error" mới là class
+        // thật có style (đã dùng đúng ở CompanyForm.tsx từ đợt trước).
+        <div className="flash flash-error">
           {error}
         </div>
       )}
@@ -178,6 +192,25 @@ export default function JobForm({ mode, initialData }: JobFormProps) {
           </select>
         </div>
 
+        {/* Work Type — khớp _job_form.html gốc (work_types), trước đây
+            bị bỏ sót hoàn toàn khỏi form React. Value là mã enum
+            backend chờ (work_type_enum), nhãn hiển thị tiếng Việt
+            khớp WORK_TYPE_MAP bên Flask (crawler_client/jobs.py). */}
+        <div className="form-field">
+          <label htmlFor="work_type">Hình thức làm việc</label>
+          <select
+            id="work_type"
+            name="work_type"
+            defaultValue={initialData?.work_type || ''}
+          >
+            <option value="">-- Chọn hình thức --</option>
+            <option value="FULL_TIME">Toàn thời gian</option>
+            <option value="PART_TIME">Bán thời gian</option>
+            <option value="INTERNSHIP">Thực tập</option>
+            <option value="OTHER">Khác</option>
+          </select>
+        </div>
+
         {/* Salary Min */}
         <div className="form-field">
           <label htmlFor="salary_min">Lương tối thiểu (VNĐ)</label>
@@ -215,6 +248,27 @@ export default function JobForm({ mode, initialData }: JobFormProps) {
             <option value="UPTO">Lên tới</option>
             <option value="STARTING_FROM">Từ</option>
             <option value="NEGOTIABLE">Thỏa thuận</option>
+            {/* BUG FIX (đợt dọn nợ 09/2026): SALARY_TYPE_MAP bên Flask
+                gốc có 6 giá trị, form React trước đây chỉ có 5 — thiếu
+                UNPAID (job không lương, vd thực tập không hỗ trợ) nên
+                job loại này không tạo/sửa được đúng qua web. */}
+            <option value="UNPAID">Không lương</option>
+          </select>
+        </div>
+
+        {/* Salary Period — mới 08/2026 bên Flask (salary_period), form
+            React trước đây chưa có ô này -> mọi job nhập lương NĂM qua
+            web bị backend mặc định hiểu nhầm thành lương/tháng (sai
+            lệch 12 lần, xem migration_add_salary_period.sql). */}
+        <div className="form-field">
+          <label htmlFor="salary_period">Chu kỳ lương</label>
+          <select
+            id="salary_period"
+            name="salary_period"
+            defaultValue={initialData?.salary_period || 'MONTH'}
+          >
+            <option value="MONTH">Tháng</option>
+            <option value="YEAR">Năm</option>
           </select>
         </div>
 

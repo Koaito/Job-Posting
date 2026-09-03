@@ -21,3 +21,20 @@ export function isStaffRole(role: string | undefined | null): boolean {
 export function isAdminRole(role: string | undefined | null): boolean {
   return role === 'admin';
 }
+
+/**
+ * Khớp constants.py::ROLE_LABELS bên Flask gốc — dùng để hiển thị nhãn
+ * tiếng Việt cho role trong module /messages (role-chip ở inbox, trang
+ * tìm người, khung chat). Không có ở Next repo trước đây vì chưa module
+ * nào cần hiển thị role của NGƯỜI KHÁC (chỉ hiển thị role chính mình).
+ */
+export const ROLE_LABELS: Record<string, string> = {
+  user: 'Học viên',
+  ss_team: 'Team SS',
+  admin: 'Admin',
+};
+
+export function roleLabel(role: string | undefined | null): string {
+  if (!role) return '';
+  return ROLE_LABELS[role] ?? role;
+}
