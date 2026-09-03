@@ -160,6 +160,162 @@ export const mockStudentUser = {
   role: 'user',
 };
 
+export const mockCrawlSources = {
+  topcv: { 'data-analyst': 'Data Analyst', 'data-engineer': 'Data Engineer' },
+  vietnamworks: { 'software-engineering': 'Software Engineering' },
+};
+
+export const mockCrawlAccepted = {
+  run_id: 'run-1',
+  status: 'queued',
+};
+
+export const mockCrawlStatus = {
+  run_id: 'run-1',
+  status: 'running',
+  source: 'topcv',
+  category: 'data-analyst',
+  pages: 5,
+  max_jobs: 100,
+  triggered_by: 'user-1',
+  triggered_by_name: 'Admin User',
+  started_at: '2026-09-01T08:00:00Z',
+  finished_at: null,
+  stats: null,
+  error: null,
+  progress: { fetched: 10, inserted: 8, last_update: '2026-09-01T08:05:00Z' },
+  batch_id: null,
+  batch_position: null,
+};
+
+export const mockCrawlHistoryResponse = {
+  items: [mockCrawlStatus],
+  total: 1,
+  limit: 50,
+  offset: 0,
+};
+
+export const mockCrawlLog = {
+  id: 1,
+  level: 'INFO',
+  message: 'Đã tải trang 1/5',
+  created_at: '2026-09-01T08:01:00Z',
+};
+
+export const mockCrawlLogsResponse = {
+  last_id: 1,
+  items: [mockCrawlLog],
+};
+
+export const mockCrawlBatchAccepted = {
+  batch_id: 'batch-1',
+  first_run_id: 'run-1',
+  status: 'running',
+};
+
+export const mockCrawlBatchStatus = {
+  batch_id: 'batch-1',
+  source: 'topcv',
+  categories: ['data-analyst', 'data-engineer'],
+  pages: 5,
+  max_jobs: 100,
+  status: 'running',
+  error: null,
+  triggered_by: 'user-1',
+  triggered_by_name: 'Admin User',
+  created_at: '2026-09-01T08:00:00Z',
+  finished_at: null,
+  total: 2,
+  completed: 1,
+  items: [mockCrawlStatus],
+};
+
+export const mockCrawlBatchHistoryResponse = {
+  items: [mockCrawlBatchStatus],
+  total: 1,
+  limit: 50,
+  offset: 0,
+};
+
+export const mockAuditLog = {
+  log_id: 'log-1',
+  actor_id: 'user-1',
+  actor_name: 'Staff User',
+  action_type: 'UPDATE_JOB',
+  entity_type: 'JOB',
+  entity_id: 'job-1',
+  entity_label: 'Backend Developer',
+  company_id: 'company-1',
+  company_name: 'ACME Corp',
+  changes: null,
+  is_manual_log: true,
+  note_required: true,
+  note: null,
+  note_updated_by: null,
+  note_updated_at: null,
+  created_at: '2026-09-01T08:00:00Z',
+};
+
+export const mockAuditLogsResponse = {
+  items: [mockAuditLog],
+  total: 1,
+  limit: 50,
+  offset: 0,
+};
+
+export const mockStaffUser = {
+  ss_user_id: 'user-3',
+  email: 'staff2@example.com',
+  full_name: 'Staff Two',
+  role: 'ss_team',
+};
+
+export const mockAdminUser = {
+  ss_user_id: 'user-4',
+  email: 'admin@example.com',
+  full_name: 'Admin Boss',
+  role: 'admin',
+};
+
+export const mockUserCreated = {
+  ss_user_id: 'user-5',
+  email: 'new@example.com',
+  full_name: 'New Staff',
+  role: 'ss_team',
+  temp_password: 'Temp1234!',
+};
+
+export const mockJobApplication = {
+  application_id: 'app-1',
+  ss_user_id: 'user-2',
+  job_id: 'job-1',
+  note: null,
+  applied_at: '2026-08-15T00:00:00Z',
+  job_title: 'Backend Developer',
+  job_status: 'OPEN',
+  company_name: 'ACME Corp',
+  cv_url: null,
+};
+
+export const mockSavedJob = {
+  saved_job_id: 'saved-1',
+  ss_user_id: 'user-2',
+  job_id: 'job-1',
+  created_at: '2026-08-10T00:00:00Z',
+  job_title: 'Backend Developer',
+  job_status: 'OPEN',
+  company_name: 'ACME Corp',
+};
+
+export const mockDashboardStatsResponse = {
+  total_jobs: 120,
+  total_companies: 40,
+  jobs_by_status: { OPEN: 90, CLOSED: 30 },
+  total_students: 300,
+  total_applications: 55,
+  total_saved_jobs: 70,
+};
+
 /**
  * Mock fetch responses
  */

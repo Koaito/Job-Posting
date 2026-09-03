@@ -98,13 +98,51 @@ export default async function JobDetailPage({
             </dl>
           </section>
 
-          {/* Job Description - TODO: Parse from parsed_content JSONB */}
+          {/* Job Description
+              BUG FIX (09/2026): trước đây luôn hard-code "Chưa có mô tả
+              chi tiết" bất kể có dữ liệu hay không. GET /jobs/{job_id}
+              (api/db/jobs.py::get_job_by_id) luôn trả kèm parsed_content
+              (khác GET /jobs list cần include_content=true) nên field
+              này thực ra đã có sẵn — chỉ là chưa được đọc/render. */}
           <section className="card">
             <h3>Mô tả công việc</h3>
             <div className="job-description">
-              <p className="muted">Chưa có mô tả chi tiết. Dữ liệu nằm trong parsed_content (JSONB).</p>
+              {job.parsed_content?.job_description ? (
+                <p style={{ whiteSpace: 'pre-wrap' }}>{job.parsed_content.job_description}</p>
+              ) : (
+                <p className="muted">Chưa có mô tả chi tiết cho job này.</p>
+              )}
             </div>
           </section>
+
+          {job.parsed_content?.requirements && (
+            <section className="card">
+              <h3>Yêu cầu ứng viên</h3>
+              <div className="job-description">
+                <p style={{ whiteSpace: 'pre-wrap' }}>{job.parsed_content.requirements}</p>
+              </div>
+            </section>
+          )}
+
+          {job.parsed_content?.perks && (
+            <section className="card">
+              <h3>Quyền lợi</h3>
+              <div className="job-description">
+                <p style={{ whiteSpace: 'pre-wrap' }}>{job.parsed_content.perks}</p>
+              </div>
+            </section>
+          )}
+
+          {job.parsed_content?.required_skills && job.parsed_content.required_skills.length > 0 && (
+            <section className="card">
+              <h3>Kỹ năng yêu cầu</h3>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                {job.parsed_content.required_skills.map((skill) => (
+                  <span key={skill} className="badge-info">{skill}</span>
+                ))}
+              </div>
+            </section>
+          )}
         </div>
 
         {/* Sidebar */}

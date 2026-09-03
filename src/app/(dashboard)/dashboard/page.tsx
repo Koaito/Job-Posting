@@ -1,5 +1,7 @@
-import { getDashboardStats } from '@/app/actions/dashboard';
+import Link from 'next/link';
+import { getDashboardStats, getRecentActivity } from '@/app/actions/dashboard';
 import { getCurrentUser } from '@/app/actions/auth';
+import { isStaffRole } from '@/lib/auth/roles';
 
 /**
  * Dashboard Homepage
@@ -23,6 +25,10 @@ export default async function DashboardPage() {
     getCurrentUser(),
     getDashboardStats(),
   ]);
+  const isStaff = isStaffRole(user?.role);
+  // /audit-logs (nguồn của getRecentActivity) yêu cầu ss_team trở lên
+  // — chỉ gọi khi chắc chắn có quyền, tránh gọi API vô ích rồi bị 403.
+  const recentActivity = isStaff ? await getRecentActivity(8) : [];
 
   return (
     <div className="page-container">
@@ -77,6 +83,37 @@ export default async function DashboardPage() {
           ✅ Phase 3 hoàn thành: Jobs CRUD (list, create, edit, delete)
         </p>
       </div>
+
+      {/* Recent Activity widget — mới thêm 09/2026, dùng lại
+          getRecentActivity() (trước đây throw 'Not implemented' dù
+          endpoint /audit-logs đã có sẵn từ lâu). Chỉ hiện cho staff,
+          khớp quyền require_role('ss_team') của endpoint gốc. */}
+      {isStaff && (
+        <div className="card" style={{ marginTop: '24px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 style={{ margin: 0 }}>Hoạt động gần đây</h3>
+            <Link href="/activity" className="link">Xem tất cả →</Link>
+          </div>
+          {recentActivity.length > 0 ? (
+            <ul style={{ listStyle: 'none', padding: 0, margin: '12px 0 0 0' }}>
+              {recentActivity.map((log) => (
+                <li
+                  key={log.log_id}
+                  style={{ padding: '8px 0', borderTop: '1px solid var(--border-color, #eee)', fontSize: '14px' }}
+                >
+                  <span className="muted">{new Date(log.created_at).toLocaleString('vi-VN')}</span>
+                  {' — '}
+                  {log.actor_name || <span className="muted">Hệ thống (crawl tự động)</span>}
+                  {' · '}
+                  {log.entity_label || log.entity_type}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="muted" style={{ margin: '12px 0 0 0' }}>Chưa có hoạt động nào.</p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

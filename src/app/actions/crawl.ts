@@ -122,7 +122,12 @@ export async function startCrawl(
 
       if (!response.ok) {
         const error = await response.json().catch(() => ({ detail: response.statusText }));
-        return { success: false, error: formatErrorDetail(error.detail) || 'Không thể kích hoạt crawl' };
+        // BUG FIX (cùng lỗi đã sửa ở messages.ts/audit.ts): formatErrorDetail()
+        // luôn trả string truthy nên `|| fallback` không bao giờ chạy.
+        return {
+          success: false,
+          error: error.detail != null ? formatErrorDetail(error.detail) : 'Không thể kích hoạt crawl',
+        };
       }
       const result = await response.json();
       return { success: true, result };
@@ -158,7 +163,10 @@ export async function startCrawlBatch(
 
       if (!response.ok) {
         const error = await response.json().catch(() => ({ detail: response.statusText }));
-        return { success: false, error: formatErrorDetail(error.detail) || 'Không thể kích hoạt crawl batch' };
+        return {
+          success: false,
+          error: error.detail != null ? formatErrorDetail(error.detail) : 'Không thể kích hoạt crawl batch',
+        };
       }
       const result = await response.json();
       return { success: true, result };

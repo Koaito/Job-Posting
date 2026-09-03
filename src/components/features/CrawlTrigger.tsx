@@ -122,7 +122,19 @@ export default function CrawlTrigger({ isAdmin, sources, initialRun }: CrawlTrig
     }
   };
 
-  const isRunActive = runStatus?.status === 'queued' || runStatus?.status === 'running';
+  /**
+   * BUG FIX (09/2026): trước đây `isRunActive` chỉ dựa vào runStatus của
+   * activeRunId (lượt đang theo dõi) mà không so nguồn — khoá luôn cả
+   * dropdown "Nguồn" lẫn nút submit, khiến không đổi sang nguồn khác để
+   * chạy song song được, dù backend chỉ khoá 409 khi CÙNG 1 nguồn đang
+   * queued/running (xem Scrap_JD/api/routers/crawl.py:110, comment
+   * "Trả 409 NGAY nếu source này đang có 1 lượt..."). Sửa: chỉ coi là
+   * "đang chạy" nếu lượt đang theo dõi CÙNG nguồn với nguồn đang chọn
+   * trên form — đổi sang nguồn khác thì mở khoá lại bình thường.
+   */
+  const isRunActive =
+    (runStatus?.status === 'queued' || runStatus?.status === 'running') &&
+    runStatus.source === selectedSource;
 
   return (
     <div>
@@ -137,7 +149,7 @@ export default function CrawlTrigger({ isAdmin, sources, initialRun }: CrawlTrig
                 id="source"
                 value={selectedSource}
                 onChange={(e) => handleSourceChange(e.target.value)}
-                disabled={submitting || isRunActive}
+                disabled={submitting}
               >
                 {sourceKeys.map((s) => (
                   <option key={s} value={s}>{s}</option>

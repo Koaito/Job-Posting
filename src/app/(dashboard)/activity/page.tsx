@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { getAuditLogs } from '@/app/actions/audit';
 import AuditLogNoteEditor from '@/components/features/AuditLogNoteEditor';
+import { getCurrentUser } from '@/app/actions/auth';
+import { isStaffRole } from '@/lib/auth/roles';
 
 /**
  * Audit Logs Page ("Lịch sử thao tác")
@@ -49,6 +51,22 @@ export default async function ActivityPage({
   searchParams: Promise<SearchParams>;
 }) {
   const sp = await searchParams;
+  const currentUser = await getCurrentUser();
+  const isStaff = isStaffRole(currentUser?.role);
+
+  if (!isStaff) {
+    return (
+      <div className="page-container">
+        <div className="page-head">
+          <h1>Lịch sử thao tác</h1>
+        </div>
+        <div className="empty-state">
+          <p>Trang này chỉ dành cho nhân viên (ss_team/admin).</p>
+        </div>
+      </div>
+    );
+  }
+
   const view = sp.view === 'manual' ? 'manual' : 'auto';
   const page = parseInt(sp.page || '1');
   const limit = 50;

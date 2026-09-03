@@ -122,7 +122,13 @@ export async function updateAuditLogNote(
 
       if (!response.ok) {
         const error = await response.json().catch(() => ({ detail: response.statusText }));
-        return { success: false, error: formatErrorDetail(error.detail) || 'Không thể cập nhật note' };
+        // BUG FIX (giống bug đã sửa ở actions/messages.ts::sendMessage):
+        // formatErrorDetail() luôn trả string truthy nên `|| fallback`
+        // không bao giờ chạy. Check error.detail != null trước.
+        return {
+          success: false,
+          error: error.detail != null ? formatErrorDetail(error.detail) : 'Không thể cập nhật note',
+        };
       }
       const log = await response.json();
       return { success: true, log };

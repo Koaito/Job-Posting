@@ -1,6 +1,8 @@
 'use server';
 
 import { getApiKey } from '@/lib/api/client';
+import { getAuditLogs } from '@/app/actions/audit';
+import type { AuditLog } from '@/types/audit';
 
 /**
  * Server Actions for Dashboard
@@ -72,7 +74,15 @@ function getEmptyStats(): DashboardStats {
   };
 }
 
-export async function getRecentActivity() {
-  // TODO: Implement when activity logs endpoint is available
-  throw new Error('Not implemented');
+/**
+ * Lấy N thao tác gần nhất để hiện widget "Hoạt động gần đây" trên
+ * dashboard. TRƯỚC ĐÂY: luôn throw 'Not implemented' với TODO "chờ
+ * endpoint activity logs có sẵn" — nhưng endpoint đó (GET /audit-logs)
+ * đã có và đang dùng ở trang /activity từ lâu (xem actions/audit.ts).
+ * Chỉ cần gọi lại getAuditLogs với view='auto' (mọi thao tác, không
+ * lọc) + limit nhỏ, không cần gọi API riêng.
+ */
+export async function getRecentActivity(limit = 8): Promise<AuditLog[]> {
+  const { items } = await getAuditLogs({ view: 'auto', limit, offset: 0 });
+  return items;
 }
