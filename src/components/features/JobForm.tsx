@@ -31,17 +31,24 @@ export default function JobForm({ mode, initialData }: JobFormProps) {
     // extra="forbid" — gửi field lạ (level_id/province_id kiểu số) sẽ bị
     // 422 ngay lập tức. Schema thật chỉ nhận level_code/province_name
     // (chuỗi text), KHÔNG có field *_id nào cho 2 mục này.
+    //
+    // BUG FIX (audit 09/2026, phần "dọn type debt"): createJob/updateJob
+    // giờ nhận JobCreatePayload/JobUpdatePayload (kiểu chặt, xem
+    // actions/jobs.ts) thay vì "data: any" như trước — FormData.get() trả
+    // về FormDataEntryValue | null (có thể là File), phải ép rõ về
+    // string trước khi gửi, không để lọt kiểu File/null vào field mà
+    // backend chờ string.
     const basePayload = {
-      job_title: formData.get('job_title'),
-      company_id: formData.get('company_id'),
-      matching_industry: formData.get('matching_industry') || null,
-      level_code: formData.get('level_code') || null,
-      province_name: formData.get('province_name') || null,
+      job_title: String(formData.get('job_title') || ''),
+      company_id: String(formData.get('company_id') || ''),
+      matching_industry: (formData.get('matching_industry') as string) || null,
+      level_code: (formData.get('level_code') as string) || null,
+      province_name: (formData.get('province_name') as string) || null,
       salary_min: formData.get('salary_min') ? parseInt(formData.get('salary_min') as string) : null,
       salary_max: formData.get('salary_max') ? parseInt(formData.get('salary_max') as string) : null,
-      salary_type: formData.get('salary_type') || 'NEGOTIABLE',
-      currency: formData.get('currency') || 'VNĐ',
-      deadline: formData.get('deadline') || null,
+      salary_type: (formData.get('salary_type') as string) || 'NEGOTIABLE',
+      currency: (formData.get('currency') as string) || 'VNĐ',
+      deadline: (formData.get('deadline') as string) || null,
     };
 
     try {
@@ -54,8 +61,8 @@ export default function JobForm({ mode, initialData }: JobFormProps) {
         // JobUpdate CÓ job_status/ss_team_notes — chỉ hợp lệ khi sửa.
         result = await updateJob(initialData.job_id, {
           ...basePayload,
-          job_status: formData.get('job_status') || 'OPEN',
-          ss_team_notes: formData.get('ss_team_notes') || null,
+          job_status: (formData.get('job_status') as string) || 'OPEN',
+          ss_team_notes: (formData.get('ss_team_notes') as string) || null,
         });
       }
 

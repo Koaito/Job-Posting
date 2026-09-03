@@ -17,8 +17,7 @@
 @import url("../../public/css/15-crawl.css");
 @import url("../../public/css/16-email-template-manager.css");
 @import url("../../public/css/17-error-pages.css");
-/* TODO: Fix 18-messages.css CSS parsing error - temporarily disabled */
-/* @import url("../../public/css/18-messages.css"); */
+@import url("../../public/css/18-messages.css");
 
 /* Reset styles from Next.js default */
 :root {

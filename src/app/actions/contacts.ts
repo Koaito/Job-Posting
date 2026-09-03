@@ -3,6 +3,11 @@
 /**
  * Server Actions for Contacts
  * Corresponds to Flask blueprint: blueprints/contacts.py
+ *
+ * TODO (chưa làm trong đợt sửa 09/2026 này — mới xong Companies, xem
+ * commit "feat(companies)..."): viết lại đầy đủ theo types/contacts.ts
+ * (đã đúng sẵn, khớp api/routers/contacts.py, chỉ chưa ai dùng — cùng
+ * pattern "dead type file" đã sửa ở companies.ts/jobs.ts).
  */
 
 const API_BASE = process.env.FASTAPI_URL;

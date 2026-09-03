@@ -2,6 +2,15 @@
 
 import { cookies } from 'next/headers';
 import { getApiKey } from '@/lib/api/client';
+// BUG FIX (audit 09/2026 #11 — dọn "type debt"): file này trước đây tự
+// khai lại 1 interface Job RIÊNG, thiếu hẳn work_type/salary_period/
+// source_url/source_name so với JobOut thật, và job_status khai bắt buộc
+// (Optional[str] thật ở backend) — trong khi types/jobs.ts đã có sẵn 1
+// bản ĐÚNG, đầy đủ, khớp JobOut/JobDetailOut/JobCreate/JobUpdate nhưng
+// KHÔNG được import ở đâu cả (dead code, 2 nguồn sự thật cho cùng 1
+// entity). Sửa: dùng chung types/jobs.ts, xoá hẳn interface Job/JobFilters
+// tự khai ở đây — không còn 2 nguồn sự thật nữa.
+import type { Job, JobDetail, JobFilters, JobCreatePayload, JobUpdatePayload, PaginatedJobs } from '@/types/jobs';
 
 /**
  * Server Actions for Jobs
@@ -9,6 +18,38 @@ import { getApiKey } from '@/lib/api/client';
  */
 
 const API_BASE = process.env.FASTAPI_URL;
+
+/**
+ * BUG FIX (audit 09/2026): lỗi 422 do Pydantic tự validate (vd
+ * extra="forbid" reject field lạ, min_length=1 fail...) trả về
+ * detail dạng ARRAY of objects ([{loc, msg, type}, ...]), KHÁC với lỗi
+ * tự raise thủ công trong router (detail: string đơn giản). Trước đây
+ * error.detail được gán thẳng vào field "error" (kiểu string) rồi
+ * JobForm.tsx setError() + render — React tự gọi String(array) khi hiện
+ * ra, cho ra "[object Object],[object Object]" khó hiểu. Chuẩn hoá về
+ * 1 chuỗi dễ đọc NGAY TẠI ĐÂY, dùng chung cho createJob/updateJob, để
+ * mọi nơi gọi 2 hàm này (hiện tại + sau này) đều nhận được error dạng
+ * string sẵn sàng hiển thị, không cần tự xử lý lại.
+ */
+function formatErrorDetail(detail: unknown): string {
+  if (typeof detail === 'string') return detail;
+  if (Array.isArray(detail)) {
+    return detail
+      .map((item) => {
+        if (item && typeof item === 'object' && 'msg' in item) {
+          const loc = 'loc' in item && Array.isArray((item as { loc?: unknown[] }).loc)
+            ? (item as { loc: unknown[] }).loc.filter((p) => p !== 'body').join('.')
+            : '';
+          const msg = String((item as { msg: unknown }).msg);
+          return loc ? `${loc}: ${msg}` : msg;
+        }
+        return typeof item === 'string' ? item : JSON.stringify(item);
+      })
+      .join('; ');
+  }
+  if (detail && typeof detail === 'object') return JSON.stringify(detail);
+  return 'Có lỗi xảy ra';
+}
 
 /**
  * Các route ghi dữ liệu (POST/PATCH /jobs) yêu cầu require_role("ss_team")
@@ -44,53 +85,17 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
  * giao diện không báo lỗi gì. company_id không tồn tại trong list_jobs()
  * — bỏ hẳn khỏi filter (không lọc job theo công ty ở list, chỉ có ở
  * data-health).
+ *
+ * (interface JobFilters/Job/JobsResponse tự khai ở đây trước đây đã bị
+ * xoá — dùng chung JobFilters/Job/PaginatedJobs từ '@/types/jobs', xem
+ * BUG FIX ở đầu file.)
  */
-interface JobFilters {
-  industry?: string;
-  province?: string;
-  level?: string;
-  work_type?: string;
-  status?: string;
-  keyword?: string;
-  created_by?: string;
-  limit?: number;
-  offset?: number;
-}
-
-interface Job {
-  // BUG FIX: backend (schemas/jobs.py::JobOut) trả về "job_id", KHÔNG
-  // PHẢI "id" — field "id" không tồn tại trong response thật, khiến
-  // job.id luôn undefined ở mọi trang dùng interface này trước đây.
-  job_id: string;
-  job_title: string;
-  company_id: string;
-  company_name?: string; // BUG FIX: backend trả "company_name", không phải "company"
-  matching_industry?: string;
-  level_code?: string; // BUG FIX: backend trả "level_code", không phải "level"
-  province_name?: string; // BUG FIX: backend trả "province_name", không phải "location"
-  salary_min?: number;
-  salary_max?: number;
-  salary_type?: string;
-  currency?: string;
-  deadline?: string;
-  job_status: string;
-  ss_team_notes?: string;
-  created_at: string;
-  updated_at: string;
-}
-
-interface JobsResponse {
-  items: Job[];
-  total: number;
-  limit: number;
-  offset: number;
-}
 
 /**
  * Get list of jobs with filters and pagination
  * Matches Flask: blueprints/jobs.py::index()
  */
-export async function getJobs(filters?: JobFilters): Promise<JobsResponse> {
+export async function getJobs(filters?: JobFilters): Promise<PaginatedJobs> {
   try {
     // Build query params — PHẢI đúng tên param thật của GET /jobs, xem
     // ghi chú ở interface JobFilters phía trên.
@@ -136,8 +141,9 @@ export async function getJobs(filters?: JobFilters): Promise<JobsResponse> {
 /**
  * Get single job by ID
  * Matches Flask: blueprints/jobs.py::detail()
+ * Backend response_model = JobDetailOut (thêm ss_team_notes so với JobOut).
  */
-export async function getJobById(id: string): Promise<Job | null> {
+export async function getJobById(id: string): Promise<JobDetail | null> {
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000);
@@ -170,7 +176,7 @@ export async function getJobById(id: string): Promise<Job | null> {
  * Create new job
  * Matches Flask: blueprints/jobs.py::create()
  */
-export async function createJob(data: any): Promise<{ success: boolean; job?: Job; error?: string }> {
+export async function createJob(data: JobCreatePayload): Promise<{ success: boolean; job?: JobDetail; error?: string }> {
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000);
@@ -188,7 +194,9 @@ export async function createJob(data: any): Promise<{ success: boolean; job?: Jo
       if (!response.ok) {
         const error = await response.json().catch(() => ({ detail: response.statusText }));
         console.error('Failed to create job:', response.status, error);
-        return { success: false, error: error.detail || 'Failed to create job' };
+        // BUG FIX (audit 09/2026): dùng formatErrorDetail() thay vì gán
+        // thẳng error.detail (có thể là array) — xem docstring hàm này.
+        return { success: false, error: formatErrorDetail(error.detail) || 'Failed to create job' };
       }
 
       const job = await response.json();
@@ -202,7 +210,7 @@ export async function createJob(data: any): Promise<{ success: boolean; job?: Jo
   }
 }
 
-export async function updateJob(id: string, data: any): Promise<{ success: boolean; job?: Job; error?: string }> {
+export async function updateJob(id: string, data: JobUpdatePayload): Promise<{ success: boolean; job?: JobDetail; error?: string }> {
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000);
@@ -220,7 +228,7 @@ export async function updateJob(id: string, data: any): Promise<{ success: boole
       if (!response.ok) {
         const error = await response.json().catch(() => ({ detail: response.statusText }));
         console.error('Failed to update job:', response.status, error);
-        return { success: false, error: error.detail || 'Failed to update job' };
+        return { success: false, error: formatErrorDetail(error.detail) || 'Failed to update job' };
       }
 
       const job = await response.json();

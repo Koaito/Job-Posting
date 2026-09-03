@@ -13,3 +13,8 @@ export * from './contacts';
 export * from './messages';
 export * from './crawl';
 export * from './dashboard';
+// Thêm lại 09/2026 (xem docstring trong file) — dùng cho actions/staff.ts,
+// actions/students.ts.
+export * from './auth';
+// Mới 09/2026 — dùng cho trang /activity.
+export * from './audit';

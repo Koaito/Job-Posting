@@ -5,9 +5,9 @@
    Tái dùng: .status-chip (base font-size/padding đã khai báo ở
    04-job-cards.css, border-radius/white-space dùng chung ở 00-tokens.css
    — file này CHỈ thêm màu riêng cho 3 trạng thái pending/declined/
-   blocked), .role-chip (05-contact-table.css), .btn-*/.page-head/.back-link
-   (03-layout.css), .empty-state (09-misc-toasts.css). KHÔNG định nghĩa
-   lại các class đó ở đây. */
+   blocked), .role-chip (05-contact-table.css), .btn- (mọi biến thể),
+   .page-head, .back-link (03-layout.css), .empty-state
+   (09-misc-toasts.css). KHÔNG định nghĩa lại các class đó ở đây. */
 
 /* ---------------- Badge unread ở sidebar ---------------- */
 
