@@ -3,6 +3,7 @@
 import { cache } from 'react';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { getApiKey } from '@/lib/api/client';
 
 /**
  * Server Actions for Authentication
@@ -10,7 +11,6 @@ import { redirect } from 'next/navigation';
  */
 
 const API_BASE = process.env.FASTAPI_URL;
-const API_KEY = process.env.CRAWLER_API_KEY;
 
 interface LoginResponse {
   access_token: string;
@@ -76,6 +76,40 @@ interface UserResponse {
 // đây) — file này có "use server" ở đầu, Next.js chỉ cho phép export hàm
 // async từ file "use server" (build sẽ lỗi nếu export thêm hàm sync).
 
+/**
+ * BUG FIX (audit 09/2026 #5): cookie "user_data" (httpOnly: false, đọc
+ * được từ client-side JS — xem comment gốc "Allow client-side access")
+ * trước đây CHỈ được ghi ở login(), không hề được cập nhật lại trong
+ * nhánh auto-refresh của getCurrentUser() (bug #1/#3 thêm 09/2026) —
+ * nếu full_name/email/role của user đổi trong lúc phiên đang chạy
+ * (admin sửa role, user tự đổi full_name...), cookie này sẽ lệch với
+ * dữ liệu thật cho tới lần login() kế tiếp. Hiện KHÔNG có nơi nào trong
+ * FE đọc cookie này (chỉ set/delete) nên chưa gây bug hiển thị thật,
+ * nhưng vì đã được thiết kế httpOnly:false có chủ đích (cho phép đọc
+ * client-side sau này), giữ nó LUÔN đồng bộ đúng — không xoá bỏ tính
+ * năng — thay vì để trở thành 1 nguồn dữ liệu cũ tiềm ẩn nếu sau này có
+ * chỗ nào bắt đầu đọc nó. Helper dùng chung cho login() và nhánh
+ * auto-refresh trong getCurrentUser(), tránh lặp lại object shape ở 2
+ * chỗ (dễ lệch nhau nếu sửa 1 chỗ quên chỗ kia — cùng lý do
+ * setAuthCookies() tồn tại).
+ */
+async function setUserDataCookie(userData: UserResponse) {
+  const cookieStore = await cookies();
+
+  cookieStore.set('user_data', JSON.stringify({
+    ss_user_id: userData.ss_user_id,
+    email: userData.email,
+    full_name: userData.full_name,
+    role: userData.role,
+  }), {
+    httpOnly: false, // Allow client-side access
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 60 * 60 * 24 * 7,
+    path: '/',
+  });
+}
+
 export async function login(email: string, password: string) {
   try {
     // Step 1: Call FastAPI /auth/login endpoint
@@ -83,7 +117,7 @@ export async function login(email: string, password: string) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-API-Key': API_KEY!,
+        'X-API-Key': getApiKey(),
       },
       body: JSON.stringify({ email, password }),
     });
@@ -102,7 +136,7 @@ export async function login(email: string, password: string) {
     const userResponse = await fetch(`${API_BASE}/auth/me`, {
       headers: {
         Authorization: `Bearer ${tokenData.access_token}`,
-        'X-API-Key': API_KEY!,
+        'X-API-Key': getApiKey(),
       },
     });
 
@@ -116,25 +150,14 @@ export async function login(email: string, password: string) {
     const userData: UserResponse = await userResponse.json();
 
     // Step 3: Set HTTP-only cookies
-    const cookieStore = await cookies();
     await setAuthCookies(tokenData.access_token, tokenData.refresh_token);
 
-    // Store user data for client-side access (non-sensitive info only)
-    // BUG FIX: dùng đúng field thật (ss_user_id), bỏ "is_staff" (không
-    // tồn tại ở backend) — nơi cần biết staff/admin hay không phải tự
-    // tính từ "role" bằng isStaffRole() (lib/auth/roles.ts).
-    cookieStore.set('user_data', JSON.stringify({
-      ss_user_id: userData.ss_user_id,
-      email: userData.email,
-      full_name: userData.full_name,
-      role: userData.role,
-    }), {
-      httpOnly: false, // Allow client-side access
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7,
-      path: '/',
-    });
+    // BUG FIX (audit 09/2026, dùng đúng field thật ss_user_id, bỏ
+    // "is_staff" không tồn tại ở backend) + (audit 09/2026 #5, dùng
+    // chung helper setUserDataCookie() với getCurrentUser() để không
+    // lặp lại object shape ở 2 chỗ — xem giải thích đầy đủ ở khai báo
+    // hàm setUserDataCookie()).
+    await setUserDataCookie(userData);
 
     return {
       success: true,
@@ -163,7 +186,7 @@ export async function logout() {
       await fetch(`${API_BASE}/auth/logout`, {
         method: 'POST',
         headers: {
-          'X-API-Key': API_KEY!,
+          'X-API-Key': getApiKey(),
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ refresh_token: refreshToken }),
@@ -185,31 +208,83 @@ export async function logout() {
 }
 
 /**
- * Đổi refresh_token lấy 1 cặp token mới — POST /auth/refresh (30/minute
- * rate limit theo IP, xem auth_session.py::refresh()). Trả null nếu
- * refresh_token không hợp lệ/đã hết hạn/đã bị thu hồi — gọi nơi dùng tự
- * xử lý (xoá cookie, coi như chưa đăng nhập), KHÔNG throw.
+ * BUG FIX (audit 09/2026 #4): trước đây refreshAccessToken() trả null
+ * cho CẢ 2 trường hợp hoàn toàn khác nhau — (a) backend ĐÃ trả lời rõ
+ * ràng "refresh_token không hợp lệ/hết hạn/bị thu hồi" (response.ok
+ * false, đây là thất bại THẬT, nên xoá cookie coi như hết phiên) và
+ * (b) lỗi mạng/timeout/backend tạm thời không phản hồi được (catch),
+ * tức là KHÔNG HỀ biết refresh_token còn hợp lệ hay không. Gộp chung
+ * 2 case này khiến 1 lần mất mạng/backend down thoáng qua cũng xoá
+ * sạch cookie — người dùng bị đăng xuất oan dù cả access_token lẫn
+ * refresh_token đều còn hạn dùng thật, chỉ vì kết nối chập chờn.
+ *
+ * Đổi kết quả trả về thành discriminated union rõ ràng để nơi gọi
+ * (getCurrentUser()) tự quyết định đúng hành vi cho từng trường hợp:
+ * - { ok: true, tokens } — refresh thành công.
+ * - { ok: false, reason: 'invalid' } — backend xác nhận rõ ràng
+ *   refresh_token không dùng được nữa -> xoá cookie, đăng xuất thật sự.
+ * - { ok: false, reason: 'network_error' } — không xác định được, có
+ *   thể refresh_token vẫn còn hợp lệ -> KHÔNG xoá cookie, coi như phiên
+ *   này tạm thời không lấy được, thử lại ở request kế tiếp.
  */
-async function refreshAccessToken(refreshToken: string): Promise<RefreshResponse | null> {
+type RefreshResult =
+  | { ok: true; tokens: RefreshResponse }
+  | { ok: false; reason: 'invalid' | 'network_error' };
+
+/**
+ * Đổi refresh_token lấy 1 cặp token mới — POST /auth/refresh (30/minute
+ * rate limit theo IP, xem auth_session.py::refresh()). KHÔNG throw —
+ * luôn trả RefreshResult, gọi nơi dùng tự xử lý theo "reason".
+ */
+async function refreshAccessToken(refreshToken: string): Promise<RefreshResult> {
+  let response: Response;
   try {
-    const response = await fetch(`${API_BASE}/auth/refresh`, {
+    response = await fetch(`${API_BASE}/auth/refresh`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-API-Key': API_KEY!,
+        'X-API-Key': getApiKey(),
       },
       body: JSON.stringify({ refresh_token: refreshToken }),
       cache: 'no-store',
+      // BUG FIX (audit 09/2026 #4): bản Flask gốc (backend_auth.py,
+      // REQUEST_TIMEOUT = 20) luôn set timeout tường minh cho MỌI request
+      // tới backend — comment gốc: "Render free tier có thể 'ngủ', lần
+      // gọi đầu có thể chậm". fetch() mặc định KHÔNG timeout, có thể treo
+      // vô thời hạn nếu backend đang cold-start hoặc mất kết nối nửa
+      // chừng — dùng cùng convention 30s đã có ở getDashboardStats()
+      // (actions/dashboard.ts) cho nhất quán.
+      signal: AbortSignal.timeout(30000),
     });
-
-    if (!response.ok) {
-      return null;
-    }
-
-    return await response.json();
   } catch (error) {
-    console.error('Refresh access token error:', error);
-    return null;
+    // fetch() throw = lỗi mạng/timeout/DNS/kết nối bị từ chối — backend
+    // CHƯA HỀ trả lời gì, không có cơ sở nào để coi refresh_token là
+    // không hợp lệ.
+    console.error('Refresh access token network error:', error);
+    return { ok: false, reason: 'network_error' };
+  }
+
+  if (!response.ok) {
+    // Backend ĐÃ trả lời rõ ràng (401 refresh_token invalid/expired/
+    // revoked, 429 rate limit, 5xx lỗi server...) — với 401 đây là thất
+    // bại thật của refresh_token. Với 429/5xx nghiêm ngặt thì cũng
+    // không phải "refresh_token sai", nhưng backend rate-limit 30/minute
+    // vốn đã đủ rộng cho use case thật (xem docstring auth_session.py::
+    // refresh()), và 5xx tạm thời hiếm khi trùng đúng lúc access_token
+    // hết hạn — chấp nhận coi mọi !ok non-network-error là 'invalid' để
+    // giữ logic đơn giản, không phân loại quá chi tiết từng status code.
+    return { ok: false, reason: 'invalid' };
+  }
+
+  try {
+    const tokens: RefreshResponse = await response.json();
+    return { ok: true, tokens };
+  } catch (error) {
+    // response.ok nhưng body không phải JSON hợp lệ — coi như lỗi mạng/
+    // dữ liệu bất thường, KHÔNG phải refresh_token sai (backend đã nói
+    // "ok" ở status code).
+    console.error('Refresh access token: invalid JSON response', error);
+    return { ok: false, reason: 'network_error' };
   }
 }
 
@@ -249,9 +324,13 @@ export const getCurrentUser = cache(async function getCurrentUser() {
     let response = await fetch(`${API_BASE}/auth/me`, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
-        'X-API-Key': API_KEY!,
+        'X-API-Key': getApiKey(),
       },
       cache: 'no-store',
+      // BUG FIX (audit 09/2026 #4): xem giải thích đầy đủ ở
+      // refreshAccessToken() — Flask gốc (backend_auth.py) luôn có
+      // REQUEST_TIMEOUT tường minh cho mọi request tới backend.
+      signal: AbortSignal.timeout(30000),
     });
 
     if (!response.ok) {
@@ -286,14 +365,34 @@ export const getCurrentUser = cache(async function getCurrentUser() {
       const shouldTryRefresh = errorCode === 'token_expired';
 
       const refreshToken = shouldTryRefresh ? cookieStore.get('refresh_token')?.value : undefined;
-      const newTokens = refreshToken ? await refreshAccessToken(refreshToken) : null;
 
-      if (!newTokens) {
+      if (!refreshToken) {
+        // Không đủ điều kiện thử refresh (error_code khác token_expired,
+        // hoặc không có refresh_token cookie) — phiên coi như chết thật.
         cookieStore.delete('access_token');
         cookieStore.delete('refresh_token');
         cookieStore.delete('user_data');
         return null;
       }
+
+      const refreshResult = await refreshAccessToken(refreshToken);
+
+      if (!refreshResult.ok) {
+        // BUG FIX (audit 09/2026 #4): CHỈ xoá cookie khi backend đã xác
+        // nhận rõ ràng refresh_token không hợp lệ ("invalid"). Với lỗi
+        // mạng/timeout ("network_error") — không có cơ sở nào để kết
+        // luận refresh_token đã hỏng, chỉ là KHÔNG XÁC ĐỊNH ĐƯỢC ngay
+        // lúc này — giữ nguyên cookie để lần render/request kế tiếp còn
+        // cơ hội thử lại, tránh đăng xuất oan chỉ vì mất mạng thoáng qua.
+        if (refreshResult.reason === 'invalid') {
+          cookieStore.delete('access_token');
+          cookieStore.delete('refresh_token');
+          cookieStore.delete('user_data');
+        }
+        return null;
+      }
+
+      const newTokens = refreshResult.tokens;
 
       // refresh_token cũng bị xoay vòng (rotation) — PHẢI ghi đè cả 2
       // cookie, không chỉ access_token, nếu không lần hết hạn kế tiếp
@@ -304,9 +403,10 @@ export const getCurrentUser = cache(async function getCurrentUser() {
       response = await fetch(`${API_BASE}/auth/me`, {
         headers: {
           Authorization: `Bearer ${newTokens.access_token}`,
-          'X-API-Key': API_KEY!,
+          'X-API-Key': getApiKey(),
         },
         cache: 'no-store',
+        signal: AbortSignal.timeout(30000),
       });
 
       if (!response.ok) {
@@ -318,6 +418,16 @@ export const getCurrentUser = cache(async function getCurrentUser() {
     }
 
     const userData: UserResponse = await response.json();
+
+    // BUG FIX (audit 09/2026 #5): trước đây cookie "user_data" chỉ được
+    // ghi ở login(), không hề cập nhật lại sau auto-refresh — nếu
+    // full_name/email/role đổi trong lúc phiên đang chạy (admin sửa
+    // role, user tự đổi full_name qua PATCH /auth/me...), cookie này
+    // lệch với dữ liệu thật cho tới lần login() kế tiếp. Ghi lại mỗi
+    // lần getCurrentUser() lấy được dữ liệu mới nhất, không chỉ lúc
+    // login(), để cookie luôn phản ánh đúng — xem setUserDataCookie().
+    await setUserDataCookie(userData);
+
     return userData;
   } catch (error) {
     console.error('Get current user error:', error);
@@ -372,7 +482,7 @@ export async function changePassword(newPassword: string, oldPassword?: string) 
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${accessToken}`,
-        'X-API-Key': API_KEY!,
+        'X-API-Key': getApiKey(),
       },
       body: JSON.stringify({
         old_password: oldPassword || undefined,

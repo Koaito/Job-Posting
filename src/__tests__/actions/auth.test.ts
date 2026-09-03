@@ -7,8 +7,11 @@
  * là token hết hạn, tự refresh bằng token đã bị revoke -> backend coi
  * là bị đánh cắp -> thu hồi toàn bộ token), bug #2 (race condition khi
  * layout.tsx + page.tsx cùng gọi getCurrentUser() song song trong 1
- * request) và bug #3 (must_change_password bị bỏ qua hoàn toàn) không
- * bị phát hiện qua CI dù `next build`/`tsc`/jest cũ đều xanh.
+ * request), bug #3 (must_change_password bị bỏ qua hoàn toàn), bug #4
+ * (lỗi mạng khi refresh bị hiểu nhầm là refresh_token không hợp lệ,
+ * xoá cookie oan) và bug #5 (cookie user_data không đồng bộ sau
+ * auto-refresh) không bị phát hiện qua CI dù `next build`/`tsc`/jest
+ * cũ đều xanh.
  *
  * Test dưới đây mock trực tiếp response thật của backend (kể cả
  * error_code trong body 401, đúng theo api/deps.py::get_current_user
@@ -331,6 +334,87 @@ describe('Auth Server Actions', () => {
     });
   });
 
+  describe('getCurrentUser() — refreshAccessToken network error vs invalid token (bug #4)', () => {
+    /**
+     * Trước đây refreshAccessToken() trả null cho CẢ 2 trường hợp: (a)
+     * backend trả 401 rõ ràng "refresh_token không hợp lệ" và (b) lỗi
+     * mạng/timeout (catch). Gộp chung khiến 1 lần mất mạng thoáng qua
+     * cũng xoá sạch cookie, đăng xuất oan dù cả access_token lẫn
+     * refresh_token đều còn hạn dùng thật. Đối chiếu Flask gốc
+     * (backend_auth.py::_request()): requests.exceptions.RequestException
+     * (lỗi mạng) LUÔN được raise riêng biệt, tách khỏi nhánh
+     * res.status_code == 401 — 2 test dưới đây verify Next.js phục hồi
+     * đúng sự phân biệt này.
+     */
+    it('should KEEP cookies when POST /auth/refresh fails due to network error', async () => {
+      mockCookieGet.mockImplementation((name: string) => {
+        if (name === 'access_token') return { value: 'expired-access-token' };
+        if (name === 'refresh_token') return { value: 'still-valid-refresh-token' };
+        return undefined;
+      });
+
+      (global.fetch as jest.Mock)
+        .mockImplementationOnce(() => mock401('token_expired')) // GET /auth/me
+        .mockImplementationOnce(() => mockFetchNetworkError()); // POST /auth/refresh: mất mạng
+
+      const result = await getCurrentUser();
+
+      expect(result).toBeNull();
+      // Không xác định được refresh_token có hợp lệ hay không (backend
+      // chưa hề trả lời) -> KHÔNG được xoá cookie, để lần sau còn thử lại.
+      expect(mockCookieDelete).not.toHaveBeenCalled();
+    });
+
+    it('should DELETE cookies when POST /auth/refresh returns a clear 401 (refresh_token truly invalid)', async () => {
+      mockCookieGet.mockImplementation((name: string) => {
+        if (name === 'access_token') return { value: 'expired-access-token' };
+        if (name === 'refresh_token') return { value: 'actually-revoked-refresh-token' };
+        return undefined;
+      });
+
+      (global.fetch as jest.Mock)
+        .mockImplementationOnce(() => mock401('token_expired')) // GET /auth/me
+        .mockImplementationOnce(() =>
+          Promise.resolve({ ok: false, status: 401, json: async () => ({ detail: 'Refresh token không hợp lệ.' }) } as Response)
+        ); // POST /auth/refresh: backend xác nhận rõ ràng invalid
+
+      const result = await getCurrentUser();
+
+      expect(result).toBeNull();
+      // Backend ĐÃ xác nhận refresh_token không dùng được -> xoá cookie,
+      // đây là thất bại thật, không phải lỗi mạng.
+      expect(mockCookieDelete).toHaveBeenCalledWith('access_token');
+      expect(mockCookieDelete).toHaveBeenCalledWith('refresh_token');
+    });
+
+    it('should treat a non-JSON 200 response from /auth/refresh as network_error, not invalid token', async () => {
+      mockCookieGet.mockImplementation((name: string) => {
+        if (name === 'access_token') return { value: 'expired-access-token' };
+        if (name === 'refresh_token') return { value: 'some-refresh-token' };
+        return undefined;
+      });
+
+      (global.fetch as jest.Mock)
+        .mockImplementationOnce(() => mock401('token_expired')) // GET /auth/me
+        .mockImplementationOnce(() =>
+          Promise.resolve({
+            ok: true,
+            status: 200,
+            json: async () => {
+              throw new SyntaxError('Unexpected token in JSON');
+            },
+          } as unknown as Response)
+        ); // POST /auth/refresh: 200 nhưng body hỏng (vd proxy/CDN lỗi)
+
+      const result = await getCurrentUser();
+
+      expect(result).toBeNull();
+      // response.ok=true nghĩa là backend không hề nói refresh_token sai
+      // -> không được xoá cookie chỉ vì parse JSON thất bại.
+      expect(mockCookieDelete).not.toHaveBeenCalled();
+    });
+  });
+
   describe('getCurrentUser() — must_change_password propagation (bug #3)', () => {
     it('should pass through must_change_password=true from /auth/me untouched', async () => {
       mockCookieGet.mockImplementation((name: string) =>
@@ -347,6 +431,77 @@ describe('Auth Server Actions', () => {
       // trước đây field có khai trong interface nhưng không nơi nào
       // dùng, nên việc trả đúng giá trị là điều kiện cần để layout xử lý.
       expect(result?.must_change_password).toBe(true);
+    });
+  });
+
+  describe('getCurrentUser() / login() — user_data cookie luôn đồng bộ (bug #5)', () => {
+    /**
+     * Cookie "user_data" (httpOnly: false, xem setUserDataCookie() ở
+     * actions/auth.ts) trước đây CHỈ được ghi ở login(), không hề cập
+     * nhật lại trong nhánh auto-refresh của getCurrentUser() — nếu
+     * full_name/email/role đổi giữa phiên (admin sửa role, user tự đổi
+     * full_name...), cookie lệch với dữ liệu thật cho tới lần login()
+     * kế tiếp. Hiện KHÔNG có nơi nào trong FE đọc cookie này (chỉ ghi
+     * ra để dành sẵn cho client-side đọc sau này) nên đây không phải
+     * bug hiển thị đang xảy ra, nhưng test dưới đảm bảo nó không âm
+     * thầm trở thành nguồn dữ liệu cũ nếu sau này có chỗ bắt đầu đọc.
+     */
+    it('login() should write user_data cookie with correct shape (no fake is_staff field)', async () => {
+      (global.fetch as jest.Mock)
+        .mockImplementationOnce(() =>
+          mockJsonSuccess({
+            access_token: 'access-1',
+            refresh_token: 'refresh-1',
+            token_type: 'bearer',
+            must_change_password: false,
+          })
+        )
+        .mockImplementationOnce(() => mockJsonSuccess(mockUser));
+
+      await login('staff@example.com', 'password123');
+
+      const userDataCall = mockCookieSet.mock.calls.find((c) => c[0] === 'user_data');
+      expect(userDataCall).toBeDefined();
+      const stored = JSON.parse(userDataCall[1]);
+      expect(stored).toEqual({
+        ss_user_id: mockUser.ss_user_id,
+        email: mockUser.email,
+        full_name: mockUser.full_name,
+        role: mockUser.role,
+      });
+      expect(stored.is_staff).toBeUndefined();
+      // httpOnly:false có chủ đích (client-side access) — verify option
+      // này không bị mất khi gộp vào helper dùng chung.
+      const cookieOptions = userDataCall[2];
+      expect(cookieOptions.httpOnly).toBe(false);
+    });
+
+    it('getCurrentUser() should re-write user_data cookie with fresh data after a successful auto-refresh', async () => {
+      mockCookieGet.mockImplementation((name: string) => {
+        if (name === 'access_token') return { value: 'expired-access-token' };
+        if (name === 'refresh_token') return { value: 'valid-refresh-token' };
+        return undefined;
+      });
+
+      const freshUser = { ...mockUser, full_name: 'Tên Đã Được Admin Đổi' };
+
+      (global.fetch as jest.Mock)
+        .mockImplementationOnce(() => mock401('token_expired')) // GET /auth/me #1
+        .mockImplementationOnce(() =>
+          mockJsonSuccess({ access_token: 'new-access', refresh_token: 'new-refresh', token_type: 'bearer' })
+        ) // POST /auth/refresh
+        .mockImplementationOnce(() => mockJsonSuccess(freshUser)); // GET /auth/me #2 — dữ liệu MỚI
+
+      const result = await getCurrentUser();
+
+      expect(result?.full_name).toBe('Tên Đã Được Admin Đổi');
+      const userDataCall = mockCookieSet.mock.calls.find((c) => c[0] === 'user_data');
+      expect(userDataCall).toBeDefined();
+      const stored = JSON.parse(userDataCall[1]);
+      // Cookie phải phản ánh full_name MỚI, không phải giá trị cũ lúc
+      // login() — đây chính là bug đã sửa: trước đây bước này bị bỏ qua
+      // hoàn toàn trong nhánh auto-refresh.
+      expect(stored.full_name).toBe('Tên Đã Được Admin Đổi');
     });
   });
 

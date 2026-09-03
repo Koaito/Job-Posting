@@ -1,6 +1,7 @@
 'use server';
 
 import { cookies } from 'next/headers';
+import { getApiKey } from '@/lib/api/client';
 
 /**
  * Server Actions for Jobs
@@ -8,7 +9,6 @@ import { cookies } from 'next/headers';
  */
 
 const API_BASE = process.env.FASTAPI_URL;
-const API_KEY = process.env.CRAWLER_API_KEY;
 
 /**
  * Các route ghi dữ liệu (POST/PATCH /jobs) yêu cầu require_role("ss_team")
@@ -22,7 +22,7 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
   const accessToken = cookieStore.get('access_token')?.value;
 
   const headers: Record<string, string> = {
-    'X-API-Key': API_KEY!,
+    'X-API-Key': getApiKey(),
     'Content-Type': 'application/json',
   };
 
@@ -111,7 +111,7 @@ export async function getJobs(filters?: JobFilters): Promise<JobsResponse> {
 
     try {
       const response = await fetch(`${API_BASE}/jobs?${params}`, {
-        headers: { 'X-API-Key': API_KEY! },
+        headers: { 'X-API-Key': getApiKey() },
         cache: 'no-store',
         signal: controller.signal,
       });
@@ -144,7 +144,7 @@ export async function getJobById(id: string): Promise<Job | null> {
 
     try {
       const response = await fetch(`${API_BASE}/jobs/${id}`, {
-        headers: { 'X-API-Key': API_KEY! },
+        headers: { 'X-API-Key': getApiKey() },
         cache: 'no-store',
         signal: controller.signal,
       });

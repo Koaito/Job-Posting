@@ -1,12 +1,13 @@
 'use server';
 
+import { getApiKey } from '@/lib/api/client';
+
 /**
  * Server Actions for Dashboard
  * Corresponds to Flask blueprint: blueprints/dashboard.py
  */
 
 const API_BASE = process.env.FASTAPI_URL;
-const API_KEY = process.env.CRAWLER_API_KEY;
 
 interface DashboardStats {
   total_jobs: number;
@@ -26,7 +27,7 @@ interface DashboardStats {
 export async function getDashboardStats(): Promise<DashboardStats> {
   try {
     const response = await fetch(`${API_BASE}/stats`, {
-      headers: { 'X-API-Key': API_KEY! },
+      headers: { 'X-API-Key': getApiKey() },
       cache: 'no-store',
       signal: AbortSignal.timeout(30000), // 30s timeout cho cold start
     });
