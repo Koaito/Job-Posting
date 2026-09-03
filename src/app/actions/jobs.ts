@@ -265,7 +265,11 @@ export async function deleteJob(id: string): Promise<{ success: boolean; error?:
       if (!response.ok) {
         const error = await response.json().catch(() => ({ detail: response.statusText }));
         console.error('Failed to delete job:', response.status, error);
-        return { success: false, error: error.detail || 'Failed to delete job' };
+        // BUG FIX (audit 09/2026 #12): thiếu formatErrorDetail() ở đây —
+        // 3 hàm ghi dữ liệu còn lại (createJob/updateJob) đã dùng đúng,
+        // riêng deleteJob() vẫn gán thẳng error.detail (có thể là ARRAY
+        // nếu 422), để lọt "[object Object]" ra UI. Đồng bộ lại cho khớp.
+        return { success: false, error: formatErrorDetail(error.detail) || 'Failed to delete job' };
       }
 
       return { success: true };

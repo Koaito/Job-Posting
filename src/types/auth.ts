@@ -21,6 +21,12 @@ export interface User {
   created_at: string;
   /** Chỉ có ý nghĩa với role='user' (học viên) — luôn null với ss_team/admin. */
   phone?: string | null;
+  /**
+   * BUG FIX (audit 09/2026 #14): UserOut thật (schemas/auth.py) có field
+   * này — trước đây types/auth.ts thiếu, khiến trang /students không đọc
+   * được. Cùng ý nghĩa với phone: chỉ có giá trị với role='user'.
+   */
+  track?: string | null;
 }
 
 /** Khớp UserCreateByAdmin (extra="forbid") — POST /auth/users (admin-only). */

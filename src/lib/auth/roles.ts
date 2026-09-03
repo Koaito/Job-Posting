@@ -11,3 +11,14 @@
 export function isStaffRole(role: string | undefined | null): boolean {
   return role === 'admin' || role === 'ss_team';
 }
+
+/**
+ * Thêm (audit 09/2026 #13) — dùng ở trang /staff: 3 route ghi
+ * (POST /auth/users, PATCH .../role, PATCH .../active-status) đều
+ * require_admin ở backend, CHẶT hơn require_role("ss_team") của
+ * GET /auth/users — ss_team xem được danh sách nhưng không tạo/sửa
+ * được tài khoản người khác.
+ */
+export function isAdminRole(role: string | undefined | null): boolean {
+  return role === 'admin';
+}
