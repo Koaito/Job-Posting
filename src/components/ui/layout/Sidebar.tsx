@@ -136,6 +136,13 @@ export function Sidebar({ user }: SidebarProps) {
             </Link>
 
             <Link
+              href="/data-management"
+              className={`nav-item ${isActive('/data-management') ? 'active' : ''}`}
+            >
+              🗂️ Import/Export
+            </Link>
+
+            <Link
               href="/activity"
               className={`nav-item ${isActive('/activity') ? 'active' : ''}`}
             >
