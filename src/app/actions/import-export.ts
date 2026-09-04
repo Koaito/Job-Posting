@@ -7,7 +7,10 @@ import type {
   ExportPreviewResult,
   ImportPreviewResult,
   ImportPreviewRow,
+  ImportRowResolution,
   ImportConfirmSummary,
+  ImportCompanySuggestion,
+  ImportFieldError,
 } from '@/types/import-export';
 
 /**
@@ -15,13 +18,41 @@ import type {
  * Backend thật: Scrap_JD/api/routers/import_export.py — TOÀN BỘ route
  * require_role("ss_team") (ss_team + admin đều gọi được).
  *
- * SCOPE ĐỢT NÀY (MVP — xem types/import-export.ts để biết đầy đủ lý do):
- *   - Export: đủ 2 route (preview + tải file), có filter.
- *   - Import: upload -> preview -> confirm. confirmImport() tự sinh
- *     resolution "skip" cho MỌI dòng KHÔNG PHẢI no_conflict thuần tuý
- *     (còn conflict/cần resolve field/company/level) — CHƯA có UI sửa
- *     tại chỗ (verify-field/resolve-company/action lan truyền batch),
- *     những route đó CHƯA được gọi ở file này, để dành cho đợt sau.
+ * CẬP NHẬT (đợt 2, sau Phase 6.3 MVP): đã bổ sung đủ 3 route resolve
+ * tại chỗ còn thiếu ở đợt 1 — getCompanySuggestions(), verifyField(),
+ * resolveCompany() — và confirmImport() giờ NHẬN THẲNG resolutions map
+ * do UI tự xây (ImportPanel.tsx quyết định action/level_code/
+ * confirm_reactivate cho từng dòng cần xử lý tay), KHÔNG còn tự động
+ * skip mọi dòng không sạch như bản MVP trước.
+ *
+ * LƯU Ý QUAN TRỌNG (đối chiếu import_executor.py thật, KHÔNG suy đoán):
+ *   - Dòng "no_conflict" LUÔN được tạo mới bất kể resolutions gửi gì
+ *     (Requirement 6.3) — KHÔNG cần gửi entry cho dòng này.
+ *   - NGOẠI LỆ: nếu dòng "no_conflict" nhưng needs_level_resolve=true
+ *     (Job, level_code trong file không hợp lệ), backend CHỈ kiểm tra
+ *     level_code khi resolution.action != "skip" — nếu UI không gửi gì
+ *     (action mặc định "skip" phía backend), dòng vẫn được tạo mới
+ *     NHƯNG với level_code = NULL, không có bảo vệ nào chặn lại. Vì
+ *     vậy buildImportResolutions() bên dưới LUÔN gửi resolution tường
+ *     minh (action="create", level_code=<đã chọn>) cho MỌI dòng
+ *     needs_level_resolve mà UI đã chọn level — nếu staff chưa chọn,
+ *     gửi hẳn {action:"skip"} để CHẶN tạo dòng level rỗng, không để
+ *     lọt qua nhánh mặc định nguy hiểm này.
+ *   - Dòng "conflict_in_batch" BẮT BUỘC có entry tường minh (trực tiếp
+ *     hoặc do lan truyền từ dòng kia) — thiếu là backend raise 422
+ *     TRƯỚC KHI ghi gì (rollback sạch), nhưng ImportPanel vẫn tự chặn
+ *     nút "Xác nhận" ở FE nếu còn dòng conflict_in_batch chưa chọn, để
+ *     staff không mất công gửi rồi bị từ chối.
+ *   - Dòng "pending_company_resolution" CHƯA được resolve qua modal
+ *     (company_id vẫn null) mà backend không tìm thấy conflict mới với
+ *     company tự tạo theo tên trong file → VẪN bị tạo mới dù resolution
+ *     gửi action="skip" (xem nhánh `if status == "pending_company_
+ *     resolution"` trong import_executor.py — action chỉ có tác dụng
+ *     NẾU tái phát hiện conflict, không có tác dụng "skip tuyệt đối"
+ *     như các status khác). Do quirk này, ImportPanel CHẶN xác nhận
+ *     nếu còn dòng pending_company_resolution chưa resolve qua modal —
+ *     KHÔNG cho "bỏ qua" dòng này bằng resolution, staff phải chọn
+ *     công ty (hoặc xác nhận tạo mới) qua route resolve-company trước.
  */
 
 const API_BASE = process.env.FASTAPI_URL;
@@ -288,47 +319,156 @@ export async function getImportPreview(
 }
 
 // ------------------------------------------------------------------
-// Import — bước 2: confirm (MVP: auto-skip mọi dòng cần xử lý tay)
+// Import — bước 1b: resolve tại chỗ (verify-field / resolve-company)
 // ------------------------------------------------------------------
 
 /**
- * MVP — CHƯA có UI sửa tại chỗ, nên với mọi dòng không phải "sạch hoàn
- * toàn" (no_conflict, không needs_field_fix, không needs_level_resolve),
- * tự gửi resolution {action:"skip"} tường minh:
- *   - An toàn cho conflict/conflict_inactive/pending_company_resolution/
- *     needs_field_fix/needs_level_resolve (Requirement 5.6: backend vốn
- *     đã mặc định Skip cho conflict thường nếu thiếu resolution, gửi
- *     tường minh ở đây cho NHẤT QUÁN, dễ đọc log, và đúng luôn cho các
- *     case backend KHÔNG tự mặc định).
- *   - BẮT BUỘC cho conflict_in_batch — backend raise lỗi 422 nếu thiếu
- *     resolution tường minh cho dòng này (xem import_executor.py), nên
- *     phải luôn gửi, không được bỏ sót.
- * Dòng no_conflict thuần tuý KHÔNG gửi gì — backend tự tạo mới
- * (Requirement 6.3), đúng luồng "confirm các dòng OK" đã chọn.
+ * Gợi ý công ty tương tự cho 1 dòng cụ thể (fuzzy match theo tên) —
+ * dòng company_resolution.suggestions đã có sẵn từ lúc build preview,
+ * hàm này chỉ dùng khi staff muốn LÀM MỚI lại gợi ý cho riêng 1 dòng
+ * (vd sau khi có công ty mới được tạo ở tab khác) mà không cần tải lại
+ * nguyên preview.
  */
-function buildSkipResolutionsForUnresolvedRows(
-  rows: ImportPreviewRow[]
-): Record<string, { action: 'skip' }> {
-  const resolutions: Record<string, { action: 'skip' }> = {};
-  for (const row of rows) {
-    const isClean =
-      row.conflict_status === 'no_conflict' && !row.needs_field_fix && !row.needs_level_resolve;
-    if (!isClean) {
-      resolutions[String(row.row_index)] = { action: 'skip' };
+export async function getCompanySuggestions(
+  entityType: ImportExportEntityType,
+  previewId: string,
+  rowIndex: number
+): Promise<{ success: boolean; suggestions?: ImportCompanySuggestion[]; error?: string }> {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
+
+    try {
+      const response = await fetch(
+        `${API_BASE}/import/${entityType}/preview/${previewId}/company-suggestions?row_index=${rowIndex}`,
+        { headers: await getAuthHeaders(), cache: 'no-store', signal: controller.signal }
+      );
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ detail: response.statusText }));
+        const { message } = extractErrorInfo(error.detail);
+        return { success: false, error: message || 'Không thể lấy gợi ý công ty' };
+      }
+      const data = await response.json();
+      return { success: true, suggestions: data.suggestions };
+    } finally {
+      clearTimeout(timeoutId);
     }
+  } catch (error) {
+    console.error('Error fetching company suggestions:', error);
+    return { success: false, error: 'Network error' };
   }
-  return resolutions;
 }
+
+/**
+ * Staff sửa 1 ô lỗi trên bảng preview, bấm "Xác nhận" cạnh ô đó —
+ * backend re-validate NGAY bằng đúng hàm dùng lúc build preview, lưu
+ * thẳng vào preview đã lưu server-side nếu hợp lệ. field_error != null
+ * nghĩa là VẪN lỗi (chưa lưu gì, hiện lỗi ngay tại ô) — row trả về khi
+ * đó là undefined, component tự giữ nguyên state cũ.
+ */
+export async function verifyField(
+  entityType: ImportExportEntityType,
+  previewId: string,
+  rowIndex: number,
+  fieldName: string,
+  value: string
+): Promise<{
+  success: boolean;
+  row?: ImportPreviewRow;
+  fieldError?: ImportFieldError | null;
+  error?: string;
+}> {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
+
+    try {
+      const response = await fetch(
+        `${API_BASE}/import/${entityType}/preview/${previewId}/rows/${rowIndex}/verify-field`,
+        {
+          method: 'POST',
+          headers: await getAuthHeaders(),
+          body: JSON.stringify({ field_name: fieldName, value }),
+          signal: controller.signal,
+        }
+      );
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ detail: response.statusText }));
+        const { message } = extractErrorInfo(error.detail);
+        return { success: false, error: message || 'Không thể xác nhận ô đã sửa' };
+      }
+      const data = await response.json();
+      return { success: true, row: data.row, fieldError: data.field_error ?? null };
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  } catch (error) {
+    console.error('Error verifying field:', error);
+    return { success: false, error: 'Network error' };
+  }
+}
+
+/**
+ * Staff chọn 1 công ty (hoặc để trống = "Tạo công ty mới" theo tên
+ * trong file) cho dòng pending_company_resolution — backend re-check
+ * conflict NGAY với company_id thật vừa chọn, trả lại TOÀN BỘ entry
+ * dòng đó sau cập nhật (conflict_status có thể đổi sang no_conflict/
+ * conflict/conflict_inactive tuỳ kết quả re-check).
+ */
+export async function resolveCompany(
+  entityType: ImportExportEntityType,
+  previewId: string,
+  rowIndex: number,
+  companyId: string | null
+): Promise<{ success: boolean; row?: ImportPreviewRow; error?: string }> {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
+
+    try {
+      const response = await fetch(
+        `${API_BASE}/import/${entityType}/preview/${previewId}/rows/${rowIndex}/resolve-company`,
+        {
+          method: 'POST',
+          headers: await getAuthHeaders(),
+          body: JSON.stringify({ company_id: companyId }),
+          signal: controller.signal,
+        }
+      );
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ detail: response.statusText }));
+        const { message } = extractErrorInfo(error.detail);
+        return { success: false, error: message || 'Không thể gán công ty cho dòng này' };
+      }
+      const data = await response.json();
+      return { success: true, row: data.row };
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  } catch (error) {
+    console.error('Error resolving company:', error);
+    return { success: false, error: 'Network error' };
+  }
+}
+
+// ------------------------------------------------------------------
+// Import — bước 2: confirm — resolutions do UI tự xây theo lựa chọn
+// tường minh của staff (xem buildImportResolutions() ở ImportPanel.tsx)
+// ------------------------------------------------------------------
 
 export async function confirmImport(
   entityType: ImportExportEntityType,
   previewId: string,
-  rows: ImportPreviewRow[],
+  resolutions: Record<string, ImportRowResolution>,
   note: string
 ): Promise<{ success: boolean; result?: ImportConfirmSummary; error?: string }> {
   try {
-    const resolutions = buildSkipResolutionsForUnresolvedRows(rows);
-
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), HEAVY_TIMEOUT_MS);
 
