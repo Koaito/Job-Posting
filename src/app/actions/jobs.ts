@@ -11,6 +11,7 @@ import { getApiKey } from '@/lib/api/client';
 // entity). Sửa: dùng chung types/jobs.ts, xoá hẳn interface Job/JobFilters
 // tự khai ở đây — không còn 2 nguồn sự thật nữa.
 import type { JobDetail, JobFilters, JobCreatePayload, JobUpdatePayload, PaginatedJobs } from '@/types/jobs';
+import type { JobApplicant, JobSaver } from '@/types/auth';
 
 /**
  * Server Actions for Jobs
@@ -288,5 +289,67 @@ export async function deleteJob(id: string): Promise<{ success: boolean; error?:
   } catch (error) {
     console.error('Error deleting job:', error);
     return { success: false, error: 'Network error' };
+  }
+}
+
+/**
+ * Ai đã ứng tuyển job này — CHỈ staff (role ss_team+, backend
+ * require_role("ss_team")). Khác GET /me/applications (học viên chỉ
+ * thấy đơn của chính mình): route này trả full_name/email/phone người
+ * ứng tuyển. Thêm 09/2026 (Phase 3.6).
+ */
+export async function getJobApplicants(jobId: string): Promise<JobApplicant[]> {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+    try {
+      const response = await fetch(`${API_BASE}/jobs/${jobId}/applications`, {
+        headers: await getAuthHeaders(),
+        cache: 'no-store',
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        console.error('Failed to fetch job applicants:', response.status, response.statusText);
+        return [];
+      }
+      return await response.json();
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  } catch (error) {
+    console.error('Error fetching job applicants:', error);
+    return [];
+  }
+}
+
+/**
+ * Ai đã lưu job này — CHỈ staff (role ss_team+). Mirror getJobApplicants()
+ * ở trên nhưng cho chiều "lưu" thay vì "ứng tuyển". Thêm 09/2026 (Phase 3.6).
+ */
+export async function getJobSavers(jobId: string): Promise<JobSaver[]> {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+    try {
+      const response = await fetch(`${API_BASE}/jobs/${jobId}/saved-jobs`, {
+        headers: await getAuthHeaders(),
+        cache: 'no-store',
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        console.error('Failed to fetch job savers:', response.status, response.statusText);
+        return [];
+      }
+      return await response.json();
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  } catch (error) {
+    console.error('Error fetching job savers:', error);
+    return [];
   }
 }

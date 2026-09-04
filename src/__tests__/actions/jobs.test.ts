@@ -11,8 +11,8 @@
  * hành vi sai nữa.
  */
 
-import { getJobs, getJobById, createJob, updateJob, deleteJob } from '@/app/actions/jobs';
-import { mockJob, mockJobClosed, mockJobsResponse, mockFetchSuccess, mockFetchError, mockFetchNetworkError } from '../fixtures';
+import { getJobs, getJobById, createJob, updateJob, deleteJob, getJobApplicants, getJobSavers } from '@/app/actions/jobs';
+import { mockJob, mockJobClosed, mockJobsResponse, mockJobApplicant, mockJobSaver, mockFetchSuccess, mockFetchError, mockFetchNetworkError } from '../fixtures';
 
 // Mock global fetch
 global.fetch = jest.fn();
@@ -320,6 +320,45 @@ describe('Jobs Server Actions', () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toBeDefined();
+    });
+  });
+
+  // Thêm 09/2026 (Phase 3.6) — staff xem ai đã ứng tuyển/lưu 1 job cụ thể.
+  describe('getJobApplicants()', () => {
+    it('should GET /jobs/{job_id}/applications', async () => {
+      (global.fetch as jest.Mock).mockImplementation(() => mockFetchSuccess([mockJobApplicant]));
+
+      const result = await getJobApplicants('job-1');
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/jobs/job-1/applications'),
+        expect.any(Object)
+      );
+      expect(result[0].full_name).toBe('Nguyễn Văn A');
+    });
+
+    it('should return empty array on error', async () => {
+      (global.fetch as jest.Mock).mockImplementation(() => mockFetchError(403, 'Forbidden'));
+      expect(await getJobApplicants('job-1')).toEqual([]);
+    });
+  });
+
+  describe('getJobSavers()', () => {
+    it('should GET /jobs/{job_id}/saved-jobs', async () => {
+      (global.fetch as jest.Mock).mockImplementation(() => mockFetchSuccess([mockJobSaver]));
+
+      const result = await getJobSavers('job-1');
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/jobs/job-1/saved-jobs'),
+        expect.any(Object)
+      );
+      expect(result[0].full_name).toBe('Nguyễn Văn A');
+    });
+
+    it('should return empty array on network error', async () => {
+      (global.fetch as jest.Mock).mockImplementation(() => mockFetchNetworkError());
+      expect(await getJobSavers('job-1')).toEqual([]);
     });
   });
 });

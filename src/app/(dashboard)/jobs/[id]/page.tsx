@@ -1,7 +1,12 @@
-import { getJobById } from '@/app/actions/jobs';
+import { getJobById, getJobApplicants, getJobSavers } from '@/app/actions/jobs';
+import { getCurrentUser } from '@/app/actions/auth';
+import { getMyApplications, getMySavedJobs } from '@/app/actions/me';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import DeleteJobButton from '@/components/features/DeleteJobButton';
+import JobApplyActions from '@/components/features/JobApplyActions';
+import JobApplicantsPanel from '@/components/features/JobApplicantsPanel';
+import { isStaffRole } from '@/lib/auth/roles';
 
 /**
  * Job Detail Page
@@ -22,6 +27,23 @@ export default async function JobDetailPage({
   if (!job) {
     notFound();
   }
+
+  // Thêm 09/2026 (Phase 3.6) — nhánh học viên (nút Ứng tuyển/Lưu job) vs
+  // staff (tab "Người đã ứng tuyển/Đã lưu") tách theo role. getCurrentUser()
+  // dùng react.cache() nên gọi lại ở đây không tốn thêm network call nếu
+  // layout.tsx đã gọi trong cùng request.
+  const user = await getCurrentUser();
+  const isStaff = isStaffRole(user?.role);
+
+  const [myApplications, mySavedJobs] = isStaff
+    ? [[], []]
+    : await Promise.all([getMyApplications(), getMySavedJobs()]);
+  const alreadyApplied = myApplications.some((a) => a.job_id === job.job_id);
+  const alreadySaved = mySavedJobs.some((s) => s.job_id === job.job_id);
+
+  const [applicants, savers] = isStaff
+    ? await Promise.all([getJobApplicants(job.job_id), getJobSavers(job.job_id)])
+    : [[], []];
 
   return (
     <div className="page-container">
@@ -143,6 +165,9 @@ export default async function JobDetailPage({
               </div>
             </section>
           )}
+
+          {/* Thêm 09/2026 (Phase 3.6) — chỉ staff mới thấy ai đã ứng tuyển/lưu job này */}
+          {isStaff && <JobApplicantsPanel applicants={applicants} savers={savers} />}
         </div>
 
         {/* Sidebar */}
@@ -172,15 +197,29 @@ export default async function JobDetailPage({
             </dl>
           </section>
 
-          <section className="card">
-            <h4>Hành động</h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <Link href={`/jobs/${job.job_id}/edit`} className="btn btn-block">
-                ✏️ Sửa Job
-              </Link>
-              <DeleteJobButton jobId={job.job_id} jobTitle={job.job_title} />
-            </div>
-          </section>
+          {isStaff ? (
+            <section className="card">
+              <h4>Hành động</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <Link href={`/jobs/${job.job_id}/edit`} className="btn btn-block">
+                  ✏️ Sửa Job
+                </Link>
+                <DeleteJobButton jobId={job.job_id} jobTitle={job.job_title} />
+              </div>
+            </section>
+          ) : (
+            // Thêm 09/2026 (Phase 3.6) — học viên (role 'user') thấy nút
+            // Ứng tuyển/Lưu job thay vì nút Sửa/Xoá dành cho staff.
+            <section className="card">
+              <h4>Hành động</h4>
+              <JobApplyActions
+                jobId={job.job_id}
+                jobStatus={job.job_status}
+                initiallyApplied={alreadyApplied}
+                initiallySaved={alreadySaved}
+              />
+            </section>
+          )}
         </aside>
       </div>
     </div>

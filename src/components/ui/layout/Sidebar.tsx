@@ -88,6 +88,27 @@ export function Sidebar({ user }: SidebarProps) {
           👥 Liên hệ
         </Link>
 
+        {/* Thêm 09/2026 (Phase 3.6) — chỉ học viên (role 'user') thấy 2 link
+            này, staff/admin dùng JobApplicantsPanel ngay trên trang chi tiết
+            job để xem ai đã ứng tuyển/lưu, không cần trang riêng cho họ. */}
+        {!isStaff && (
+          <>
+            <Link
+              href="/my-applications"
+              className={`nav-item ${isActive('/my-applications') ? 'active' : ''}`}
+            >
+              📄 Đơn ứng tuyển của tôi
+            </Link>
+
+            <Link
+              href="/saved-jobs"
+              className={`nav-item ${isActive('/saved-jobs') ? 'active' : ''}`}
+            >
+              ⭐ Job đã lưu
+            </Link>
+          </>
+        )}
+
         {/* Cập nhật 09/2026: /students, /staff, /crawl, /activity đều đã
             có page.tsx thật — không còn route nào 404 trong nhóm này.
             /contacts (link riêng phía trên) cũng đã dựng cùng đợt. */}

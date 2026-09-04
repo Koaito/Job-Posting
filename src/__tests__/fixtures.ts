@@ -309,6 +309,43 @@ export const mockSavedJob = {
   company_name: 'ACME Corp',
 };
 
+/** Khớp JobApplicationOut — GET /me/applications. Thêm 09/2026 (Phase 3.6). */
+export const mockApplication = {
+  application_id: 'app-1',
+  ss_user_id: 'user-2',
+  job_id: 'job-1',
+  note: null,
+  applied_at: '2026-08-15T00:00:00Z',
+  job_title: 'Backend Developer',
+  job_status: 'OPEN',
+  company_name: 'ACME Corp',
+  cv_url: 'cv/user-2/app-1.pdf',
+};
+
+/** Khớp JobApplicantOut — GET /jobs/{job_id}/applications (staff). Thêm 09/2026 (Phase 3.6). */
+export const mockJobApplicant = {
+  application_id: 'app-1',
+  ss_user_id: 'user-2',
+  job_id: 'job-1',
+  note: 'Rất mong được phỏng vấn',
+  applied_at: '2026-08-15T00:00:00Z',
+  full_name: 'Nguyễn Văn A',
+  email: 'a.nguyen@example.com',
+  phone: '0901234567',
+  cv_url: 'cv/user-2/app-1.pdf',
+};
+
+/** Khớp JobSaverOut — GET /jobs/{job_id}/saved-jobs (staff). Thêm 09/2026 (Phase 3.6). */
+export const mockJobSaver = {
+  saved_job_id: 'saved-1',
+  ss_user_id: 'user-2',
+  job_id: 'job-1',
+  created_at: '2026-08-10T00:00:00Z',
+  full_name: 'Nguyễn Văn A',
+  email: 'a.nguyen@example.com',
+  phone: '0901234567',
+};
+
 export const mockDashboardStatsResponse = {
   total_jobs: 120,
   total_companies: 40,

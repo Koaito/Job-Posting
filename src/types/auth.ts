@@ -75,3 +75,37 @@ export interface SavedJob {
   job_status?: string | null;
   company_name: string;
 }
+
+/**
+ * Khớp JobApplicantOut — GET /jobs/{job_id}/applications (staff xem ai đã
+ * ứng tuyển 1 job cụ thể). Khác JobApplication ở trên (dùng cho
+ * GET /me/applications, học viên xem đơn của chính mình): ở đây cần
+ * full_name/email/phone người ứng tuyển thay vì thông tin job (staff đã
+ * biết job nào rồi). Thêm 09/2026 (Phase 3.6).
+ */
+export interface JobApplicant {
+  application_id: string;
+  ss_user_id: string;
+  job_id: string;
+  note?: string | null;
+  applied_at: string;
+  full_name: string;
+  email: string;
+  phone?: string | null;
+  cv_url?: string | null;
+}
+
+/**
+ * Khớp JobSaverOut — GET /jobs/{job_id}/saved-jobs (staff xem ai đã lưu
+ * 1 job cụ thể). Mirror JobApplicant ở trên, chỉ khác không có 'note'
+ * (saved_jobs không có cột note). Thêm 09/2026 (Phase 3.6).
+ */
+export interface JobSaver {
+  saved_job_id: string;
+  ss_user_id: string;
+  job_id: string;
+  created_at: string;
+  full_name: string;
+  email: string;
+  phone?: string | null;
+}
