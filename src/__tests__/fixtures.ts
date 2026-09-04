@@ -394,3 +394,137 @@ export function mockFetchStatus(status: number, data?: unknown) {
     json: async () => data ?? {},
   } as Response);
 }
+
+/**
+ * Mock riêng cho response tải file (exportEntity()) — cần headers.get()
+ * (content-type, content-disposition) + arrayBuffer(), 2 method mà
+ * mockFetchSuccess/mockFetchStatus KHÔNG cung cấp (chỉ có json()).
+ */
+export function mockFetchFile(opts: {
+  contentType?: string;
+  filename?: string;
+  bytes?: string; // nội dung giả, mặc định 1 chuỗi ngắn
+}) {
+  const bytes = opts.bytes ?? 'fake-file-content';
+  return Promise.resolve({
+    ok: true,
+    status: 200,
+    headers: {
+      get: (name: string) => {
+        if (name === 'content-type') return opts.contentType ?? null;
+        if (name === 'content-disposition')
+          return opts.filename ? `attachment; filename="${opts.filename}"` : null;
+        return null;
+      },
+    },
+    arrayBuffer: async () => Buffer.from(bytes),
+  } as unknown as Response);
+}
+
+// ------------------------------------------------------------------
+// Import/Export fixtures (Phase 6.3) — khớp types/import-export.ts,
+// bám đúng shape ImportUploadResponse/ExportPreviewResponse thật
+// (api/schemas/import_export.py), KHÔNG tự bịa field.
+// ------------------------------------------------------------------
+
+export const mockExportPreviewResult = {
+  entity_type: 'job' as const,
+  total_matching: 42,
+  will_export: 42,
+  columns: ['job_id', 'job_title', 'company_name', 'job_status'],
+  sample_rows: [
+    { job_id: 'job-1', job_title: 'Backend Developer', company_name: 'ACME Corp', job_status: 'OPEN' },
+  ],
+};
+
+export const mockImportRowNoConflict = {
+  row_index: 0,
+  data: { job_title: 'Backend Developer', company_id: 'company-1', level_code: 'Middle' },
+  conflict_status: 'no_conflict' as const,
+  existing_record: null,
+  duplicate_match: null,
+  duplicate_in_batch: null,
+  needs_field_fix: false,
+  field_errors: {},
+};
+
+/** Dòng "no_conflict" NHƯNG level_code trong file không hợp lệ — case
+ * nguy hiểm #1 mô tả trong docstring import-export.ts (backend chỉ check
+ * level_code khi action != "skip", còn no_conflict thì LUÔN tạo). */
+export const mockImportRowNeedsLevelResolve = {
+  row_index: 1,
+  data: { job_title: 'Frontend Developer', company_id: 'company-1', level_code: null },
+  conflict_status: 'no_conflict' as const,
+  existing_record: null,
+  duplicate_match: null,
+  duplicate_in_batch: null,
+  needs_field_fix: false,
+  field_errors: {},
+  needs_level_resolve: true,
+};
+
+/** Case nguy hiểm #2 — company_id chưa resolve (null), action "skip" gửi
+ * lên KHÔNG đảm bảo bị bỏ qua nếu backend không tái phát hiện conflict. */
+export const mockImportRowPendingCompany = {
+  row_index: 2,
+  data: { job_title: 'DevOps Engineer', company_id: null },
+  conflict_status: 'pending_company_resolution' as const,
+  existing_record: null,
+  duplicate_match: null,
+  duplicate_in_batch: null,
+  needs_field_fix: false,
+  field_errors: {},
+  company_resolution: {
+    status: 'needs_resolution' as const,
+    company_id: null,
+    company_is_active: null,
+    suggestions: [
+      { company_id: 'company-9', company_name: 'ACME Corporation', tax_id: '0123456789', is_active: true, similarity: 0.92 },
+    ],
+  },
+};
+
+export const mockImportRowConflictInBatch = {
+  row_index: 3,
+  data: { job_title: 'QA Engineer', company_id: 'company-1' },
+  conflict_status: 'conflict_in_batch' as const,
+  existing_record: null,
+  duplicate_match: null,
+  duplicate_in_batch: { match_score: 0.95, matched_fields: ['job_title', 'company_id'], other_row_index: 4 },
+  needs_field_fix: false,
+  field_errors: {},
+};
+
+export const mockImportPreviewResult = {
+  preview_id: 'preview-abc-123',
+  entity_type: 'job' as const,
+  summary: {
+    total_rows: 4,
+    new_records: 1,
+    conflicts: 0,
+    conflicts_inactive: 0,
+    pending_company_resolution: 1,
+    conflicts_in_batch: 1,
+    pending_level_resolution: 1,
+    pending_field_fix: 0,
+    id_field: 'job_id',
+  },
+  rows: [
+    mockImportRowNoConflict,
+    mockImportRowNeedsLevelResolve,
+    mockImportRowPendingCompany,
+    mockImportRowConflictInBatch,
+  ],
+};
+
+export const mockImportConfirmSummary = {
+  created: 2,
+  updated: 0,
+  skipped: 2,
+};
+
+export const mockCompanySuggestions = [
+  { company_id: 'company-9', company_name: 'ACME Corporation', tax_id: '0123456789', is_active: true, similarity: 0.92 },
+  { company_id: 'company-10', company_name: 'ACME Corp Ltd', tax_id: null, is_active: true, similarity: 0.81 },
+];
+
