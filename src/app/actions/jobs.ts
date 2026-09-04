@@ -1,7 +1,6 @@
 'use server';
 
-import { cookies } from 'next/headers';
-import { getApiKey } from '@/lib/api/client';
+import { getApiKey, getAuthHeaders } from '@/lib/api/client';
 // BUG FIX (audit 09/2026 #11 — dọn "type debt"): file này trước đây tự
 // khai lại 1 interface Job RIÊNG, thiếu hẳn work_type/salary_period/
 // source_url/source_name so với JobOut thật, và job_status khai bắt buộc
@@ -59,22 +58,6 @@ function formatErrorDetail(detail: unknown): string {
  * đã dùng đúng ở actions/auth.ts. Thiếu header này sẽ luôn nhận
  * 401 missing_auth_header dù X-API-Key hợp lệ.
  */
-async function getAuthHeaders(): Promise<Record<string, string>> {
-  const cookieStore = await cookies();
-  const accessToken = cookieStore.get('access_token')?.value;
-
-  const headers: Record<string, string> = {
-    'X-API-Key': getApiKey(),
-    'Content-Type': 'application/json',
-  };
-
-  if (accessToken) {
-    headers['Authorization'] = `Bearer ${accessToken}`;
-  }
-
-  return headers;
-}
-
 /**
  * BUG FIX (audit 09/2026): field trước đây (matching_industry/level_id/
  * province_id/search/company_id) KHÔNG khớp query param thật của

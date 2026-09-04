@@ -1,7 +1,6 @@
 'use server';
 
-import { cookies } from 'next/headers';
-import { getApiKey } from '@/lib/api/client';
+import { getApiKey, getAuthHeaders } from '@/lib/api/client';
 import type {
   CrawlTriggerPayload,
   CrawlAccepted,
@@ -36,22 +35,6 @@ import type {
  */
 
 const API_BASE = process.env.FASTAPI_URL;
-
-async function getAuthHeaders(): Promise<Record<string, string>> {
-  const cookieStore = await cookies();
-  const accessToken = cookieStore.get('access_token')?.value;
-
-  const headers: Record<string, string> = {
-    'X-API-Key': getApiKey(),
-    'Content-Type': 'application/json',
-  };
-
-  if (accessToken) {
-    headers['Authorization'] = `Bearer ${accessToken}`;
-  }
-
-  return headers;
-}
 
 function formatErrorDetail(detail: unknown): string {
   if (typeof detail === 'string') return detail;

@@ -4,6 +4,8 @@
  * NEVER expose API keys to browser!
  */
 
+import { cookies } from 'next/headers';
+
 /**
  * BUG FIX (audit 09/2026 #8): "process.env.CRAWLER_API_KEY!" (non-null
  * assertion) lặp lại ở 11 chỗ rải rác trong actions/auth.ts,
@@ -38,6 +40,57 @@ export function getApiKey(): string {
   }
 
   return apiKey;
+}
+
+/**
+ * REFACTOR (09/2026): gom về 1 chỗ dùng chung — trước đây hàm này bị
+ * copy-paste y hệt ở 7 file khác nhau trong app/actions/ (audit.ts,
+ * companies.ts, contacts.ts, crawl.ts, jobs.ts, me.ts, messages.ts).
+ * Mỗi module mới (import-export, staff-activity...) trước đây sẽ phải
+ * copy thêm 1 lần nữa — nay chỉ cần import từ đây.
+ *
+ * Trả về headers chuẩn cho request JSON: X-API-Key + Content-Type +
+ * Authorization (nếu có access_token trong cookie).
+ */
+export async function getAuthHeaders(): Promise<Record<string, string>> {
+  const cookieStore = await cookies();
+  const accessToken = cookieStore.get('access_token')?.value;
+
+  const headers: Record<string, string> = {
+    'X-API-Key': getApiKey(),
+    'Content-Type': 'application/json',
+  };
+
+  if (accessToken) {
+    headers['Authorization'] = `Bearer ${accessToken}`;
+  }
+
+  return headers;
+}
+
+/**
+ * Biến thể cho request multipart/form-data (upload file, vd POST
+ * /me/applications) — KHÔNG set Content-Type thủ công. fetch() tự sinh
+ * header "Content-Type: multipart/form-data; boundary=..." đúng khi body
+ * là FormData — set thủ công "multipart/form-data" (thiếu boundary) sẽ
+ * khiến backend không parse được form, luôn trả 422.
+ *
+ * Trước đây chỉ có ở actions/me.ts (getAuthHeadersForUpload), nay dùng
+ * chung được cho mọi module có upload (vd Import/Export CSV sắp tới).
+ */
+export async function getAuthHeadersForUpload(): Promise<Record<string, string>> {
+  const cookieStore = await cookies();
+  const accessToken = cookieStore.get('access_token')?.value;
+
+  const headers: Record<string, string> = {
+    'X-API-Key': getApiKey(),
+  };
+
+  if (accessToken) {
+    headers['Authorization'] = `Bearer ${accessToken}`;
+  }
+
+  return headers;
 }
 
 export class ApiError extends Error {

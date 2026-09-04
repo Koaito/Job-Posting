@@ -1,7 +1,6 @@
 'use server';
 
-import { cookies } from 'next/headers';
-import { getApiKey } from '@/lib/api/client';
+import { getAuthHeaders, getAuthHeadersForUpload } from '@/lib/api/client';
 import type { JobApplication, SavedJob } from '@/types/auth';
 
 /**
@@ -21,44 +20,6 @@ import type { JobApplication, SavedJob } from '@/types/auth';
  */
 
 const API_BASE = process.env.FASTAPI_URL;
-
-async function getAuthHeaders(): Promise<Record<string, string>> {
-  const cookieStore = await cookies();
-  const accessToken = cookieStore.get('access_token')?.value;
-
-  const headers: Record<string, string> = {
-    'X-API-Key': getApiKey(),
-    'Content-Type': 'application/json',
-  };
-
-  if (accessToken) {
-    headers['Authorization'] = `Bearer ${accessToken}`;
-  }
-
-  return headers;
-}
-
-/**
- * Headers cho request multipart/form-data (POST /me/applications) —
- * KHÔNG set Content-Type thủ công. fetch() tự sinh header
- * "Content-Type: multipart/form-data; boundary=..." đúng khi body là
- * FormData — set thủ công "multipart/form-data" (thiếu boundary) sẽ
- * khiến backend không parse được form, luôn trả 422.
- */
-async function getAuthHeadersForUpload(): Promise<Record<string, string>> {
-  const cookieStore = await cookies();
-  const accessToken = cookieStore.get('access_token')?.value;
-
-  const headers: Record<string, string> = {
-    'X-API-Key': getApiKey(),
-  };
-
-  if (accessToken) {
-    headers['Authorization'] = `Bearer ${accessToken}`;
-  }
-
-  return headers;
-}
 
 /**
  * Lỗi 422 (Pydantic validate) trả detail dạng ARRAY of objects, khác lỗi
