@@ -418,7 +418,17 @@ export const getCurrentUser = cache(async function getCurrentUser() {
       }
     }
 
-    const userData: UserResponse = await response.json();
+    // BUG FIX (09/2026): trước đây khai `userData: UserResponse` — type
+    // nội bộ chỉ dùng để GHI cookie (cố ý nhỏ gọn, không lưu
+    // phone/track/created_at/last_login_at vào cookie). Nhưng response
+    // JSON thật của GET /auth/me là UserOut ĐẦY ĐỦ (schemas/auth.py),
+    // ép kiểu UserResponse ở đây làm getCurrentUser() trả về thiếu field
+    // cho MỌI page gọi hàm này (vd created_at/last_login_at cần cho
+    // /profile) dù dữ liệu thật đã có sẵn trong response, chỉ là bị cắt
+    // bớt bởi type annotation sai chỗ. Đổi sang User (đầy đủ) cho biến
+    // trả về, chỉ thu gọn xuống UserResponse RIÊNG lúc gọi
+    // setUserDataCookie() bên dưới.
+    const userData: User = await response.json();
 
     // BUG FIX (audit 09/2026 #5): trước đây cookie "user_data" chỉ được
     // ghi ở login(), không hề cập nhật lại sau auto-refresh — nếu
@@ -443,6 +453,78 @@ export const getCurrentUser = cache(async function getCurrentUser() {
 export async function isAuthenticated(): Promise<boolean> {
   const cookieStore = await cookies();
   return !!cookieStore.get('access_token')?.value;
+}
+
+/**
+ * User TỰ sửa hồ sơ của CHÍNH MÌNH (full_name/phone/track) — PATCH
+ * /auth/me (thêm 08/2026, xem UserProfileUpdate/update_me() bên
+ * backend). Trước đây trang /profile chỉ là placeholder "🚧 đang phát
+ * triển", chưa từng gọi route này dù backend đã có sẵn từ lâu.
+ *
+ * KHÔNG sửa được email/role/is_active/password qua hàm này (đổi mật
+ * khẩu vẫn qua changePassword() riêng, đổi role/is_active chỉ admin
+ * làm được qua updateUserRole()/updateUserActiveStatus() bên dưới) —
+ * đúng theo UserProfileUpdate (extra="forbid").
+ *
+ * phone/track: backend TỰ ép về None cho tài khoản staff (role !=
+ * 'user') trước khi ghi DB bất kể gửi gì lên — hàm này vẫn nhận đủ 2
+ * field, không tự lọc theo role phía FE, để đúng 1 nguồn sự thật duy
+ * nhất (backend), khớp comment update_me() thật.
+ *
+ * Rate limit 10/hour theo user_id (cùng mức changePassword() bên
+ * dưới) — nếu bị 429 sẽ rơi vào formatErrorDetail dạng string thường,
+ * không phải mảng 422 như validate field.
+ */
+export async function updateProfile(data: {
+  full_name: string;
+  phone?: string;
+  track?: string;
+}): Promise<{ success: boolean; user?: User; error?: string }> {
+  try {
+    const cookieStore = await cookies();
+    const accessToken = cookieStore.get('access_token')?.value;
+
+    if (!accessToken) {
+      return { success: false, error: 'Chưa đăng nhập.' };
+    }
+
+    const response = await fetch(`${API_BASE}/auth/me`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+        'X-API-Key': getApiKey(),
+      },
+      body: JSON.stringify({
+        full_name: data.full_name,
+        phone: data.phone ?? '',
+        track: data.track ?? '',
+      }),
+      cache: 'no-store',
+      signal: AbortSignal.timeout(30000),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: response.statusText }));
+      return {
+        success: false,
+        error: error.detail != null ? formatUserErrorDetail(error.detail) : 'Không thể cập nhật hồ sơ',
+      };
+    }
+
+    const user: User = await response.json();
+
+    // Đồng bộ lại cookie "user_data" ngay — sidebar/layout đọc cookie
+    // này để hiển thị full_name, không đợi tới lần getCurrentUser() kế
+    // tiếp mới cập nhật (tránh hiện tên cũ dù đã lưu thành công, cùng
+    // lý do đã sửa ở setUserDataCookie() trong getCurrentUser()).
+    await setUserDataCookie(user);
+
+    return { success: true, user };
+  } catch (error) {
+    console.error('Error updating profile:', error);
+    return { success: false, error: 'Đã xảy ra lỗi. Vui lòng thử lại.' };
+  }
 }
 
 /**
