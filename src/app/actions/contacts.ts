@@ -10,7 +10,6 @@ import type {
   ContactUpdatePayload,
   ContactAssignPayload,
   ContactDeletePayload,
-  PaginatedContacts,
 } from '@/types/contacts';
 
 /**
@@ -48,6 +47,16 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
   return headers;
 }
 
+/**
+ * BUG FIX (09/2026): trước đây mọi chỗ gọi hàm này đều theo pattern
+ * `formatErrorDetail(error.detail) || 'fallback cụ thể'`. Vì hàm này
+ * luôn trả về string truthy (kể cả khi detail là undefined, trả về
+ * 'Có lỗi xảy ra'), nhánh `|| fallback` không bao giờ chạy được — các
+ * thông báo lỗi cụ thể theo status code (409/403/404...) bị nuốt mất,
+ * luôn hiện "Có lỗi xảy ra" chung chung dù backend không trả detail.
+ * Sửa: mọi nơi gọi hàm này giờ tự kiểm tra `error.detail != null`
+ * trước, chỉ gọi formatErrorDetail khi detail thực sự tồn tại.
+ */
 function formatErrorDetail(detail: unknown): string {
   if (typeof detail === 'string') return detail;
   if (Array.isArray(detail)) {
@@ -66,11 +75,18 @@ function formatErrorDetail(detail: unknown): string {
  * Danh sách contact GỘP TẤT CẢ công ty (kèm company_name) — dùng cho
  * trang "/contacts" tổng hợp. Gọi GET /contacts (KHÔNG lồng company_id
  * trong path — khác mọi hàm CRUD bên dưới).
+ *
+ * BUG FIX (09/2026): trước đây khai Promise<PaginatedContacts>
+ * ({ total, limit, offset, items }) giống getCompanies()/getJobs(),
+ * nhưng khác 2 hàm đó, backend GET /contacts (api/routers/contacts.py
+ * ::list_all_contacts) KHÔNG có wrapper phân trang — response_model
+ * là list[CompanyContactWithCompanyOut] trần, và endpoint không nhận
+ * limit/offset (FastAPI âm thầm bỏ qua vì không khai trong signature).
+ * page.tsx cũ destructure { items, total } từ 1 mảng → cả hai thành
+ * undefined → contacts.length throw TypeError, sập cả trang. Sửa:
+ * trả thẳng mảng, để page.tsx tự phân trang phía FE (slice).
  */
-export async function getContacts(filters?: ContactFilters): Promise<PaginatedContacts> {
-  const limit = filters?.limit || 50;
-  const offset = filters?.offset || 0;
-
+export async function getContacts(filters?: ContactFilters): Promise<CompanyContactWithCompany[]> {
   try {
     const params = new URLSearchParams();
     if (filters?.include_inactive) params.append('include_inactive', String(filters.include_inactive));
@@ -79,8 +95,6 @@ export async function getContacts(filters?: ContactFilters): Promise<PaginatedCo
     if (filters?.search) params.append('search', filters.search);
     if (filters?.created_by) params.append('created_by', filters.created_by);
     if (filters?.assigned_ss_user) params.append('assigned_ss_user', filters.assigned_ss_user);
-    params.append('limit', String(limit));
-    params.append('offset', String(offset));
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000);
@@ -95,7 +109,7 @@ export async function getContacts(filters?: ContactFilters): Promise<PaginatedCo
 
       if (!response.ok) {
         console.error('Failed to fetch contacts:', response.status, response.statusText);
-        return { total: 0, limit, offset, items: [] };
+        return [];
       }
       return await response.json();
     } finally {
@@ -103,7 +117,7 @@ export async function getContacts(filters?: ContactFilters): Promise<PaginatedCo
     }
   } catch (error) {
     console.error('Error fetching contacts:', error);
-    return { total: 0, limit, offset, items: [] };
+    return [];
   }
 }
 
@@ -170,7 +184,10 @@ export async function createContact(
 
       if (!response.ok) {
         const error = await response.json().catch(() => ({ detail: response.statusText }));
-        return { success: false, error: formatErrorDetail(error.detail) || 'Không thể thêm liên hệ' };
+        return {
+          success: false,
+          error: error.detail != null ? formatErrorDetail(error.detail) : 'Không thể thêm liên hệ',
+        };
       }
       const contact = await response.json();
       return { success: true, contact };
@@ -208,7 +225,10 @@ export async function updateContact(
 
       if (!response.ok) {
         const error = await response.json().catch(() => ({ detail: response.statusText }));
-        return { success: false, error: formatErrorDetail(error.detail) || 'Không thể cập nhật liên hệ' };
+        return {
+          success: false,
+          error: error.detail != null ? formatErrorDetail(error.detail) : 'Không thể cập nhật liên hệ',
+        };
       }
       const contact = await response.json();
       return { success: true, contact };
@@ -248,7 +268,10 @@ export async function assignContact(
 
       if (!response.ok) {
         const error = await response.json().catch(() => ({ detail: response.statusText }));
-        return { success: false, error: formatErrorDetail(error.detail) || 'Không thể gán liên hệ' };
+        return {
+          success: false,
+          error: error.detail != null ? formatErrorDetail(error.detail) : 'Không thể gán liên hệ',
+        };
       }
       const contact = await response.json();
       return { success: true, contact };
@@ -285,7 +308,10 @@ export async function deleteContact(
 
       if (!response.ok && response.status !== 204) {
         const error = await response.json().catch(() => ({ detail: response.statusText }));
-        return { success: false, error: formatErrorDetail(error.detail) || 'Không thể xoá liên hệ' };
+        return {
+          success: false,
+          error: error.detail != null ? formatErrorDetail(error.detail) : 'Không thể xoá liên hệ',
+        };
       }
       return { success: true };
     } finally {
@@ -320,7 +346,10 @@ export async function hardDeleteContact(
 
       if (!response.ok && response.status !== 204) {
         const error = await response.json().catch(() => ({ detail: response.statusText }));
-        return { success: false, error: formatErrorDetail(error.detail) || 'Không thể xoá vĩnh viễn liên hệ' };
+        return {
+          success: false,
+          error: error.detail != null ? formatErrorDetail(error.detail) : 'Không thể xoá vĩnh viễn liên hệ',
+        };
       }
       return { success: true };
     } finally {

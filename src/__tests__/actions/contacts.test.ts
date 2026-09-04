@@ -45,7 +45,7 @@ describe('Contacts Server Actions', () => {
       const calledUrl = (global.fetch as jest.Mock).mock.calls[0][0] as string;
       expect(calledUrl).toMatch(/\/contacts\?/);
       expect(calledUrl).not.toContain('/companies/');
-      expect(result.items[0].company_name).toBe('ACME Corp');
+      expect(result[0].company_name).toBe('ACME Corp');
     });
 
     it('should dùng đúng param "search" (KHÔNG PHẢI "keyword")', async () => {
@@ -56,9 +56,17 @@ describe('Contacts Server Actions', () => {
       expect(calledUrl).not.toContain('keyword=');
     });
 
-    it('should return empty paginated result on error', async () => {
+    it('should return empty array on error (not a paginated wrapper)', async () => {
       (global.fetch as jest.Mock).mockImplementation(() => mockFetchError(500, 'Internal Server Error'));
-      expect(await getContacts()).toEqual({ total: 0, limit: 50, offset: 0, items: [] });
+      expect(await getContacts()).toEqual([]);
+    });
+
+    it('should NOT send limit/offset params (backend ignores them, returns full array)', async () => {
+      (global.fetch as jest.Mock).mockImplementation(() => mockFetchSuccess(mockContactsResponse));
+      await getContacts();
+      const calledUrl = (global.fetch as jest.Mock).mock.calls[0][0] as string;
+      expect(calledUrl).not.toContain('limit=');
+      expect(calledUrl).not.toContain('offset=');
     });
   });
 
@@ -106,6 +114,13 @@ describe('Contacts Server Actions', () => {
       expect(result.success).toBe(false);
       expect(result.error).toContain('contact_name is required');
     });
+
+    it('regression: khi response lỗi KHÔNG có detail, dùng đúng fallback cụ thể (không phải "Có lỗi xảy ra" chung chung)', async () => {
+      (global.fetch as jest.Mock).mockImplementation(() => mockFetchStatus(500, {}));
+      const result = await createContact('company-1', { contact_name: 'X' });
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Không thể thêm liên hệ');
+    });
   });
 
   describe('updateContact()', () => {
@@ -133,6 +148,12 @@ describe('Contacts Server Actions', () => {
       );
       const result = await updateContact('company-1', 'contact-1', { contact_status: 'RESPONDED' });
       expect(result.success).toBe(false);
+    });
+
+    it('regression: fallback cụ thể khi response lỗi không có detail', async () => {
+      (global.fetch as jest.Mock).mockImplementation(() => mockFetchStatus(500, {}));
+      const result = await updateContact('company-1', 'contact-1', { contact_status: 'RESPONDED' });
+      expect(result.error).toBe('Không thể cập nhật liên hệ');
     });
   });
 
@@ -168,6 +189,12 @@ describe('Contacts Server Actions', () => {
       // biệt với "không gửi field" (xem docstring assignContact()).
       expect(body).toHaveProperty('assigned_ss_user', null);
     });
+
+    it('regression: fallback cụ thể khi response lỗi không có detail', async () => {
+      (global.fetch as jest.Mock).mockImplementation(() => mockFetchStatus(500, {}));
+      const result = await assignContact('company-1', 'contact-1', { assigned_ss_user: 'user-2', note: 'x' });
+      expect(result.error).toBe('Không thể gán liên hệ');
+    });
   });
 
   describe('deleteContact() (soft delete)', () => {
@@ -188,6 +215,12 @@ describe('Contacts Server Actions', () => {
       );
       const result = await deleteContact('company-1', 'contact-1', { note: '' });
       expect(result.success).toBe(false);
+    });
+
+    it('regression: fallback cụ thể khi response lỗi không có detail', async () => {
+      (global.fetch as jest.Mock).mockImplementation(() => mockFetchStatus(500, {}));
+      const result = await deleteContact('company-1', 'contact-1', { note: 'x' });
+      expect(result.error).toBe('Không thể xoá liên hệ');
     });
   });
 
@@ -219,6 +252,12 @@ describe('Contacts Server Actions', () => {
       );
       const result = await hardDeleteContact('company-1', 'contact-1');
       expect(result.success).toBe(false);
+    });
+
+    it('regression: fallback cụ thể khi response lỗi không có detail', async () => {
+      (global.fetch as jest.Mock).mockImplementation(() => mockFetchStatus(500, {}));
+      const result = await hardDeleteContact('company-1', 'contact-1');
+      expect(result.error).toBe('Không thể xoá vĩnh viễn liên hệ');
     });
   });
 });

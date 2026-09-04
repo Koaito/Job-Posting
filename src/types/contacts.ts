@@ -34,7 +34,14 @@ export interface CompanyContactWithCompany extends CompanyContact {
   company_name: string;
 }
 
-/** Khớp query param thật của GET /contacts (api/routers/contacts.py::list_all_contacts). */
+/**
+ * Khớp query param thật của GET /contacts (api/routers/contacts.py::list_all_contacts).
+ * BUG FIX (09/2026): đã bỏ limit/offset khỏi type này — endpoint thật
+ * KHÔNG nhận 2 param này (FastAPI âm thầm bỏ qua vì không khai trong
+ * signature list_all_contacts), backend luôn trả toàn bộ contact khớp
+ * filter trong 1 lần. Phân trang thật sự phải làm ở FE (xem
+ * actions/contacts.ts::getContacts).
+ */
 export interface ContactFilters {
   include_inactive?: boolean;
   contact_status?: string;
@@ -43,8 +50,6 @@ export interface ContactFilters {
   search?: string;
   created_by?: string;
   assigned_ss_user?: string;
-  limit?: number;
-  offset?: number;
 }
 
 /** Khớp CompanyContactCreate (extra="forbid") — POST /companies/{company_id}/contacts. */
@@ -86,9 +91,4 @@ export interface ContactDeletePayload {
   note: string;
 }
 
-export interface PaginatedContacts {
-  total: number;
-  limit: number;
-  offset: number;
-  items: CompanyContactWithCompany[];
-}
+

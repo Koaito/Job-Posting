@@ -196,7 +196,10 @@ export async function createJob(data: JobCreatePayload): Promise<{ success: bool
         console.error('Failed to create job:', response.status, error);
         // BUG FIX (audit 09/2026): dùng formatErrorDetail() thay vì gán
         // thẳng error.detail (có thể là array) — xem docstring hàm này.
-        return { success: false, error: formatErrorDetail(error.detail) || 'Failed to create job' };
+        return {
+          success: false,
+          error: error.detail != null ? formatErrorDetail(error.detail) : 'Failed to create job',
+        };
       }
 
       const job = await response.json();
@@ -228,7 +231,10 @@ export async function updateJob(id: string, data: JobUpdatePayload): Promise<{ s
       if (!response.ok) {
         const error = await response.json().catch(() => ({ detail: response.statusText }));
         console.error('Failed to update job:', response.status, error);
-        return { success: false, error: formatErrorDetail(error.detail) || 'Failed to update job' };
+        return {
+          success: false,
+          error: error.detail != null ? formatErrorDetail(error.detail) : 'Failed to update job',
+        };
       }
 
       const job = await response.json();
@@ -269,7 +275,10 @@ export async function deleteJob(id: string): Promise<{ success: boolean; error?:
         // còn gán thẳng error.detail (bỏ sót khi thêm formatErrorDetail()
         // cho createJob/updateJob đợt trước) — cùng lỗi "[object Object],
         // [object Object]" nếu route PATCH job_status trả 422 dạng mảng.
-        return { success: false, error: formatErrorDetail(error.detail) || 'Failed to delete job' };
+        return {
+          success: false,
+          error: error.detail != null ? formatErrorDetail(error.detail) : 'Failed to delete job',
+        };
       }
 
       return { success: true };

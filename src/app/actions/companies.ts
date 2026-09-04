@@ -153,7 +153,10 @@ export async function createCompany(
 
       if (!response.ok) {
         const error = await response.json().catch(() => ({ detail: response.statusText }));
-        return { success: false, error: formatErrorDetail(error.detail) || 'Không thể tạo công ty' };
+        return {
+          success: false,
+          error: error.detail != null ? formatErrorDetail(error.detail) : 'Không thể tạo công ty',
+        };
       }
       const company = await response.json();
       return { success: true, company };
@@ -185,7 +188,10 @@ export async function updateCompany(
 
       if (!response.ok) {
         const error = await response.json().catch(() => ({ detail: response.statusText }));
-        return { success: false, error: formatErrorDetail(error.detail) || 'Không thể cập nhật công ty' };
+        return {
+          success: false,
+          error: error.detail != null ? formatErrorDetail(error.detail) : 'Không thể cập nhật công ty',
+        };
       }
       const company = await response.json();
       return { success: true, company };
@@ -220,7 +226,10 @@ export async function deleteCompany(
 
       if (!response.ok && response.status !== 204) {
         const error = await response.json().catch(() => ({ detail: response.statusText }));
-        return { success: false, error: formatErrorDetail(error.detail) || 'Không thể xoá công ty' };
+        return {
+          success: false,
+          error: error.detail != null ? formatErrorDetail(error.detail) : 'Không thể xoá công ty',
+        };
       }
       return { success: true };
     } finally {

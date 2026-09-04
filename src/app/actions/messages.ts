@@ -347,7 +347,10 @@ export async function cancelPendingRequest(
     });
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: response.statusText }));
-      return { success: false, error: formatErrorDetail(error.detail) || 'Không thể huỷ yêu cầu' };
+      return {
+        success: false,
+        error: error.detail != null ? formatErrorDetail(error.detail) : 'Không thể huỷ yêu cầu',
+      };
     }
     return { success: true };
   } catch (error) {
@@ -370,7 +373,10 @@ export async function acceptMessageRequest(
     });
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: response.statusText }));
-      return { success: false, error: formatErrorDetail(error.detail) || 'Không thể chấp nhận yêu cầu' };
+      return {
+        success: false,
+        error: error.detail != null ? formatErrorDetail(error.detail) : 'Không thể chấp nhận yêu cầu',
+      };
     }
     return { success: true };
   } catch (error) {
@@ -390,7 +396,10 @@ export async function declineMessageRequest(
     });
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: response.statusText }));
-      return { success: false, error: formatErrorDetail(error.detail) || 'Không thể từ chối yêu cầu' };
+      return {
+        success: false,
+        error: error.detail != null ? formatErrorDetail(error.detail) : 'Không thể từ chối yêu cầu',
+      };
     }
     return { success: true };
   } catch (error) {
@@ -415,7 +424,10 @@ export async function blockStudent(
     });
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: response.statusText }));
-      return { success: false, error: formatErrorDetail(error.detail) || 'Không thể chặn học viên' };
+      return {
+        success: false,
+        error: error.detail != null ? formatErrorDetail(error.detail) : 'Không thể chặn học viên',
+      };
     }
     return { success: true };
   } catch (error) {
@@ -440,7 +452,10 @@ export async function unblockRelationship(
     });
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: response.statusText }));
-      return { success: false, error: formatErrorDetail(error.detail) || 'Không thể bỏ chặn' };
+      return {
+        success: false,
+        error: error.detail != null ? formatErrorDetail(error.detail) : 'Không thể bỏ chặn',
+      };
     }
     return { success: true };
   } catch (error) {

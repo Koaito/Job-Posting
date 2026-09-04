@@ -105,12 +105,14 @@ export const mockContactWithCompany = {
   company_name: 'ACME Corp',
 };
 
-export const mockContactsResponse = {
-  items: [mockContactWithCompany],
-  total: 1,
-  limit: 50,
-  offset: 0,
-};
+/**
+ * BUG FIX (09/2026): GET /contacts trả mảng trần, KHÔNG có wrapper
+ * { items, total, limit, offset } — trước đây fixture này bịa sai
+ * shape theo pattern getCompanies()/getJobs(), che mất bug crash thật
+ * ở contacts/page.tsx (destructure items/total từ 1 mảng ra undefined).
+ * Xem actions/contacts.ts::getContacts().
+ */
+export const mockContactsResponse = [mockContactWithCompany];
 
 // ss_user_id (không phải "id") — khớp schemas/auth.py::UserOut thật.
 export const mockUser = {

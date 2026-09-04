@@ -61,13 +61,22 @@ export default async function ContactsPage({
   const limit = 50;
   const offset = (page - 1) * limit;
 
-  const { items: contacts, total } = await getContacts({
+  /**
+   * BUG FIX (09/2026): GET /contacts backend không hỗ trợ limit/offset
+   * thật (xem actions/contacts.ts::getContacts) — luôn trả về TOÀN BỘ
+   * contact khớp filter trong 1 mảng trần. Trước đây code destructure
+   * { items, total } từ mảng này → cả 2 thành undefined → contacts.length
+   * throw TypeError, sập cả trang. Sửa: gọi getContacts() lấy mảng đầy
+   * đủ, rồi tự phân trang phía FE bằng slice theo page/limit.
+   */
+  const allContacts = await getContacts({
     search: sp.search,
     contact_status: sp.contact_status,
     include_inactive: sp.include_inactive === 'true',
-    limit,
-    offset,
   });
+
+  const total = allContacts.length;
+  const contacts = allContacts.slice(offset, offset + limit);
 
   const totalPages = Math.ceil(total / limit);
   const hasFilters = Boolean(sp.search || sp.contact_status || sp.include_inactive === 'true');
