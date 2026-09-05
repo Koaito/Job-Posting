@@ -37,7 +37,7 @@ export default function WithdrawApplicationButton({ jobId, jobTitle }: WithdrawA
 
   if (!showConfirm) {
     return (
-      <button onClick={() => setShowConfirm(true)} className="btn btn-secondary">
+      <button onClick={() => setShowConfirm(true)} className="btn btn-ghost btn-block">
         Rút hồ sơ
       </button>
     );
@@ -51,15 +51,15 @@ export default function WithdrawApplicationButton({ jobId, jobTitle }: WithdrawA
         lại sau nếu muốn.
       </p>
 
-      <div className="form-group" style={{ marginBottom: '12px' }}>
-        <label htmlFor={`withdraw-note-${jobId}`}>Lý do rút hồ sơ (tuỳ chọn)</label>
+      <label htmlFor={`withdraw-note-${jobId}`} style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '12px' }}>
+        Lý do rút hồ sơ (tuỳ chọn)
         <textarea
           id={`withdraw-note-${jobId}`}
           rows={2}
           value={note}
           onChange={(e) => setNote(e.target.value)}
         />
-      </div>
+      </label>
 
       {error && (
         <div className="flash flash-error" style={{ marginBottom: '12px' }}>
@@ -74,7 +74,7 @@ export default function WithdrawApplicationButton({ jobId, jobTitle }: WithdrawA
         <button
           onClick={() => setShowConfirm(false)}
           disabled={isWithdrawing}
-          className="btn btn-secondary"
+          className="btn btn-ghost"
           style={{ flex: 1 }}
         >
           Huỷ

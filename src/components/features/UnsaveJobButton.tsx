@@ -34,8 +34,8 @@ export default function UnsaveJobButton({ jobId }: UnsaveJobButtonProps) {
 
   return (
     <div>
-      <button onClick={handleUnsave} disabled={isUnsaving} className="btn btn-secondary">
-        {isUnsaving ? 'Đang xử lý...' : 'Bỏ lưu'}
+      <button onClick={handleUnsave} disabled={isUnsaving} className="save-btn saved">
+        {isUnsaving ? 'Đang xử lý...' : '🔖 Bỏ lưu'}
       </button>
       {error && <div className="flash flash-error" style={{ marginTop: '8px' }}>{error}</div>}
     </div>

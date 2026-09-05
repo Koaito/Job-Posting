@@ -82,7 +82,7 @@ export default function DeleteCompanyButton({ companyId, companyName }: DeleteCo
         <button
           onClick={() => { setShowConfirm(false); setError(null); }}
           disabled={isDeleting}
-          className="btn btn-secondary"
+          className="btn btn-ghost"
           style={{ flex: 1 }}
         >
           Hủy

@@ -47,9 +47,9 @@ export default function AuditLogNoteEditor({ logId, currentNote, noteRequired }:
 
   if (!editing) {
     return (
-      <div className="audit-note-display">
+      <div>
         {currentNote ? (
-          <span>{currentNote}</span>
+          <div className="note-text">{currentNote}</div>
         ) : (
           <span className="muted">{noteRequired ? '— (thiếu note?)' : '— chưa có note'}</span>
         )}
@@ -61,7 +61,7 @@ export default function AuditLogNoteEditor({ logId, currentNote, noteRequired }:
   }
 
   return (
-    <div className="audit-note-edit">
+    <div>
       <textarea
         value={note}
         onChange={(e) => setNote(e.target.value)}
@@ -72,11 +72,11 @@ export default function AuditLogNoteEditor({ logId, currentNote, noteRequired }:
       />
       {error && <p style={{ color: '#B23A22', fontSize: '12px', margin: '4px 0' }}>{error}</p>}
       <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
-        <button className="btn btn-primary btn-sm" onClick={handleSave} disabled={saving}>
+        <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
           {saving ? 'Đang lưu...' : 'Lưu'}
         </button>
         <button
-          className="btn btn-secondary btn-sm"
+          className="btn btn-ghost"
           onClick={() => { setEditing(false); setNote(currentNote || ''); setError(null); }}
           disabled={saving}
         >

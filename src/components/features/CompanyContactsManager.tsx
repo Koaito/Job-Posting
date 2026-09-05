@@ -139,27 +139,27 @@ export default function CompanyContactsManager({ companyId, initialContacts }: C
             className="card"
             style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'flex-end' }}
           >
-            <div className="form-field">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <label htmlFor="contact_name">Tên *</label>
               <input id="contact_name" name="contact_name" type="text" required disabled={isPending} />
             </div>
-            <div className="form-field">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <label htmlFor="job_title">Chức vụ</label>
               <input id="job_title" name="job_title" type="text" disabled={isPending} />
             </div>
-            <div className="form-field">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <label htmlFor="work_email">Email</label>
               <input id="work_email" name="work_email" type="email" disabled={isPending} />
             </div>
-            <div className="form-field">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <label htmlFor="phone_number">SĐT</label>
               <input id="phone_number" name="phone_number" type="text" disabled={isPending} />
             </div>
-            <div className="form-field">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <label htmlFor="social_link">Link mạng xã hội</label>
               <input id="social_link" name="social_link" type="text" disabled={isPending} />
             </div>
-            <div className="form-field">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <label htmlFor="found_source">Nguồn tìm thấy</label>
               <input id="found_source" name="found_source" type="text" disabled={isPending} />
             </div>

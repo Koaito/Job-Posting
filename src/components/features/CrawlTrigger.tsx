@@ -144,7 +144,7 @@ export default function CrawlTrigger({ isAdmin, sources, initialRun }: CrawlTrig
           <h4 style={{ marginTop: 0 }}>Kích hoạt crawl mới</h4>
           {error && <div className="flash flash-error" style={{ marginBottom: '12px' }}>{error}</div>}
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-            <div className="form-field">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <label htmlFor="source">Nguồn</label>
               <select
                 id="source"
@@ -157,7 +157,7 @@ export default function CrawlTrigger({ isAdmin, sources, initialRun }: CrawlTrig
                 ))}
               </select>
             </div>
-            <div className="form-field">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <label htmlFor="category">Ngành</label>
               <select
                 id="category"
@@ -170,7 +170,7 @@ export default function CrawlTrigger({ isAdmin, sources, initialRun }: CrawlTrig
                 ))}
               </select>
             </div>
-            <div className="form-field">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <label htmlFor="pages">Số trang (tối đa 20)</label>
               <input
                 id="pages"
@@ -184,7 +184,7 @@ export default function CrawlTrigger({ isAdmin, sources, initialRun }: CrawlTrig
                 style={{ width: '110px' }}
               />
             </div>
-            <div className="form-field">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <label htmlFor="max_jobs">Số JD tối đa</label>
               <input
                 id="max_jobs"

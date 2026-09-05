@@ -107,15 +107,15 @@ export function StaffAccountsManager({ initialStaff, currentUserId, isAdmin }: S
               className="card"
               style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'flex-end' }}
             >
-              <div className="form-field">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 <label htmlFor="full_name">Họ tên</label>
                 <input id="full_name" name="full_name" type="text" required disabled={isPending} />
               </div>
-              <div className="form-field">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 <label htmlFor="email">Email</label>
                 <input id="email" name="email" type="email" required disabled={isPending} />
               </div>
-              <div className="form-field">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 <label htmlFor="role">Vai trò</label>
                 <select id="role" name="role" defaultValue="ss_team" disabled={isPending}>
                   <option value="ss_team">ss_team</option>
