@@ -162,7 +162,9 @@ export function Sidebar({ user }: SidebarProps) {
             {/* Cập nhật 09/2026: /students, /staff, /crawl, /activity đều
                 đã có page.tsx thật — không còn route nào 404 trong nhóm
                 này. /contacts (link riêng phía trên) cũng đã dựng cùng
-                đợt. */}
+                đợt. /staff-activity thêm sau (rà soát #3, xem mục 6.10
+                plan_nextjs.md) — đứng ngay sau "Nhân viên" giống thứ tự
+                bên Flask gốc (templates/base.html). */}
             {isStaff && (
               <>
                 <span className="nav-label">Quản trị</span>
@@ -173,6 +175,10 @@ export function Sidebar({ user }: SidebarProps) {
                 <Link href="/staff" className={activeClass('/staff')}>
                   <span className="nav-ic">👨‍💼</span>
                   <span className="nav-text">Nhân viên</span>
+                </Link>
+                <Link href="/staff-activity" className={activeClass('/staff-activity')}>
+                  <span className="nav-ic">▤</span>
+                  <span className="nav-text">Hoạt động team SS</span>
                 </Link>
                 <Link href="/crawl" className={activeClass('/crawl')}>
                   <span className="nav-ic">🕷️</span>

@@ -1,13 +1,11 @@
 import { redirect } from 'next/navigation';
-import Link from 'next/link';
 import { getCurrentUser, listUsers } from '@/app/actions/auth';
 import { isStaffRole } from '@/lib/auth/roles';
 import { getJobs } from '@/app/actions/jobs';
 import { getCompanies } from '@/app/actions/companies';
 import { getContacts } from '@/app/actions/contacts';
-import { industryClass, jobStatusChipClass, jobStatusLabel } from '@/lib/jobs/badges';
-import { partnershipPotentialClass } from '@/lib/companies/potential';
 import ProfileSubnav from '@/components/features/ProfileSubnav';
+import { ActivitySections } from '@/components/features/ActivitySections';
 
 /**
  * Trang cá nhân — Hoạt động. Khớp profile.activity() bên Flask gốc
@@ -26,9 +24,13 @@ import ProfileSubnav from '@/components/features/ProfileSubnav';
  * Hiển thị 4 nhóm dữ liệu CHÍNH NGƯỜI ĐANG ĐĂNG NHẬP: job/công ty/
  * contact tự thêm tay (created_by = chính mình) + contact đang được
  * giao phụ trách (assigned_ss_user = chính mình). Cùng dữ liệu/logic
- * với staff_activity.detail() (module /staff-activity, CHƯA làm ở
- * Next.js) nhưng chỉ xem được của bản thân — không nhận tham số
- * ss_user_id từ URL.
+ * với staff_activity.detail() (module `/staff-activity`, đã làm ở
+ * Next.js — rà soát #3 09/2026, xem mục 6.10 plan_nextjs.md) nhưng chỉ
+ * xem được của bản thân — không nhận tham số ss_user_id từ URL. 4 khối
+ * JSX dùng chung với `/staff-activity/[userId]` qua component
+ * `ActivitySections` (components/features/ActivitySections.tsx) — tách
+ * ra khỏi file này khi dựng `/staff-activity` để tránh trùng lặp gần
+ * 200 dòng markup giữa 2 trang cùng 1 nguồn dữ liệu.
  *
  * Khác Flask gốc (ThreadPoolExecutor song song hoá 4 lệnh gọi): ở đây
  * dùng Promise.all — Next.js/Node đã tự xử lý I/O bất đồng bộ không
@@ -104,177 +106,13 @@ export default async function ProfileActivityPage() {
           </dl>
         </div>
 
-        <div className="activity-section-head">
-          <h2>💼 Job đã tạo ({jobsCreated.length})</h2>
-        </div>
-        {jobsCreated.length > 0 ? (
-          <div className="job-grid">
-            {jobsCreated.map((job) => (
-              <article key={job.job_id} className="ticket">
-                <div className="ticket-stub">
-                  <span className="ticket-code">JOB-{job.job_id.slice(0, 8).toUpperCase()}</span>
-                  {job.matching_industry && (
-                    <span className={`ticket-industry ${industryClass(job.matching_industry)}`}>
-                      {job.matching_industry}
-                    </span>
-                  )}
-                  {job.level_code && <span className="ticket-level">{job.level_code}</span>}
-                </div>
-                <div className="ticket-body">
-                  <div className="ticket-top">
-                    <h3>
-                      <Link href={`/jobs/${job.job_id}`}>{job.job_title}</Link>
-                    </h3>
-                    <span className={`status-chip ${jobStatusChipClass(job.job_status)}`}>
-                      {jobStatusLabel(job.job_status)}
-                    </span>
-                  </div>
-                  <p className="ticket-company">
-                    {job.company_name}
-                    {job.province_name ? ` · ${job.province_name}` : ''}
-                  </p>
-                  <div className="ticket-meta">
-                    <span>
-                      📅 Hạn:{' '}
-                      {job.deadline ? new Date(job.deadline).toLocaleDateString('vi-VN') : '—'}
-                    </span>
-                  </div>
-                </div>
-              </article>
-            ))}
-          </div>
-        ) : (
-          <div className="empty-state">
-            <p>Bạn chưa tự thêm job nào.</p>
-          </div>
-        )}
-
-        <div className="activity-section-head">
-          <h2>🏢 Công ty đã tạo ({companiesCreated.length})</h2>
-        </div>
-        {companiesCreated.length > 0 ? (
-          <div className="contact-table-wrap">
-            <table className="contact-table">
-              <thead>
-                <tr>
-                  <th>Công ty</th>
-                  <th>Lĩnh vực</th>
-                  <th>Tỉnh/thành</th>
-                  <th className="col-potential">Tiềm năng</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {companiesCreated.map((c) => (
-                  <tr key={c.company_id}>
-                    <td>
-                      <strong>
-                        <Link href={`/companies/${c.company_id}`}>{c.company_name}</Link>
-                      </strong>
-                    </td>
-                    <td className="muted">{c.industry || '—'}</td>
-                    <td>{c.province_name || '—'}</td>
-                    <td>
-                      <span className={`fit-chip ${partnershipPotentialClass(c.partnership_potential)}`}>
-                        {c.partnership_potential}
-                      </span>
-                    </td>
-                    <td className="actions-cell">
-                      <Link className="btn btn-text" href={`/companies/${c.company_id}`}>
-                        Xem →
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="empty-state">
-            <p>Bạn chưa tự thêm công ty nào.</p>
-          </div>
-        )}
-
-        <div className="activity-section-head">
-          <h2>☎ Contact đã tạo ({contactsCreated.length})</h2>
-        </div>
-        {contactsCreated.length > 0 ? (
-          <div className="contact-table-wrap">
-            <table className="contact-table">
-              <thead>
-                <tr>
-                  <th>Tên</th>
-                  <th>Công ty</th>
-                  <th>Email</th>
-                  <th>Trạng thái</th>
-                  <th>Đang phụ trách</th>
-                </tr>
-              </thead>
-              <tbody>
-                {contactsCreated.map((c) => (
-                  <tr key={c.contact_id}>
-                    <td>
-                      <strong>{c.contact_name}</strong>
-                    </td>
-                    <td>
-                      <Link href={`/companies/${c.company_id}`}>{c.company_name}</Link>
-                    </td>
-                    <td className="muted">{c.work_email || '—'}</td>
-                    <td className="muted">{c.contact_status}</td>
-                    <td className="muted">
-                      {(c.assigned_ss_user && staffById.get(c.assigned_ss_user)?.full_name) ||
-                        '— Chưa gán —'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="empty-state">
-            <p>Bạn chưa tự thêm contact nào.</p>
-          </div>
-        )}
-
-        <div className="activity-section-head">
-          <h2>🗂️ Contact đang phụ trách ({contactsAssigned.length})</h2>
-        </div>
-        {contactsAssigned.length > 0 ? (
-          <div className="contact-table-wrap">
-            <table className="contact-table">
-              <thead>
-                <tr>
-                  <th>Tên</th>
-                  <th>Công ty</th>
-                  <th>Email</th>
-                  <th>Người tạo</th>
-                  <th>Trạng thái</th>
-                </tr>
-              </thead>
-              <tbody>
-                {contactsAssigned.map((c) => (
-                  <tr key={c.contact_id}>
-                    <td>
-                      <strong>{c.contact_name}</strong>
-                    </td>
-                    <td>
-                      <Link href={`/companies/${c.company_id}`}>{c.company_name}</Link>
-                    </td>
-                    <td className="muted">{c.work_email || '—'}</td>
-                    <td className="muted">
-                      {(c.created_by && staffById.get(c.created_by)?.full_name) || '—'}
-                    </td>
-                    <td className="muted">{c.contact_status}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="empty-state">
-            <p>Bạn chưa được giao phụ trách contact nào.</p>
-          </div>
-        )}
+        <ActivitySections
+          jobsCreated={jobsCreated}
+          companiesCreated={companiesCreated}
+          contactsCreated={contactsCreated}
+          contactsAssigned={contactsAssigned}
+          staffById={staffById}
+        />
       </div>
     </div>
   );
