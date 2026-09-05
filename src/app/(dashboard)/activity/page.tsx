@@ -56,14 +56,16 @@ export default async function ActivityPage({
 
   if (!isStaff) {
     return (
-      <div className="page-container">
+      // BUG FIX (audit CSS 09/2026): bỏ "page-container" ảo, main.content
+      // (root layout.tsx) đã lo container rồi.
+      <>
         <div className="page-head">
           <h1>Lịch sử thao tác</h1>
         </div>
         <div className="empty-state">
           <p>Trang này chỉ dành cho nhân viên (ss_team/admin).</p>
         </div>
-      </div>
+      </>
     );
   }
 
@@ -94,7 +96,9 @@ export default async function ActivityPage({
   };
 
   return (
-    <div className="page-container">
+    // BUG FIX (audit CSS 09/2026): bỏ "page-container" ảo — main.content
+    // (root layout.tsx) đã lo container/padding cho mọi trang rồi.
+    <>
       <div className="page-head">
         <div>
           <span className="eyebrow">Career Hub / Quản lý</span>
@@ -105,20 +109,27 @@ export default async function ActivityPage({
         </div>
       </div>
 
-      <div className="tabs" style={{ marginBottom: '16px' }}>
+      {/* BUG FIX (audit CSS 09/2026): "tabs"/"tab"/"tab-active" là class
+          ảo, không khớp bất kỳ selector nào. CSS thật riêng cho đúng
+          trang này (public/css/12-activity-logs.css, class tên
+          "tab-nav") dùng thẻ <nav class="tab-nav"> bọc các <a>, active
+          tab có thêm class "active" — khớp 1:1 templates/activity_logs.html
+          gốc (KHÔNG dùng ".tab-bar", đó là family khác dựa trên <button>
+          ở dashboard.html/crawl.html, không phải component ở đây). */}
+      <nav className="tab-nav" style={{ marginBottom: '16px' }}>
         <Link
           href={qs({ view: 'auto', page: '1' })}
-          className={`tab ${view === 'auto' ? 'tab-active' : ''}`}
+          className={view === 'auto' ? 'active' : ''}
         >
           Tất cả thao tác
         </Link>
         <Link
           href={qs({ view: 'manual', page: '1' })}
-          className={`tab ${view === 'manual' ? 'tab-active' : ''}`}
+          className={view === 'manual' ? 'active' : ''}
         >
           Log thủ công (có note)
         </Link>
-      </div>
+      </nav>
 
       <div className="filter-bar" style={{ marginBottom: '22px' }}>
         <form method="get" action="/activity" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
@@ -216,6 +227,6 @@ export default async function ActivityPage({
           <p>Không có bản ghi nào khớp bộ lọc.</p>
         </div>
       )}
-    </div>
+    </>
   );
 }
