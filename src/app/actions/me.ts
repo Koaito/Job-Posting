@@ -1,6 +1,6 @@
 'use server';
 
-import { getAuthHeaders, getAuthHeadersForUpload } from '@/lib/api/client';
+import { apiFetch, apiFetchRaw, formatErrorDetail } from '@/lib/api/client';
 import type { JobApplication, SavedJob } from '@/types/auth';
 
 /**
@@ -14,31 +14,13 @@ import type { JobApplication, SavedJob } from '@/types/auth';
  * nào nhận qua path/body — 1 người chỉ thao tác được trên đơn/bookmark
  * của chính mình.
  *
- * Thêm 09/2026 (Phase 3.6) — trước đây module này hoàn toàn chưa tồn tại
- * ở Next.js, dù đây là tính năng lõi nhất còn thiếu phía học viên (xem
- * ARCHITECTURE_ANALYSIS.md, ghi chú rà soát 09/2026).
+ * REFACTOR (09/2026, "Đánh giá kiến trúc" #1+#2): dùng chung apiFetch()/
+ * apiFetchRaw() (lib/api/client.ts) thay vì tự lặp AbortController/
+ * timeout/error-parsing 7 lần trong file này — formatErrorDetail() bản
+ * riêng (thiếu xử lý "loc") đã bị xoá, dùng thẳng bản đầy đủ nhất từ
+ * lib/api/client.ts. Có auto-refresh access_token khi 401 token_expired
+ * cho mọi thao tác ghi (apply/withdraw/save/unsave).
  */
-
-const API_BASE = process.env.FASTAPI_URL;
-
-/**
- * Lỗi 422 (Pydantic validate) trả detail dạng ARRAY of objects, khác lỗi
- * raise thủ công trong router (detail: string). Chuẩn hoá về 1 chuỗi dễ
- * đọc — cùng pattern với actions/jobs.ts, actions/contacts.ts.
- */
-function formatErrorDetail(detail: unknown): string {
-  if (typeof detail === 'string') return detail;
-  if (Array.isArray(detail)) {
-    return detail
-      .map((item) =>
-        item && typeof item === 'object' && 'msg' in item
-          ? String((item as { msg: unknown }).msg)
-          : String(item)
-      )
-      .join('; ');
-  }
-  return 'Có lỗi xảy ra';
-}
 
 /**
  * Ứng tuyển 1 job — multipart/form-data: job_id, note (tuỳ chọn), cv_file
@@ -51,6 +33,11 @@ function formatErrorDetail(detail: unknown): string {
  * Rate limit backend: 15/phút theo user (không riêng gì FE cần biết,
  * nhưng nếu bấm liên tục sẽ nhận 429 — không xử lý riêng ở đây, rơi vào
  * nhánh lỗi chung bên dưới).
+ *
+ * Dùng apiFetch() với isUpload:true thay vì apiFetchRaw() thô — body
+ * FormData vẫn parse JSON kết quả bình thường như mọi response khác,
+ * không cần xử lý đặc biệt gì thêm (khác saveJob() bên dưới, nơi 409
+ * PHẢI được đọc riêng trước khi coi là lỗi).
  */
 export async function applyToJob(
   jobId: string,
@@ -64,39 +51,23 @@ export async function applyToJob(
     return { success: false, error: 'Dung lượng file CV tối đa là 5MB.' };
   }
 
-  try {
-    const formData = new FormData();
-    formData.append('job_id', jobId);
-    if (note) formData.append('note', note);
-    formData.append('cv_file', cvFile);
+  const formData = new FormData();
+  formData.append('job_id', jobId);
+  if (note) formData.append('note', note);
+  formData.append('cv_file', cvFile);
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
-    try {
-      const response = await fetch(`${API_BASE}/me/applications`, {
-        method: 'POST',
-        headers: await getAuthHeadersForUpload(),
-        body: formData,
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
+  const result = await apiFetch<JobApplication>('/me/applications', {
+    method: 'POST',
+    body: formData,
+    isUpload: true,
+    fallbackError: 'Không thể ứng tuyển job này',
+  });
 
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ detail: response.statusText }));
-        return {
-          success: false,
-          error: error.detail != null ? formatErrorDetail(error.detail) : 'Không thể ứng tuyển job này',
-        };
-      }
-      const application = await response.json();
-      return { success: true, application };
-    } finally {
-      clearTimeout(timeoutId);
-    }
-  } catch (error) {
-    console.error('Error applying to job:', error);
-    return { success: false, error: 'Network error' };
+  if (!result.success) {
+    console.error('Error applying to job:', result.status, result.error);
+    return { success: false, error: result.error };
   }
+  return { success: true, application: result.data };
 }
 
 /**
@@ -108,100 +79,63 @@ export async function withdrawApplication(
   jobId: string,
   note?: string
 ): Promise<{ success: boolean; error?: string }> {
-  try {
-    const params = new URLSearchParams();
-    if (note) params.append('note', note);
-    const query = params.toString() ? `?${params}` : '';
+  const params = new URLSearchParams();
+  if (note) params.append('note', note);
+  const query = params.toString() ? `?${params}` : '';
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
-    try {
-      const response = await fetch(`${API_BASE}/me/applications/${jobId}${query}`, {
-        method: 'DELETE',
-        headers: await getAuthHeaders(),
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
+  const result = await apiFetch<void>(`/me/applications/${jobId}${query}`, {
+    method: 'DELETE',
+    fallbackError: 'Không thể rút hồ sơ',
+  });
 
-      if (!response.ok && response.status !== 204) {
-        const error = await response.json().catch(() => ({ detail: response.statusText }));
-        return {
-          success: false,
-          error: error.detail != null ? formatErrorDetail(error.detail) : 'Không thể rút hồ sơ',
-        };
-      }
-      return { success: true };
-    } finally {
-      clearTimeout(timeoutId);
-    }
-  } catch (error) {
-    console.error('Error withdrawing application:', error);
-    return { success: false, error: 'Network error' };
+  if (!result.success) {
+    console.error('Error withdrawing application:', result.status, result.error);
+    return { success: false, error: result.error };
   }
+  return { success: true };
 }
 
 /** Danh sách đơn ứng tuyển của CHÍNH học viên đang đăng nhập. */
 export async function getMyApplications(): Promise<JobApplication[]> {
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
-    try {
-      const response = await fetch(`${API_BASE}/me/applications`, {
-        headers: await getAuthHeaders(),
-        cache: 'no-store',
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
+  const result = await apiFetch<JobApplication[]>('/me/applications', { cache: 'no-store' });
 
-      if (!response.ok) {
-        console.error('Failed to fetch my applications:', response.status, response.statusText);
-        return [];
-      }
-      return await response.json();
-    } finally {
-      clearTimeout(timeoutId);
-    }
-  } catch (error) {
-    console.error('Error fetching my applications:', error);
+  if (!result.success) {
+    console.error('Failed to fetch my applications:', result.status, result.error);
     return [];
   }
+  return result.data;
 }
 
 /**
  * Lưu job (bookmark) — body JSON {job_id}. 409 nếu đã lưu rồi (coi là
  * thành công về mặt UX: kết quả cuối cùng "job đã nằm trong danh sách
  * lưu" giống hệt nhau, không cần hiện lỗi khó chịu cho hành động vô hại).
+ *
+ * Dùng apiFetchRaw() thô (không phải apiFetch()) vì cần tự phân biệt
+ * status 409 KHÔNG phải lỗi — apiFetch() sẽ coi mọi !ok là lỗi, không
+ * phù hợp ở đây. Vẫn được hưởng auto-refresh + timeout dùng chung.
  */
 export async function saveJob(
   jobId: string
 ): Promise<{ success: boolean; savedJob?: SavedJob; error?: string }> {
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
-    try {
-      const response = await fetch(`${API_BASE}/me/saved-jobs`, {
-        method: 'POST',
-        headers: await getAuthHeaders(),
-        body: JSON.stringify({ job_id: jobId }),
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
+    const response = await apiFetchRaw('/me/saved-jobs', {
+      method: 'POST',
+      body: { job_id: jobId },
+    });
 
-      if (response.status === 409) {
-        return { success: true };
-      }
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ detail: response.statusText }));
-        return {
-          success: false,
-          error: error.detail != null ? formatErrorDetail(error.detail) : 'Không thể lưu job này',
-        };
-      }
-      const savedJob = await response.json();
-      return { success: true, savedJob };
-    } finally {
-      clearTimeout(timeoutId);
+    if (response.status === 409) {
+      return { success: true };
     }
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: response.statusText }));
+      return {
+        success: false,
+        error: error.detail != null ? formatErrorDetail(error.detail) : 'Không thể lưu job này',
+      };
+    }
+    const savedJob = await response.json();
+    return { success: true, savedJob };
   } catch (error) {
     console.error('Error saving job:', error);
     return { success: false, error: 'Network error' };
@@ -210,59 +144,27 @@ export async function saveJob(
 
 /** Bỏ lưu job. */
 export async function unsaveJob(jobId: string): Promise<{ success: boolean; error?: string }> {
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
-    try {
-      const response = await fetch(`${API_BASE}/me/saved-jobs/${jobId}`, {
-        method: 'DELETE',
-        headers: await getAuthHeaders(),
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
+  const result = await apiFetch<void>(`/me/saved-jobs/${jobId}`, {
+    method: 'DELETE',
+    fallbackError: 'Không thể bỏ lưu job này',
+  });
 
-      if (!response.ok && response.status !== 204) {
-        const error = await response.json().catch(() => ({ detail: response.statusText }));
-        return {
-          success: false,
-          error: error.detail != null ? formatErrorDetail(error.detail) : 'Không thể bỏ lưu job này',
-        };
-      }
-      return { success: true };
-    } finally {
-      clearTimeout(timeoutId);
-    }
-  } catch (error) {
-    console.error('Error unsaving job:', error);
-    return { success: false, error: 'Network error' };
+  if (!result.success) {
+    console.error('Error unsaving job:', result.status, result.error);
+    return { success: false, error: result.error };
   }
+  return { success: true };
 }
 
 /** Danh sách job đã lưu của CHÍNH học viên đang đăng nhập. */
 export async function getMySavedJobs(): Promise<SavedJob[]> {
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
-    try {
-      const response = await fetch(`${API_BASE}/me/saved-jobs`, {
-        headers: await getAuthHeaders(),
-        cache: 'no-store',
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
+  const result = await apiFetch<SavedJob[]>('/me/saved-jobs', { cache: 'no-store' });
 
-      if (!response.ok) {
-        console.error('Failed to fetch my saved jobs:', response.status, response.statusText);
-        return [];
-      }
-      return await response.json();
-    } finally {
-      clearTimeout(timeoutId);
-    }
-  } catch (error) {
-    console.error('Error fetching my saved jobs:', error);
+  if (!result.success) {
+    console.error('Failed to fetch my saved jobs:', result.status, result.error);
     return [];
   }
+  return result.data;
 }
 
 /**
@@ -273,31 +175,14 @@ export async function getMySavedJobs(): Promise<SavedJob[]> {
 export async function getCvSignedUrl(
   applicationId: string
 ): Promise<{ success: boolean; signedUrl?: string; error?: string }> {
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
-    try {
-      const response = await fetch(`${API_BASE}/me/applications/${applicationId}/cv-url`, {
-        headers: await getAuthHeaders(),
-        cache: 'no-store',
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
+  const result = await apiFetch<{ signed_url: string }>(`/me/applications/${applicationId}/cv-url`, {
+    cache: 'no-store',
+    fallbackError: 'Không thể lấy link tải CV',
+  });
 
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ detail: response.statusText }));
-        return {
-          success: false,
-          error: error.detail != null ? formatErrorDetail(error.detail) : 'Không thể lấy link tải CV',
-        };
-      }
-      const data = await response.json();
-      return { success: true, signedUrl: data.signed_url };
-    } finally {
-      clearTimeout(timeoutId);
-    }
-  } catch (error) {
-    console.error('Error fetching CV signed URL:', error);
-    return { success: false, error: 'Network error' };
+  if (!result.success) {
+    console.error('Error fetching CV signed URL:', result.status, result.error);
+    return { success: false, error: result.error };
   }
+  return { success: true, signedUrl: result.data.signed_url };
 }

@@ -1,6 +1,6 @@
 'use server';
 
-import { getApiKey, getAuthHeaders } from '@/lib/api/client';
+import { apiFetch } from '@/lib/api/client';
 import type {
   Company,
   CompanyDetail,
@@ -21,62 +21,38 @@ import type {
  * Error('Not implemented')` — trang /companies gọi thẳng các hàm này
  * (không try/catch) nên sẽ crash trắng trang thay vì hiện lỗi gracefully.
  * Viết lại đầy đủ theo types/companies.ts (đã đúng sẵn, chỉ chưa ai dùng).
+ *
+ * REFACTOR (09/2026, "Đánh giá kiến trúc" #1+#2): dùng chung apiFetch()
+ * (lib/api/client.ts) thay vì tự lặp AbortController/timeout/error-parsing
+ * — formatErrorDetail() bản riêng ở đây (thiếu xử lý "loc") đã bị xoá,
+ * dùng thẳng bản đầy đủ nhất từ lib/api/client.ts. Có auto-refresh
+ * access_token khi 401 token_expired cho createCompany/updateCompany/
+ * deleteCompany.
  */
-
-const API_BASE = process.env.FASTAPI_URL;
-
-function formatErrorDetail(detail: unknown): string {
-  if (typeof detail === 'string') return detail;
-  if (Array.isArray(detail)) {
-    return detail
-      .map((item) =>
-        item && typeof item === 'object' && 'msg' in item
-          ? String((item as { msg: unknown }).msg)
-          : String(item)
-      )
-      .join('; ');
-  }
-  return 'Có lỗi xảy ra';
-}
 
 /**
  * Get list of companies with filters and pagination.
  * Matches Flask: blueprints/companies.py::index()
  */
 export async function getCompanies(filters?: CompanyFilters): Promise<PaginatedCompanies> {
-  try {
-    const params = new URLSearchParams();
-    if (filters?.keyword) params.append('keyword', filters.keyword);
-    if (filters?.province) params.append('province', filters.province);
-    if (filters?.has_social !== undefined) params.append('has_social', String(filters.has_social));
-    if (filters?.created_by) params.append('created_by', filters.created_by);
-    if (filters?.include_inactive) params.append('include_inactive', String(filters.include_inactive));
-    params.append('limit', String(filters?.limit || 50));
-    params.append('offset', String(filters?.offset || 0));
+  const fallback = { items: [], total: 0, limit: filters?.limit || 50, offset: filters?.offset || 0 };
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
+  const params = new URLSearchParams();
+  if (filters?.keyword) params.append('keyword', filters.keyword);
+  if (filters?.province) params.append('province', filters.province);
+  if (filters?.has_social !== undefined) params.append('has_social', String(filters.has_social));
+  if (filters?.created_by) params.append('created_by', filters.created_by);
+  if (filters?.include_inactive) params.append('include_inactive', String(filters.include_inactive));
+  params.append('limit', String(filters?.limit || 50));
+  params.append('offset', String(filters?.offset || 0));
 
-    try {
-      const response = await fetch(`${API_BASE}/companies?${params}`, {
-        headers: { 'X-API-Key': getApiKey() },
-        cache: 'no-store',
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
+  const result = await apiFetch<PaginatedCompanies>(`/companies?${params}`, { auth: false, cache: 'no-store' });
 
-      if (!response.ok) {
-        console.error('Failed to fetch companies:', response.status, response.statusText);
-        return { items: [], total: 0, limit: filters?.limit || 50, offset: filters?.offset || 0 };
-      }
-      return await response.json();
-    } finally {
-      clearTimeout(timeoutId);
-    }
-  } catch (error) {
-    console.error('Error fetching companies:', error);
-    return { items: [], total: 0, limit: filters?.limit || 50, offset: filters?.offset || 0 };
+  if (!result.success) {
+    console.error('Failed to fetch companies:', result.status, result.error);
+    return fallback;
   }
+  return result.data;
 }
 
 /**
@@ -85,32 +61,15 @@ export async function getCompanies(filters?: CompanyFilters): Promise<PaginatedC
  * Matches Flask: blueprints/companies.py::detail()
  */
 export async function getCompanyById(id: string): Promise<CompanyDetail | null> {
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
+  const result = await apiFetch<CompanyDetail>(`/companies/${id}`, { auth: false, cache: 'no-store' });
 
-    try {
-      const response = await fetch(`${API_BASE}/companies/${id}`, {
-        headers: { 'X-API-Key': getApiKey() },
-        cache: 'no-store',
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        if (response.status !== 404) {
-          console.error('Failed to fetch company:', response.status, response.statusText);
-        }
-        return null;
-      }
-      return await response.json();
-    } finally {
-      clearTimeout(timeoutId);
+  if (!result.success) {
+    if (result.status !== 404) {
+      console.error('Failed to fetch company:', result.status, result.error);
     }
-  } catch (error) {
-    console.error('Error fetching company:', error);
     return null;
   }
+  return result.data;
 }
 
 /**
@@ -122,34 +81,17 @@ export async function getCompanyById(id: string): Promise<CompanyDetail | null> 
 export async function createCompany(
   data: CompanyCreatePayload
 ): Promise<{ success: boolean; company?: Company; error?: string }> {
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
-    try {
-      const response = await fetch(`${API_BASE}/companies`, {
-        method: 'POST',
-        headers: await getAuthHeaders(),
-        body: JSON.stringify(data),
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
+  const result = await apiFetch<Company>('/companies', {
+    method: 'POST',
+    body: data,
+    fallbackError: 'Không thể tạo công ty',
+  });
 
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ detail: response.statusText }));
-        return {
-          success: false,
-          error: error.detail != null ? formatErrorDetail(error.detail) : 'Không thể tạo công ty',
-        };
-      }
-      const company = await response.json();
-      return { success: true, company };
-    } finally {
-      clearTimeout(timeoutId);
-    }
-  } catch (error) {
-    console.error('Error creating company:', error);
-    return { success: false, error: 'Network error' };
+  if (!result.success) {
+    console.error('Error creating company:', result.status, result.error);
+    return { success: false, error: result.error };
   }
+  return { success: true, company: result.data };
 }
 
 /** Sửa công ty đã tồn tại — chỉ field có mặt trong body mới bị ghi đè. */
@@ -157,34 +99,17 @@ export async function updateCompany(
   id: string,
   data: CompanyUpdatePayload
 ): Promise<{ success: boolean; company?: CompanyDetail; error?: string }> {
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
-    try {
-      const response = await fetch(`${API_BASE}/companies/${id}`, {
-        method: 'PATCH',
-        headers: await getAuthHeaders(),
-        body: JSON.stringify(data),
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
+  const result = await apiFetch<CompanyDetail>(`/companies/${id}`, {
+    method: 'PATCH',
+    body: data,
+    fallbackError: 'Không thể cập nhật công ty',
+  });
 
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ detail: response.statusText }));
-        return {
-          success: false,
-          error: error.detail != null ? formatErrorDetail(error.detail) : 'Không thể cập nhật công ty',
-        };
-      }
-      const company = await response.json();
-      return { success: true, company };
-    } finally {
-      clearTimeout(timeoutId);
-    }
-  } catch (error) {
-    console.error('Error updating company:', error);
-    return { success: false, error: 'Network error' };
+  if (!result.success) {
+    console.error('Error updating company:', result.status, result.error);
+    return { success: false, error: result.error };
   }
+  return { success: true, company: result.data };
 }
 
 /**
@@ -195,31 +120,15 @@ export async function deleteCompany(
   id: string,
   payload: CompanyDeletePayload
 ): Promise<{ success: boolean; error?: string }> {
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
-    try {
-      const response = await fetch(`${API_BASE}/companies/${id}`, {
-        method: 'DELETE',
-        headers: await getAuthHeaders(),
-        body: JSON.stringify(payload),
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
+  const result = await apiFetch<void>(`/companies/${id}`, {
+    method: 'DELETE',
+    body: payload,
+    fallbackError: 'Không thể xoá công ty',
+  });
 
-      if (!response.ok && response.status !== 204) {
-        const error = await response.json().catch(() => ({ detail: response.statusText }));
-        return {
-          success: false,
-          error: error.detail != null ? formatErrorDetail(error.detail) : 'Không thể xoá công ty',
-        };
-      }
-      return { success: true };
-    } finally {
-      clearTimeout(timeoutId);
-    }
-  } catch (error) {
-    console.error('Error deleting company:', error);
-    return { success: false, error: 'Network error' };
+  if (!result.success) {
+    console.error('Error deleting company:', result.status, result.error);
+    return { success: false, error: result.error };
   }
+  return { success: true };
 }

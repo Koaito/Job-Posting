@@ -1,6 +1,6 @@
 'use server';
 
-import { getApiKey, getAuthHeaders } from '@/lib/api/client';
+import { apiFetch } from '@/lib/api/client';
 import type {
   CrawlTriggerPayload,
   CrawlAccepted,
@@ -20,67 +20,38 @@ import type {
  * crawl_history.py, crawl_maintenance.py
  * Backend thật: api/routers/crawl.py.
  *
- * Trước đây file này là stub `throw new Error('Not implemented')` với
- * shape sai hoàn toàn: getCrawlStatus() không nhận run_id (route thật
- * LUÔN cần 1 run_id/batch_id cụ thể, không có "trạng thái chung"),
- * getCrawlHistory(page) bỏ qua toàn bộ filter thật (source/status/
- * triggered_by). Viết lại theo đúng api/routers/crawl.py + types/crawl.ts
- * (đã đúng sẵn).
- *
  * QUYỀN: POST /crawl và POST /crawl/batch yêu cầu role 'admin' (chặt
  * hơn mọi route ghi khác — tốn tài nguyên server thật). GET (status/
  * logs/history/sources) chỉ cần 'ss_team' trở lên, trừ GET /sources
  * (chỉ cần API key, không cần JWT — dùng để render dropdown ngay cả
  * trước khi biết role).
+ *
+ * REFACTOR (09/2026, "Đánh giá kiến trúc" #1+#2): dùng chung apiFetch()
+ * (lib/api/client.ts) thay vì tự lặp AbortController/timeout(15000/30000)/
+ * error-parsing 9 lần trong file này — formatErrorDetail() bản riêng
+ * (thiếu xử lý "loc") đã bị xoá, dùng thẳng bản đầy đủ nhất từ
+ * lib/api/client.ts. Có auto-refresh access_token khi 401 token_expired
+ * cho startCrawl/startCrawlBatch.
  */
-
-const API_BASE = process.env.FASTAPI_URL;
-
-function formatErrorDetail(detail: unknown): string {
-  if (typeof detail === 'string') return detail;
-  if (Array.isArray(detail)) {
-    return detail
-      .map((item) =>
-        item && typeof item === 'object' && 'msg' in item
-          ? String((item as { msg: unknown }).msg)
-          : String(item)
-      )
-      .join('; ');
-  }
-  return 'Có lỗi xảy ra';
-}
 
 /**
  * Danh sách source/category có sẵn để crawl — GET /sources, dùng để
  * render dropdown ở form kích hoạt crawl. Response thật là
  * {source: {category_key: label}} (xem api/routers/meta.py::get_sources),
  * KHÔNG có shape "list" — luôn khớp sources_registry.py hiện hành,
- * không hardcode phía frontend.
+ * không hardcode phía frontend. Route public (chỉ cần X-API-Key).
  */
 export async function getCrawlSources(): Promise<Record<string, Record<string, string>>> {
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
-    try {
-      const response = await fetch(`${API_BASE}/sources`, {
-        headers: { 'X-API-Key': getApiKey() },
-        cache: 'no-store',
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
+  const result = await apiFetch<Record<string, Record<string, string>>>('/sources', {
+    auth: false,
+    cache: 'no-store',
+  });
 
-      if (!response.ok) {
-        console.error('Failed to fetch crawl sources:', response.status, response.statusText);
-        return {};
-      }
-      return await response.json();
-    } finally {
-      clearTimeout(timeoutId);
-    }
-  } catch (error) {
-    console.error('Error fetching crawl sources:', error);
+  if (!result.success) {
+    console.error('Failed to fetch crawl sources:', result.status, result.error);
     return {};
   }
+  return result.data;
 }
 
 /**
@@ -91,36 +62,17 @@ export async function getCrawlSources(): Promise<Record<string, Record<string, s
 export async function startCrawl(
   data: CrawlTriggerPayload
 ): Promise<{ success: boolean; result?: CrawlAccepted; error?: string }> {
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
-    try {
-      const response = await fetch(`${API_BASE}/crawl`, {
-        method: 'POST',
-        headers: await getAuthHeaders(),
-        body: JSON.stringify(data),
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
+  const result = await apiFetch<CrawlAccepted>('/crawl', {
+    method: 'POST',
+    body: data,
+    fallbackError: 'Không thể kích hoạt crawl',
+  });
 
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ detail: response.statusText }));
-        // BUG FIX (cùng lỗi đã sửa ở messages.ts/audit.ts): formatErrorDetail()
-        // luôn trả string truthy nên `|| fallback` không bao giờ chạy.
-        return {
-          success: false,
-          error: error.detail != null ? formatErrorDetail(error.detail) : 'Không thể kích hoạt crawl',
-        };
-      }
-      const result = await response.json();
-      return { success: true, result };
-    } finally {
-      clearTimeout(timeoutId);
-    }
-  } catch (error) {
-    console.error('Error starting crawl:', error);
-    return { success: false, error: 'Network error' };
+  if (!result.success) {
+    console.error('Error starting crawl:', result.status, result.error);
+    return { success: false, error: result.error };
   }
+  return { success: true, result: result.data };
 }
 
 /**
@@ -132,63 +84,34 @@ export async function startCrawl(
 export async function startCrawlBatch(
   data: CrawlBatchTriggerPayload
 ): Promise<{ success: boolean; result?: CrawlBatchAccepted; error?: string }> {
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
-    try {
-      const response = await fetch(`${API_BASE}/crawl/batch`, {
-        method: 'POST',
-        headers: await getAuthHeaders(),
-        body: JSON.stringify(data),
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
+  const result = await apiFetch<CrawlBatchAccepted>('/crawl/batch', {
+    method: 'POST',
+    body: data,
+    fallbackError: 'Không thể kích hoạt crawl batch',
+  });
 
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ detail: response.statusText }));
-        return {
-          success: false,
-          error: error.detail != null ? formatErrorDetail(error.detail) : 'Không thể kích hoạt crawl batch',
-        };
-      }
-      const result = await response.json();
-      return { success: true, result };
-    } finally {
-      clearTimeout(timeoutId);
-    }
-  } catch (error) {
-    console.error('Error starting crawl batch:', error);
-    return { success: false, error: 'Network error' };
+  if (!result.success) {
+    console.error('Error starting crawl batch:', result.status, result.error);
+    return { success: false, error: result.error };
   }
+  return { success: true, result: result.data };
 }
 
-/** Poll tiến độ/kết quả 1 lượt crawl đơn lẻ — GET /crawl/{run_id}. */
+/**
+ * Poll tiến độ/kết quả 1 lượt crawl đơn lẻ — GET /crawl/{run_id}.
+ * Dùng timeout ngắn hơn (15s thay vì 30s mặc định) vì đây là poll lặp
+ * lại liên tục (vd mỗi 2 giây) — giữ đúng hành vi gốc.
+ */
 export async function getCrawlStatus(runId: string): Promise<CrawlStatus | null> {
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
-    try {
-      const response = await fetch(`${API_BASE}/crawl/${runId}`, {
-        headers: await getAuthHeaders(),
-        cache: 'no-store',
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
+  const result = await apiFetch<CrawlStatus>(`/crawl/${runId}`, { cache: 'no-store', timeoutMs: 15000 });
 
-      if (!response.ok) {
-        if (response.status !== 404) {
-          console.error('Failed to fetch crawl status:', response.status, response.statusText);
-        }
-        return null;
-      }
-      return await response.json();
-    } finally {
-      clearTimeout(timeoutId);
+  if (!result.success) {
+    if (result.status !== 404) {
+      console.error('Failed to fetch crawl status:', result.status, result.error);
     }
-  } catch (error) {
-    console.error('Error fetching crawl status:', error);
     return null;
   }
+  return result.data;
 }
 
 /**
@@ -197,29 +120,13 @@ export async function getCrawlStatus(runId: string): Promise<CrawlStatus | null>
  * chạy. Trả null nếu chưa từng crawl lần nào (hợp lệ, không phải lỗi).
  */
 export async function getLatestCrawlRun(): Promise<CrawlStatus | null> {
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
-    try {
-      const response = await fetch(`${API_BASE}/crawl/latest-log-run`, {
-        headers: await getAuthHeaders(),
-        cache: 'no-store',
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
+  const result = await apiFetch<CrawlStatus>('/crawl/latest-log-run', { cache: 'no-store', timeoutMs: 15000 });
 
-      if (!response.ok) {
-        console.error('Failed to fetch latest crawl run:', response.status, response.statusText);
-        return null;
-      }
-      return await response.json();
-    } finally {
-      clearTimeout(timeoutId);
-    }
-  } catch (error) {
-    console.error('Error fetching latest crawl run:', error);
+  if (!result.success) {
+    console.error('Failed to fetch latest crawl run:', result.status, result.error);
     return null;
   }
+  return result.data;
 }
 
 /**
@@ -229,30 +136,17 @@ export async function getLatestCrawlRun(): Promise<CrawlStatus | null> {
  * sót do limit).
  */
 export async function getCrawlLogs(runId: string, afterId: number = 0): Promise<CrawlLogsResponse> {
-  try {
-    const params = new URLSearchParams({ after_id: String(afterId) });
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
-    try {
-      const response = await fetch(`${API_BASE}/crawl/${runId}/logs?${params}`, {
-        headers: await getAuthHeaders(),
-        cache: 'no-store',
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
+  const params = new URLSearchParams({ after_id: String(afterId) });
+  const result = await apiFetch<CrawlLogsResponse>(`/crawl/${runId}/logs?${params}`, {
+    cache: 'no-store',
+    timeoutMs: 15000,
+  });
 
-      if (!response.ok) {
-        console.error('Failed to fetch crawl logs:', response.status, response.statusText);
-        return { last_id: afterId, items: [] };
-      }
-      return await response.json();
-    } finally {
-      clearTimeout(timeoutId);
-    }
-  } catch (error) {
-    console.error('Error fetching crawl logs:', error);
+  if (!result.success) {
+    console.error('Failed to fetch crawl logs:', result.status, result.error);
     return { last_id: afterId, items: [] };
   }
+  return result.data;
 }
 
 /** Lịch sử crawl (run đơn lẻ) — GET /crawl, filter + phân trang. */
@@ -260,65 +154,36 @@ export async function getCrawlHistory(filters?: CrawlHistoryFilters): Promise<Pa
   const limit = filters?.limit || 50;
   const offset = filters?.offset || 0;
 
-  try {
-    const params = new URLSearchParams();
-    if (filters?.source) params.append('source', filters.source);
-    if (filters?.status) params.append('status', filters.status);
-    if (filters?.triggered_by) params.append('triggered_by', filters.triggered_by);
-    params.append('limit', String(limit));
-    params.append('offset', String(offset));
+  const params = new URLSearchParams();
+  if (filters?.source) params.append('source', filters.source);
+  if (filters?.status) params.append('status', filters.status);
+  if (filters?.triggered_by) params.append('triggered_by', filters.triggered_by);
+  params.append('limit', String(limit));
+  params.append('offset', String(offset));
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
-    try {
-      const response = await fetch(`${API_BASE}/crawl?${params}`, {
-        headers: await getAuthHeaders(),
-        cache: 'no-store',
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
+  const result = await apiFetch<PaginatedCrawlRuns>(`/crawl?${params}`, { cache: 'no-store' });
 
-      if (!response.ok) {
-        console.error('Failed to fetch crawl history:', response.status, response.statusText);
-        return { total: 0, limit, offset, items: [] };
-      }
-      return await response.json();
-    } finally {
-      clearTimeout(timeoutId);
-    }
-  } catch (error) {
-    console.error('Error fetching crawl history:', error);
+  if (!result.success) {
+    console.error('Failed to fetch crawl history:', result.status, result.error);
     return { total: 0, limit, offset, items: [] };
   }
+  return result.data;
 }
 
 /** Poll tiến độ TỔNG của 1 batch — GET /crawl/batch/{batch_id}, kèm items (run con). */
 export async function getCrawlBatchStatus(batchId: string): Promise<CrawlBatchStatus | null> {
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
-    try {
-      const response = await fetch(`${API_BASE}/crawl/batch/${batchId}`, {
-        headers: await getAuthHeaders(),
-        cache: 'no-store',
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
+  const result = await apiFetch<CrawlBatchStatus>(`/crawl/batch/${batchId}`, {
+    cache: 'no-store',
+    timeoutMs: 15000,
+  });
 
-      if (!response.ok) {
-        if (response.status !== 404) {
-          console.error('Failed to fetch crawl batch status:', response.status, response.statusText);
-        }
-        return null;
-      }
-      return await response.json();
-    } finally {
-      clearTimeout(timeoutId);
+  if (!result.success) {
+    if (result.status !== 404) {
+      console.error('Failed to fetch crawl batch status:', result.status, result.error);
     }
-  } catch (error) {
-    console.error('Error fetching crawl batch status:', error);
     return null;
   }
+  return result.data;
 }
 
 /** Lịch sử batch — GET /crawl/batch, đối xứng getCrawlHistory() ở trên. */
@@ -326,34 +191,18 @@ export async function getCrawlBatchHistory(filters?: CrawlHistoryFilters): Promi
   const limit = filters?.limit || 50;
   const offset = filters?.offset || 0;
 
-  try {
-    const params = new URLSearchParams();
-    if (filters?.source) params.append('source', filters.source);
-    if (filters?.status) params.append('status', filters.status);
-    if (filters?.triggered_by) params.append('triggered_by', filters.triggered_by);
-    params.append('limit', String(limit));
-    params.append('offset', String(offset));
+  const params = new URLSearchParams();
+  if (filters?.source) params.append('source', filters.source);
+  if (filters?.status) params.append('status', filters.status);
+  if (filters?.triggered_by) params.append('triggered_by', filters.triggered_by);
+  params.append('limit', String(limit));
+  params.append('offset', String(offset));
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
-    try {
-      const response = await fetch(`${API_BASE}/crawl/batch?${params}`, {
-        headers: await getAuthHeaders(),
-        cache: 'no-store',
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
+  const result = await apiFetch<PaginatedCrawlBatches>(`/crawl/batch?${params}`, { cache: 'no-store' });
 
-      if (!response.ok) {
-        console.error('Failed to fetch crawl batch history:', response.status, response.statusText);
-        return { total: 0, limit, offset, items: [] };
-      }
-      return await response.json();
-    } finally {
-      clearTimeout(timeoutId);
-    }
-  } catch (error) {
-    console.error('Error fetching crawl batch history:', error);
+  if (!result.success) {
+    console.error('Failed to fetch crawl batch history:', result.status, result.error);
     return { total: 0, limit, offset, items: [] };
   }
+  return result.data;
 }

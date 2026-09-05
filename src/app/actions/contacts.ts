@@ -1,6 +1,6 @@
 'use server';
 
-import { getAuthHeaders } from '@/lib/api/client';
+import { apiFetch } from '@/lib/api/client';
 import type {
   CompanyContact,
   CompanyContactWithCompany,
@@ -26,33 +26,20 @@ import type {
  * Trước đây file này là stub `throw new Error('Not implemented')` với
  * shape sai hoàn toàn (id: number, không có company_id) — viết lại
  * đúng theo types/contacts.ts (đã đúng sẵn, chỉ chưa ai dùng).
+ *
+ * REFACTOR (09/2026, "Đánh giá kiến trúc" #1+#2): dùng chung apiFetch()
+ * (lib/api/client.ts) thay vì tự lặp AbortController/timeout/error-parsing
+ * — formatErrorDetail() bản riêng ở đây (thiếu xử lý "loc") đã bị xoá,
+ * dùng thẳng bản đầy đủ nhất từ lib/api/client.ts. Có auto-refresh
+ * access_token khi 401 token_expired cho create/update/assign/delete.
+ *
+ * BUG FIX (09/2026, đi kèm refactor này): trước đây mọi chỗ gọi
+ * formatErrorDetail() theo pattern `formatErrorDetail(error.detail) ||
+ * fallback` — vì hàm này luôn trả string truthy, nhánh `|| fallback`
+ * không bao giờ chạy được, thông báo lỗi cụ thể theo status code bị nuốt
+ * mất. apiFetch() ở lib/api/client.ts đã tự làm đúng việc này (chỉ dùng
+ * fallbackError khi `detail == null`), không cần mỗi hàm tự kiểm tra lại.
  */
-
-const API_BASE = process.env.FASTAPI_URL;
-
-/**
- * BUG FIX (09/2026): trước đây mọi chỗ gọi hàm này đều theo pattern
- * `formatErrorDetail(error.detail) || 'fallback cụ thể'`. Vì hàm này
- * luôn trả về string truthy (kể cả khi detail là undefined, trả về
- * 'Có lỗi xảy ra'), nhánh `|| fallback` không bao giờ chạy được — các
- * thông báo lỗi cụ thể theo status code (409/403/404...) bị nuốt mất,
- * luôn hiện "Có lỗi xảy ra" chung chung dù backend không trả detail.
- * Sửa: mọi nơi gọi hàm này giờ tự kiểm tra `error.detail != null`
- * trước, chỉ gọi formatErrorDetail khi detail thực sự tồn tại.
- */
-function formatErrorDetail(detail: unknown): string {
-  if (typeof detail === 'string') return detail;
-  if (Array.isArray(detail)) {
-    return detail
-      .map((item) =>
-        item && typeof item === 'object' && 'msg' in item
-          ? String((item as { msg: unknown }).msg)
-          : String(item)
-      )
-      .join('; ');
-  }
-  return 'Có lỗi xảy ra';
-}
 
 /**
  * Danh sách contact GỘP TẤT CẢ công ty (kèm company_name) — dùng cho
@@ -70,38 +57,21 @@ function formatErrorDetail(detail: unknown): string {
  * trả thẳng mảng, để page.tsx tự phân trang phía FE (slice).
  */
 export async function getContacts(filters?: ContactFilters): Promise<CompanyContactWithCompany[]> {
-  try {
-    const params = new URLSearchParams();
-    if (filters?.include_inactive) params.append('include_inactive', String(filters.include_inactive));
-    if (filters?.contact_status) params.append('contact_status', filters.contact_status);
-    if (filters?.company_id) params.append('company_id', filters.company_id);
-    if (filters?.search) params.append('search', filters.search);
-    if (filters?.created_by) params.append('created_by', filters.created_by);
-    if (filters?.assigned_ss_user) params.append('assigned_ss_user', filters.assigned_ss_user);
+  const params = new URLSearchParams();
+  if (filters?.include_inactive) params.append('include_inactive', String(filters.include_inactive));
+  if (filters?.contact_status) params.append('contact_status', filters.contact_status);
+  if (filters?.company_id) params.append('company_id', filters.company_id);
+  if (filters?.search) params.append('search', filters.search);
+  if (filters?.created_by) params.append('created_by', filters.created_by);
+  if (filters?.assigned_ss_user) params.append('assigned_ss_user', filters.assigned_ss_user);
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
+  const result = await apiFetch<CompanyContactWithCompany[]>(`/contacts?${params}`, { cache: 'no-store' });
 
-    try {
-      const response = await fetch(`${API_BASE}/contacts?${params}`, {
-        headers: await getAuthHeaders(),
-        cache: 'no-store',
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        console.error('Failed to fetch contacts:', response.status, response.statusText);
-        return [];
-      }
-      return await response.json();
-    } finally {
-      clearTimeout(timeoutId);
-    }
-  } catch (error) {
-    console.error('Error fetching contacts:', error);
+  if (!result.success) {
+    console.error('Failed to fetch contacts:', result.status, result.error);
     return [];
   }
+  return result.data;
 }
 
 /**
@@ -114,33 +84,18 @@ export async function getContactsByCompany(
   companyId: string,
   includeInactive?: boolean
 ): Promise<CompanyContact[]> {
-  try {
-    const params = new URLSearchParams();
-    if (includeInactive) params.append('include_inactive', String(includeInactive));
+  const params = new URLSearchParams();
+  if (includeInactive) params.append('include_inactive', String(includeInactive));
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
+  const result = await apiFetch<CompanyContact[]>(`/companies/${companyId}/contacts?${params}`, {
+    cache: 'no-store',
+  });
 
-    try {
-      const response = await fetch(`${API_BASE}/companies/${companyId}/contacts?${params}`, {
-        headers: await getAuthHeaders(),
-        cache: 'no-store',
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        console.error('Failed to fetch company contacts:', response.status, response.statusText);
-        return [];
-      }
-      return await response.json();
-    } finally {
-      clearTimeout(timeoutId);
-    }
-  } catch (error) {
-    console.error('Error fetching company contacts:', error);
+  if (!result.success) {
+    console.error('Failed to fetch company contacts:', result.status, result.error);
     return [];
   }
+  return result.data;
 }
 
 /**
@@ -153,34 +108,17 @@ export async function createContact(
   companyId: string,
   data: ContactCreatePayload
 ): Promise<{ success: boolean; contact?: CompanyContact; error?: string }> {
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
-    try {
-      const response = await fetch(`${API_BASE}/companies/${companyId}/contacts`, {
-        method: 'POST',
-        headers: await getAuthHeaders(),
-        body: JSON.stringify(data),
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
+  const result = await apiFetch<CompanyContact>(`/companies/${companyId}/contacts`, {
+    method: 'POST',
+    body: data,
+    fallbackError: 'Không thể thêm liên hệ',
+  });
 
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ detail: response.statusText }));
-        return {
-          success: false,
-          error: error.detail != null ? formatErrorDetail(error.detail) : 'Không thể thêm liên hệ',
-        };
-      }
-      const contact = await response.json();
-      return { success: true, contact };
-    } finally {
-      clearTimeout(timeoutId);
-    }
-  } catch (error) {
-    console.error('Error creating contact:', error);
-    return { success: false, error: 'Network error' };
+  if (!result.success) {
+    console.error('Error creating contact:', result.status, result.error);
+    return { success: false, error: result.error };
   }
+  return { success: true, contact: result.data };
 }
 
 /**
@@ -194,34 +132,17 @@ export async function updateContact(
   contactId: string,
   data: ContactUpdatePayload
 ): Promise<{ success: boolean; contact?: CompanyContact; error?: string }> {
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
-    try {
-      const response = await fetch(`${API_BASE}/companies/${companyId}/contacts/${contactId}`, {
-        method: 'PATCH',
-        headers: await getAuthHeaders(),
-        body: JSON.stringify(data),
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
+  const result = await apiFetch<CompanyContact>(`/companies/${companyId}/contacts/${contactId}`, {
+    method: 'PATCH',
+    body: data,
+    fallbackError: 'Không thể cập nhật liên hệ',
+  });
 
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ detail: response.statusText }));
-        return {
-          success: false,
-          error: error.detail != null ? formatErrorDetail(error.detail) : 'Không thể cập nhật liên hệ',
-        };
-      }
-      const contact = await response.json();
-      return { success: true, contact };
-    } finally {
-      clearTimeout(timeoutId);
-    }
-  } catch (error) {
-    console.error('Error updating contact:', error);
-    return { success: false, error: 'Network error' };
+  if (!result.success) {
+    console.error('Error updating contact:', result.status, result.error);
+    return { success: false, error: result.error };
   }
+  return { success: true, contact: result.data };
 }
 
 /**
@@ -237,34 +158,17 @@ export async function assignContact(
   contactId: string,
   data: ContactAssignPayload
 ): Promise<{ success: boolean; contact?: CompanyContact; error?: string }> {
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
-    try {
-      const response = await fetch(`${API_BASE}/companies/${companyId}/contacts/${contactId}/assign`, {
-        method: 'PATCH',
-        headers: await getAuthHeaders(),
-        body: JSON.stringify(data),
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
+  const result = await apiFetch<CompanyContact>(`/companies/${companyId}/contacts/${contactId}/assign`, {
+    method: 'PATCH',
+    body: data,
+    fallbackError: 'Không thể gán liên hệ',
+  });
 
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ detail: response.statusText }));
-        return {
-          success: false,
-          error: error.detail != null ? formatErrorDetail(error.detail) : 'Không thể gán liên hệ',
-        };
-      }
-      const contact = await response.json();
-      return { success: true, contact };
-    } finally {
-      clearTimeout(timeoutId);
-    }
-  } catch (error) {
-    console.error('Error assigning contact:', error);
-    return { success: false, error: 'Network error' };
+  if (!result.success) {
+    console.error('Error assigning contact:', result.status, result.error);
+    return { success: false, error: result.error };
   }
+  return { success: true, contact: result.data };
 }
 
 /**
@@ -277,33 +181,17 @@ export async function deleteContact(
   contactId: string,
   payload: ContactDeletePayload
 ): Promise<{ success: boolean; error?: string }> {
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
-    try {
-      const response = await fetch(`${API_BASE}/companies/${companyId}/contacts/${contactId}`, {
-        method: 'DELETE',
-        headers: await getAuthHeaders(),
-        body: JSON.stringify(payload),
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
+  const result = await apiFetch<void>(`/companies/${companyId}/contacts/${contactId}`, {
+    method: 'DELETE',
+    body: payload,
+    fallbackError: 'Không thể xoá liên hệ',
+  });
 
-      if (!response.ok && response.status !== 204) {
-        const error = await response.json().catch(() => ({ detail: response.statusText }));
-        return {
-          success: false,
-          error: error.detail != null ? formatErrorDetail(error.detail) : 'Không thể xoá liên hệ',
-        };
-      }
-      return { success: true };
-    } finally {
-      clearTimeout(timeoutId);
-    }
-  } catch (error) {
-    console.error('Error deleting contact:', error);
-    return { success: false, error: 'Network error' };
+  if (!result.success) {
+    console.error('Error deleting contact:', result.status, result.error);
+    return { success: false, error: result.error };
   }
+  return { success: true };
 }
 
 /**
@@ -316,32 +204,16 @@ export async function hardDeleteContact(
   companyId: string,
   contactId: string
 ): Promise<{ success: boolean; error?: string }> {
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
-    try {
-      const response = await fetch(`${API_BASE}/companies/${companyId}/contacts/${contactId}/hard`, {
-        method: 'DELETE',
-        headers: await getAuthHeaders(),
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
+  const result = await apiFetch<void>(`/companies/${companyId}/contacts/${contactId}/hard`, {
+    method: 'DELETE',
+    fallbackError: 'Không thể xoá vĩnh viễn liên hệ',
+  });
 
-      if (!response.ok && response.status !== 204) {
-        const error = await response.json().catch(() => ({ detail: response.statusText }));
-        return {
-          success: false,
-          error: error.detail != null ? formatErrorDetail(error.detail) : 'Không thể xoá vĩnh viễn liên hệ',
-        };
-      }
-      return { success: true };
-    } finally {
-      clearTimeout(timeoutId);
-    }
-  } catch (error) {
-    console.error('Error hard deleting contact:', error);
-    return { success: false, error: 'Network error' };
+  if (!result.success) {
+    console.error('Error hard deleting contact:', result.status, result.error);
+    return { success: false, error: result.error };
   }
+  return { success: true };
 }
 
 /** CompanyContactWithCompany re-exported cho page.tsx dùng khi cần type danh sách gộp. */

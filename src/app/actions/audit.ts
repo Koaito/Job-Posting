@@ -1,6 +1,6 @@
 'use server';
 
-import { getAuthHeaders } from '@/lib/api/client';
+import { apiFetch } from '@/lib/api/client';
 import type { AuditLog, AuditLogFilters, PaginatedAuditLogs } from '@/types/audit';
 
 /**
@@ -8,26 +8,12 @@ import type { AuditLog, AuditLogFilters, PaginatedAuditLogs } from '@/types/audi
  * Backend thật: api/routers/audit_logs.py — TOÀN BỘ route yêu cầu role
  * 'ss_team' trở lên (dữ liệu nội bộ team, giống /companies/{id}/contacts).
  *
- * Mới 09/2026 — trước đây trang /activity chỉ có link trong Sidebar,
- * KHÔNG có page.tsx (404 thật). types/audit.ts đã đúng sẵn từ đợt
- * trước, chưa ai dùng — cùng pattern "dead type file" đã gặp nhiều lần.
+ * REFACTOR (09/2026, "Đánh giá kiến trúc" #1+#2): dùng chung apiFetch()
+ * (lib/api/client.ts) thay vì tự lặp AbortController/timeout/error-parsing
+ * — formatErrorDetail() bản riêng (thiếu xử lý "loc") đã bị xoá, dùng
+ * thẳng bản đầy đủ nhất từ lib/api/client.ts. Có auto-refresh
+ * access_token khi 401 token_expired cho updateAuditLogNote.
  */
-
-const API_BASE = process.env.FASTAPI_URL;
-
-function formatErrorDetail(detail: unknown): string {
-  if (typeof detail === 'string') return detail;
-  if (Array.isArray(detail)) {
-    return detail
-      .map((item) =>
-        item && typeof item === 'object' && 'msg' in item
-          ? String((item as { msg: unknown }).msg)
-          : String(item)
-      )
-      .join('; ');
-  }
-  return 'Có lỗi xảy ra';
-}
 
 /**
  * Danh sách audit log — có 2 "chế độ xem" trên CÙNG 1 bảng dữ liệu qua
@@ -43,42 +29,25 @@ export async function getAuditLogs(filters?: AuditLogFilters): Promise<Paginated
   const limit = filters?.limit || 50;
   const offset = filters?.offset || 0;
 
-  try {
-    const params = new URLSearchParams();
-    params.append('view', filters?.view || 'auto');
-    if (filters?.entity_type) params.append('entity_type', filters.entity_type);
-    if (filters?.company_id) params.append('company_id', filters.company_id);
-    if (filters?.actor_id) params.append('actor_id', filters.actor_id);
-    if (filters?.action_type) params.append('action_type', filters.action_type);
-    if (filters?.pending_note !== undefined) {
-      params.append('pending_note', String(filters.pending_note));
-    }
-    params.append('limit', String(limit));
-    params.append('offset', String(offset));
+  const params = new URLSearchParams();
+  params.append('view', filters?.view || 'auto');
+  if (filters?.entity_type) params.append('entity_type', filters.entity_type);
+  if (filters?.company_id) params.append('company_id', filters.company_id);
+  if (filters?.actor_id) params.append('actor_id', filters.actor_id);
+  if (filters?.action_type) params.append('action_type', filters.action_type);
+  if (filters?.pending_note !== undefined) {
+    params.append('pending_note', String(filters.pending_note));
+  }
+  params.append('limit', String(limit));
+  params.append('offset', String(offset));
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
+  const result = await apiFetch<PaginatedAuditLogs>(`/audit-logs?${params}`, { cache: 'no-store' });
 
-    try {
-      const response = await fetch(`${API_BASE}/audit-logs?${params}`, {
-        headers: await getAuthHeaders(),
-        cache: 'no-store',
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        console.error('Failed to fetch audit logs:', response.status, response.statusText);
-        return { total: 0, limit, offset, items: [] };
-      }
-      return await response.json();
-    } finally {
-      clearTimeout(timeoutId);
-    }
-  } catch (error) {
-    console.error('Error fetching audit logs:', error);
+  if (!result.success) {
+    console.error('Failed to fetch audit logs:', result.status, result.error);
     return { total: 0, limit, offset, items: [] };
   }
+  return result.data;
 }
 
 /**
@@ -91,35 +60,15 @@ export async function updateAuditLogNote(
   logId: string,
   note: string
 ): Promise<{ success: boolean; log?: AuditLog; error?: string }> {
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
-    try {
-      const response = await fetch(`${API_BASE}/audit-logs/${logId}/note`, {
-        method: 'PATCH',
-        headers: await getAuthHeaders(),
-        body: JSON.stringify({ note }),
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
+  const result = await apiFetch<AuditLog>(`/audit-logs/${logId}/note`, {
+    method: 'PATCH',
+    body: { note },
+    fallbackError: 'Không thể cập nhật note',
+  });
 
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ detail: response.statusText }));
-        // BUG FIX (giống bug đã sửa ở actions/messages.ts::sendMessage):
-        // formatErrorDetail() luôn trả string truthy nên `|| fallback`
-        // không bao giờ chạy. Check error.detail != null trước.
-        return {
-          success: false,
-          error: error.detail != null ? formatErrorDetail(error.detail) : 'Không thể cập nhật note',
-        };
-      }
-      const log = await response.json();
-      return { success: true, log };
-    } finally {
-      clearTimeout(timeoutId);
-    }
-  } catch (error) {
-    console.error('Error updating audit log note:', error);
-    return { success: false, error: 'Network error' };
+  if (!result.success) {
+    console.error('Error updating audit log note:', result.status, result.error);
+    return { success: false, error: result.error };
   }
+  return { success: true, log: result.data };
 }

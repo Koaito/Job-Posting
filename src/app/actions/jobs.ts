@@ -1,6 +1,6 @@
 'use server';
 
-import { getApiKey, getAuthHeaders } from '@/lib/api/client';
+import { apiFetch } from '@/lib/api/client';
 // BUG FIX (audit 09/2026 #11 — dọn "type debt"): file này trước đây tự
 // khai lại 1 interface Job RIÊNG, thiếu hẳn work_type/salary_period/
 // source_url/source_name so với JobOut thật, và job_status khai bắt buộc
@@ -15,41 +15,16 @@ import type { JobApplicant, JobSaver } from '@/types/auth';
 /**
  * Server Actions for Jobs
  * Corresponds to Flask blueprint: blueprints/jobs.py
+ *
+ * REFACTOR (09/2026, "Đánh giá kiến trúc" #1+#2): mọi hàm ở đây trước đây
+ * tự lặp lại y hệt khối AbortController + setTimeout(30000) + try/finally
+ * clearTimeout + parse lỗi (formatErrorDetail() cũng tự khai riêng ở đây,
+ * bản ĐẦY ĐỦ NHẤT trong 7 bản — đã chuyển thẳng lên lib/api/client.ts để
+ * mọi module khác dùng lại đúng bản này, xem TODO mục 4 trong
+ * plan_nextjs.md). Giờ dùng chung apiFetch() (lib/api/client.ts) — kèm
+ * auto-refresh access_token khi 401 token_expired cho createJob/updateJob/
+ * deleteJob (trước đây CHỈ getCurrentUser() có auto-refresh).
  */
-
-const API_BASE = process.env.FASTAPI_URL;
-
-/**
- * BUG FIX (audit 09/2026): lỗi 422 do Pydantic tự validate (vd
- * extra="forbid" reject field lạ, min_length=1 fail...) trả về
- * detail dạng ARRAY of objects ([{loc, msg, type}, ...]), KHÁC với lỗi
- * tự raise thủ công trong router (detail: string đơn giản). Trước đây
- * error.detail được gán thẳng vào field "error" (kiểu string) rồi
- * JobForm.tsx setError() + render — React tự gọi String(array) khi hiện
- * ra, cho ra "[object Object],[object Object]" khó hiểu. Chuẩn hoá về
- * 1 chuỗi dễ đọc NGAY TẠI ĐÂY, dùng chung cho createJob/updateJob, để
- * mọi nơi gọi 2 hàm này (hiện tại + sau này) đều nhận được error dạng
- * string sẵn sàng hiển thị, không cần tự xử lý lại.
- */
-function formatErrorDetail(detail: unknown): string {
-  if (typeof detail === 'string') return detail;
-  if (Array.isArray(detail)) {
-    return detail
-      .map((item) => {
-        if (item && typeof item === 'object' && 'msg' in item) {
-          const loc = 'loc' in item && Array.isArray((item as { loc?: unknown[] }).loc)
-            ? (item as { loc: unknown[] }).loc.filter((p) => p !== 'body').join('.')
-            : '';
-          const msg = String((item as { msg: unknown }).msg);
-          return loc ? `${loc}: ${msg}` : msg;
-        }
-        return typeof item === 'string' ? item : JSON.stringify(item);
-      })
-      .join('; ');
-  }
-  if (detail && typeof detail === 'object') return JSON.stringify(detail);
-  return 'Có lỗi xảy ra';
-}
 
 /**
  * Các route ghi dữ liệu (POST/PATCH /jobs) yêu cầu require_role("ss_team")
@@ -78,48 +53,32 @@ function formatErrorDetail(detail: unknown): string {
 /**
  * Get list of jobs with filters and pagination
  * Matches Flask: blueprints/jobs.py::index()
+ * GET /jobs là route public (chỉ cần X-API-Key, theo routers/jobs.py) —
+ * KHÔNG cần Authorization, dùng apiFetch(..., { auth: false }).
  */
 export async function getJobs(filters?: JobFilters): Promise<PaginatedJobs> {
-  try {
-    // Build query params — PHẢI đúng tên param thật của GET /jobs, xem
-    // ghi chú ở interface JobFilters phía trên.
-    const params = new URLSearchParams();
-    if (filters?.industry) params.append('industry', filters.industry);
-    if (filters?.province) params.append('province', filters.province);
-    if (filters?.level) params.append('level', filters.level);
-    if (filters?.work_type) params.append('work_type', filters.work_type);
-    if (filters?.status) params.append('status', filters.status);
-    if (filters?.keyword) params.append('keyword', filters.keyword);
-    if (filters?.created_by) params.append('created_by', filters.created_by);
-    params.append('limit', (filters?.limit || 50).toString());
-    params.append('offset', (filters?.offset || 0).toString());
+  const fallback = { items: [], total: 0, limit: filters?.limit || 50, offset: filters?.offset || 0 };
 
-    // Create AbortController for timeout (compatible with Node.js test env)
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
+  // Build query params — PHẢI đúng tên param thật của GET /jobs, xem
+  // ghi chú ở đầu file.
+  const params = new URLSearchParams();
+  if (filters?.industry) params.append('industry', filters.industry);
+  if (filters?.province) params.append('province', filters.province);
+  if (filters?.level) params.append('level', filters.level);
+  if (filters?.work_type) params.append('work_type', filters.work_type);
+  if (filters?.status) params.append('status', filters.status);
+  if (filters?.keyword) params.append('keyword', filters.keyword);
+  if (filters?.created_by) params.append('created_by', filters.created_by);
+  params.append('limit', (filters?.limit || 50).toString());
+  params.append('offset', (filters?.offset || 0).toString());
 
-    try {
-      const response = await fetch(`${API_BASE}/jobs?${params}`, {
-        headers: { 'X-API-Key': getApiKey() },
-        cache: 'no-store',
-        signal: controller.signal,
-      });
+  const result = await apiFetch<PaginatedJobs>(`/jobs?${params}`, { auth: false, cache: 'no-store' });
 
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        console.error('Failed to fetch jobs:', response.status, response.statusText);
-        return { items: [], total: 0, limit: filters?.limit || 50, offset: filters?.offset || 0 };
-      }
-
-      return await response.json();
-    } finally {
-      clearTimeout(timeoutId);
-    }
-  } catch (error) {
-    console.error('Error fetching jobs:', error);
-    return { items: [], total: 0, limit: filters?.limit || 50, offset: filters?.offset || 0 };
+  if (!result.success) {
+    console.error('Failed to fetch jobs:', result.status, result.error);
+    return fallback;
   }
+  return result.data;
 }
 
 /**
@@ -128,32 +87,13 @@ export async function getJobs(filters?: JobFilters): Promise<PaginatedJobs> {
  * Backend response_model = JobDetailOut (thêm ss_team_notes so với JobOut).
  */
 export async function getJobById(id: string): Promise<JobDetail | null> {
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
+  const result = await apiFetch<JobDetail>(`/jobs/${id}`, { auth: false, cache: 'no-store' });
 
-    try {
-      const response = await fetch(`${API_BASE}/jobs/${id}`, {
-        headers: { 'X-API-Key': getApiKey() },
-        cache: 'no-store',
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        console.error('Failed to fetch job:', response.status, response.statusText);
-        return null;
-      }
-
-      return await response.json();
-    } finally {
-      clearTimeout(timeoutId);
-    }
-  } catch (error) {
-    console.error('Error fetching job:', error);
+  if (!result.success) {
+    console.error('Failed to fetch job:', result.status, result.error);
     return null;
   }
+  return result.data;
 }
 
 /**
@@ -161,75 +101,31 @@ export async function getJobById(id: string): Promise<JobDetail | null> {
  * Matches Flask: blueprints/jobs.py::create()
  */
 export async function createJob(data: JobCreatePayload): Promise<{ success: boolean; job?: JobDetail; error?: string }> {
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
+  const result = await apiFetch<JobDetail>('/jobs', {
+    method: 'POST',
+    body: data,
+    fallbackError: 'Failed to create job',
+  });
 
-    try {
-      const response = await fetch(`${API_BASE}/jobs`, {
-        method: 'POST',
-        headers: await getAuthHeaders(),
-        body: JSON.stringify(data),
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ detail: response.statusText }));
-        console.error('Failed to create job:', response.status, error);
-        // BUG FIX (audit 09/2026): dùng formatErrorDetail() thay vì gán
-        // thẳng error.detail (có thể là array) — xem docstring hàm này.
-        return {
-          success: false,
-          error: error.detail != null ? formatErrorDetail(error.detail) : 'Failed to create job',
-        };
-      }
-
-      const job = await response.json();
-      return { success: true, job };
-    } finally {
-      clearTimeout(timeoutId);
-    }
-  } catch (error) {
-    console.error('Error creating job:', error);
-    return { success: false, error: 'Network error' };
+  if (!result.success) {
+    console.error('Failed to create job:', result.status, result.error);
+    return { success: false, error: result.error };
   }
+  return { success: true, job: result.data };
 }
 
 export async function updateJob(id: string, data: JobUpdatePayload): Promise<{ success: boolean; job?: JobDetail; error?: string }> {
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
+  const result = await apiFetch<JobDetail>(`/jobs/${id}`, {
+    method: 'PATCH',
+    body: data,
+    fallbackError: 'Failed to update job',
+  });
 
-    try {
-      const response = await fetch(`${API_BASE}/jobs/${id}`, {
-        method: 'PATCH',
-        headers: await getAuthHeaders(),
-        body: JSON.stringify(data),
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ detail: response.statusText }));
-        console.error('Failed to update job:', response.status, error);
-        return {
-          success: false,
-          error: error.detail != null ? formatErrorDetail(error.detail) : 'Failed to update job',
-        };
-      }
-
-      const job = await response.json();
-      return { success: true, job };
-    } finally {
-      clearTimeout(timeoutId);
-    }
-  } catch (error) {
-    console.error('Error updating job:', error);
-    return { success: false, error: 'Network error' };
+  if (!result.success) {
+    console.error('Failed to update job:', result.status, result.error);
+    return { success: false, error: result.error };
   }
+  return { success: true, job: result.data };
 }
 
 /**
@@ -237,42 +133,17 @@ export async function updateJob(id: string, data: JobUpdatePayload): Promise<{ s
  * Matches Flask: blueprints/jobs.py::delete()
  */
 export async function deleteJob(id: string): Promise<{ success: boolean; error?: string }> {
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
+  const result = await apiFetch<JobDetail>(`/jobs/${id}`, {
+    method: 'PATCH',
+    body: { job_status: 'CLOSED' },
+    fallbackError: 'Failed to delete job',
+  });
 
-    try {
-      // Soft delete: PATCH status to CLOSED
-      const response = await fetch(`${API_BASE}/jobs/${id}`, {
-        method: 'PATCH',
-        headers: await getAuthHeaders(),
-        body: JSON.stringify({ job_status: 'CLOSED' }),
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ detail: response.statusText }));
-        console.error('Failed to delete job:', response.status, error);
-        // BUG FIX (audit 09/2026): deleteJob() là hàm DUY NHẤT trong file
-        // còn gán thẳng error.detail (bỏ sót khi thêm formatErrorDetail()
-        // cho createJob/updateJob đợt trước) — cùng lỗi "[object Object],
-        // [object Object]" nếu route PATCH job_status trả 422 dạng mảng.
-        return {
-          success: false,
-          error: error.detail != null ? formatErrorDetail(error.detail) : 'Failed to delete job',
-        };
-      }
-
-      return { success: true };
-    } finally {
-      clearTimeout(timeoutId);
-    }
-  } catch (error) {
-    console.error('Error deleting job:', error);
-    return { success: false, error: 'Network error' };
+  if (!result.success) {
+    console.error('Failed to delete job:', result.status, result.error);
+    return { success: false, error: result.error };
   }
+  return { success: true };
 }
 
 /**
@@ -282,29 +153,13 @@ export async function deleteJob(id: string): Promise<{ success: boolean; error?:
  * ứng tuyển. Thêm 09/2026 (Phase 3.6).
  */
 export async function getJobApplicants(jobId: string): Promise<JobApplicant[]> {
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
-    try {
-      const response = await fetch(`${API_BASE}/jobs/${jobId}/applications`, {
-        headers: await getAuthHeaders(),
-        cache: 'no-store',
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
+  const result = await apiFetch<JobApplicant[]>(`/jobs/${jobId}/applications`, { cache: 'no-store' });
 
-      if (!response.ok) {
-        console.error('Failed to fetch job applicants:', response.status, response.statusText);
-        return [];
-      }
-      return await response.json();
-    } finally {
-      clearTimeout(timeoutId);
-    }
-  } catch (error) {
-    console.error('Error fetching job applicants:', error);
+  if (!result.success) {
+    console.error('Failed to fetch job applicants:', result.status, result.error);
     return [];
   }
+  return result.data;
 }
 
 /**
@@ -312,27 +167,11 @@ export async function getJobApplicants(jobId: string): Promise<JobApplicant[]> {
  * ở trên nhưng cho chiều "lưu" thay vì "ứng tuyển". Thêm 09/2026 (Phase 3.6).
  */
 export async function getJobSavers(jobId: string): Promise<JobSaver[]> {
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
-    try {
-      const response = await fetch(`${API_BASE}/jobs/${jobId}/saved-jobs`, {
-        headers: await getAuthHeaders(),
-        cache: 'no-store',
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
+  const result = await apiFetch<JobSaver[]>(`/jobs/${jobId}/saved-jobs`, { cache: 'no-store' });
 
-      if (!response.ok) {
-        console.error('Failed to fetch job savers:', response.status, response.statusText);
-        return [];
-      }
-      return await response.json();
-    } finally {
-      clearTimeout(timeoutId);
-    }
-  } catch (error) {
-    console.error('Error fetching job savers:', error);
+  if (!result.success) {
+    console.error('Failed to fetch job savers:', result.status, result.error);
     return [];
   }
+  return result.data;
 }

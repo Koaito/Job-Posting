@@ -1,6 +1,6 @@
 'use server';
 
-import { getAuthHeaders, getAuthHeadersForUpload } from '@/lib/api/client';
+import { apiFetchRaw } from '@/lib/api/client';
 import type {
   ImportExportEntityType,
   ExportFilters,
@@ -24,6 +24,22 @@ import type {
  * do UI tự xây (ImportPanel.tsx quyết định action/level_code/
  * confirm_reactivate cho từng dòng cần xử lý tay), KHÔNG còn tự động
  * skip mọi dòng không sạch như bản MVP trước.
+ *
+ * REFACTOR (09/2026, "Đánh giá kiến trúc" #1+#2): dùng chung
+ * apiFetchRaw() (lib/api/client.ts, KHÔNG dùng apiFetch() cấp cao hơn)
+ * thay vì tự lặp AbortController/timeout/header 8 lần trong file này.
+ * Dùng bản "Raw" (trả thẳng Response) vì file này có 2 nhu cầu đặc thù
+ * mà apiFetch() (JSON-only) không đáp ứng được:
+ *   - extractErrorInfo() bên dưới là định dạng lỗi RIÊNG của module này
+ *     (kèm fileErrors[] khi validate file thất bại) — khác hẳn
+ *     formatErrorDetail() dùng chung cho mọi module khác, vẫn giữ
+ *     nguyên vì đây là nhu cầu THẬT của import (hiện lỗi theo từng
+ *     dòng/field trong file upload), không phải trùng lặp cần dọn.
+ *   - exportEntity() cần đọc BINARY (arrayBuffer), không phải JSON.
+ * Vẫn được hưởng auto-refresh access_token khi 401 token_expired (trước
+ * đây KHÔNG có, dù đây toàn là các thao tác ghi/xử lý nặng — file lớn,
+ * dễ rơi đúng lúc access_token hết hạn giữa chừng) + timeout dùng
+ * chung qua apiFetchRaw().
  *
  * LƯU Ý QUAN TRỌNG (đối chiếu import_executor.py thật, KHÔNG suy đoán):
  *   - Dòng "no_conflict" LUÔN được tạo mới bất kể resolutions gửi gì
@@ -55,9 +71,7 @@ import type {
  *     công ty (hoặc xác nhận tạo mới) qua route resolve-company trước.
  */
 
-const API_BASE = process.env.FASTAPI_URL;
-
-/** Timeout dài hơn mức thường (30s) cho các route xử lý nặng phía backend
+/** Timeout dài hơn mức thường (60s) cho các route xử lý nặng phía backend
  * (parse tới 5000 dòng + nhiều query DB đối chiếu công ty/job trùng —
  * xem docstring import_preview() ở router). */
 const HEAVY_TIMEOUT_MS = 60000;
@@ -126,27 +140,18 @@ export async function getExportPreview(
 ): Promise<{ success: boolean; preview?: ExportPreviewResult; error?: string }> {
   try {
     const params = buildExportQueryParams(filters);
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
+    const response = await apiFetchRaw(`/export/${entityType}/preview?${params}`, {
+      cache: 'no-store',
+      timeoutMs: DEFAULT_TIMEOUT_MS,
+    });
 
-    try {
-      const response = await fetch(`${API_BASE}/export/${entityType}/preview?${params}`, {
-        headers: await getAuthHeaders(),
-        cache: 'no-store',
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ detail: response.statusText }));
-        const { message } = extractErrorInfo(error.detail);
-        return { success: false, error: message || 'Không thể xem trước dữ liệu export' };
-      }
-      const preview = await response.json();
-      return { success: true, preview };
-    } finally {
-      clearTimeout(timeoutId);
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: response.statusText }));
+      const { message } = extractErrorInfo(error.detail);
+      return { success: false, error: message || 'Không thể xem trước dữ liệu export' };
     }
+    const preview = await response.json();
+    return { success: true, preview };
   } catch (error) {
     console.error('Error fetching export preview:', error);
     return { success: false, error: 'Network error' };
@@ -176,35 +181,26 @@ export async function exportEntity(
     const params = buildExportQueryParams(filters);
     params.append('format', format);
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), HEAVY_TIMEOUT_MS);
+    const response = await apiFetchRaw(`/export/${entityType}?${params}`, {
+      cache: 'no-store',
+      timeoutMs: HEAVY_TIMEOUT_MS,
+    });
 
-    try {
-      const response = await fetch(`${API_BASE}/export/${entityType}?${params}`, {
-        headers: await getAuthHeaders(),
-        cache: 'no-store',
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ detail: response.statusText }));
-        const { message } = extractErrorInfo(error.detail);
-        return { success: false, error: message || 'Không thể tải file export' };
-      }
-
-      const contentType = response.headers.get('content-type') || undefined;
-      const disposition = response.headers.get('content-disposition') || '';
-      const filenameMatch = disposition.match(/filename="?([^"]+)"?/);
-      const filename = filenameMatch?.[1] || `${entityType}_export.${format}`;
-
-      const arrayBuffer = await response.arrayBuffer();
-      const base64 = Buffer.from(arrayBuffer).toString('base64');
-
-      return { success: true, filename, contentType, base64 };
-    } finally {
-      clearTimeout(timeoutId);
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: response.statusText }));
+      const { message } = extractErrorInfo(error.detail);
+      return { success: false, error: message || 'Không thể tải file export' };
     }
+
+    const contentType = response.headers.get('content-type') || undefined;
+    const disposition = response.headers.get('content-disposition') || '';
+    const filenameMatch = disposition.match(/filename="?([^"]+)"?/);
+    const filename = filenameMatch?.[1] || `${entityType}_export.${format}`;
+
+    const arrayBuffer = await response.arrayBuffer();
+    const base64 = Buffer.from(arrayBuffer).toString('base64');
+
+    return { success: true, filename, contentType, base64 };
   } catch (error) {
     console.error('Error exporting entity:', error);
     return { success: false, error: 'Network error' };
@@ -234,43 +230,35 @@ export async function uploadImportFile(
     const formData = new FormData();
     formData.append('file', file);
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), HEAVY_TIMEOUT_MS);
+    // Multipart — isUpload:true để apiFetchRaw() dùng getAuthHeadersForUpload()
+    // (KHÔNG set sẵn Content-Type: application/json), để fetch() tự sinh
+    // boundary đúng, cùng lý do đã ghi trong lib/api/client.ts.
+    const response = await apiFetchRaw(`/import/${entityType}/preview`, {
+      method: 'POST',
+      body: formData,
+      isUpload: true,
+      timeoutMs: HEAVY_TIMEOUT_MS,
+    });
 
-    try {
-      // Multipart — KHÔNG dùng getAuthHeaders() (set sẵn Content-Type:
-      // application/json), phải để fetch() tự sinh boundary đúng, cùng lý
-      // do đã ghi trong lib/api/client.ts::getAuthHeadersForUpload().
-      const response = await fetch(`${API_BASE}/import/${entityType}/preview`, {
-        method: 'POST',
-        headers: await getAuthHeadersForUpload(),
-        body: formData,
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
-
-      if (response.status === 429) {
-        return {
-          success: false,
-          error: 'Đã upload quá nhiều lần (giới hạn 20 lần/giờ) — vui lòng thử lại sau.',
-        };
-      }
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ detail: response.statusText }));
-        const { message, fileErrors } = extractErrorInfo(error.detail);
-        return {
-          success: false,
-          error: message || 'Không thể xử lý file import',
-          fileErrors,
-        };
-      }
-
-      const preview = await response.json();
-      return { success: true, preview };
-    } finally {
-      clearTimeout(timeoutId);
+    if (response.status === 429) {
+      return {
+        success: false,
+        error: 'Đã upload quá nhiều lần (giới hạn 20 lần/giờ) — vui lòng thử lại sau.',
+      };
     }
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: response.statusText }));
+      const { message, fileErrors } = extractErrorInfo(error.detail);
+      return {
+        success: false,
+        error: message || 'Không thể xử lý file import',
+        fileErrors,
+      };
+    }
+
+    const preview = await response.json();
+    return { success: true, preview };
   } catch (error) {
     console.error('Error uploading import file:', error);
     return { success: false, error: 'Network error' };
@@ -287,31 +275,22 @@ export async function getImportPreview(
   previewId: string
 ): Promise<{ success: boolean; preview?: ImportPreviewResult; error?: string; expired?: boolean }> {
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
+    const response = await apiFetchRaw(`/import/${entityType}/preview/${previewId}`, {
+      cache: 'no-store',
+      timeoutMs: DEFAULT_TIMEOUT_MS,
+    });
 
-    try {
-      const response = await fetch(`${API_BASE}/import/${entityType}/preview/${previewId}`, {
-        headers: await getAuthHeaders(),
-        cache: 'no-store',
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
-
-      if (response.status === 410) {
-        return { success: false, error: 'Preview đã hết hạn (quá 1 giờ) — vui lòng upload lại file.', expired: true };
-      }
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ detail: response.statusText }));
-        const { message } = extractErrorInfo(error.detail);
-        return { success: false, error: message || 'Không tìm thấy preview này' };
-      }
-
-      const preview = await response.json();
-      return { success: true, preview };
-    } finally {
-      clearTimeout(timeoutId);
+    if (response.status === 410) {
+      return { success: false, error: 'Preview đã hết hạn (quá 1 giờ) — vui lòng upload lại file.', expired: true };
     }
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: response.statusText }));
+      const { message } = extractErrorInfo(error.detail);
+      return { success: false, error: message || 'Không tìm thấy preview này' };
+    }
+
+    const preview = await response.json();
+    return { success: true, preview };
   } catch (error) {
     console.error('Error fetching import preview:', error);
     return { success: false, error: 'Network error' };
@@ -335,26 +314,18 @@ export async function getCompanySuggestions(
   rowIndex: number
 ): Promise<{ success: boolean; suggestions?: ImportCompanySuggestion[]; error?: string }> {
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
+    const response = await apiFetchRaw(
+      `/import/${entityType}/preview/${previewId}/company-suggestions?row_index=${rowIndex}`,
+      { cache: 'no-store', timeoutMs: DEFAULT_TIMEOUT_MS }
+    );
 
-    try {
-      const response = await fetch(
-        `${API_BASE}/import/${entityType}/preview/${previewId}/company-suggestions?row_index=${rowIndex}`,
-        { headers: await getAuthHeaders(), cache: 'no-store', signal: controller.signal }
-      );
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ detail: response.statusText }));
-        const { message } = extractErrorInfo(error.detail);
-        return { success: false, error: message || 'Không thể lấy gợi ý công ty' };
-      }
-      const data = await response.json();
-      return { success: true, suggestions: data.suggestions };
-    } finally {
-      clearTimeout(timeoutId);
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: response.statusText }));
+      const { message } = extractErrorInfo(error.detail);
+      return { success: false, error: message || 'Không thể lấy gợi ý công ty' };
     }
+    const data = await response.json();
+    return { success: true, suggestions: data.suggestions };
   } catch (error) {
     console.error('Error fetching company suggestions:', error);
     return { success: false, error: 'Network error' };
@@ -381,31 +352,22 @@ export async function verifyField(
   error?: string;
 }> {
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
-
-    try {
-      const response = await fetch(
-        `${API_BASE}/import/${entityType}/preview/${previewId}/rows/${rowIndex}/verify-field`,
-        {
-          method: 'POST',
-          headers: await getAuthHeaders(),
-          body: JSON.stringify({ field_name: fieldName, value }),
-          signal: controller.signal,
-        }
-      );
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ detail: response.statusText }));
-        const { message } = extractErrorInfo(error.detail);
-        return { success: false, error: message || 'Không thể xác nhận ô đã sửa' };
+    const response = await apiFetchRaw(
+      `/import/${entityType}/preview/${previewId}/rows/${rowIndex}/verify-field`,
+      {
+        method: 'POST',
+        body: { field_name: fieldName, value },
+        timeoutMs: DEFAULT_TIMEOUT_MS,
       }
-      const data = await response.json();
-      return { success: true, row: data.row, fieldError: data.field_error ?? null };
-    } finally {
-      clearTimeout(timeoutId);
+    );
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: response.statusText }));
+      const { message } = extractErrorInfo(error.detail);
+      return { success: false, error: message || 'Không thể xác nhận ô đã sửa' };
     }
+    const data = await response.json();
+    return { success: true, row: data.row, fieldError: data.field_error ?? null };
   } catch (error) {
     console.error('Error verifying field:', error);
     return { success: false, error: 'Network error' };
@@ -426,31 +388,22 @@ export async function resolveCompany(
   companyId: string | null
 ): Promise<{ success: boolean; row?: ImportPreviewRow; error?: string }> {
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
-
-    try {
-      const response = await fetch(
-        `${API_BASE}/import/${entityType}/preview/${previewId}/rows/${rowIndex}/resolve-company`,
-        {
-          method: 'POST',
-          headers: await getAuthHeaders(),
-          body: JSON.stringify({ company_id: companyId }),
-          signal: controller.signal,
-        }
-      );
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ detail: response.statusText }));
-        const { message } = extractErrorInfo(error.detail);
-        return { success: false, error: message || 'Không thể gán công ty cho dòng này' };
+    const response = await apiFetchRaw(
+      `/import/${entityType}/preview/${previewId}/rows/${rowIndex}/resolve-company`,
+      {
+        method: 'POST',
+        body: { company_id: companyId },
+        timeoutMs: DEFAULT_TIMEOUT_MS,
       }
-      const data = await response.json();
-      return { success: true, row: data.row };
-    } finally {
-      clearTimeout(timeoutId);
+    );
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: response.statusText }));
+      const { message } = extractErrorInfo(error.detail);
+      return { success: false, error: message || 'Không thể gán công ty cho dòng này' };
     }
+    const data = await response.json();
+    return { success: true, row: data.row };
   } catch (error) {
     console.error('Error resolving company:', error);
     return { success: false, error: 'Network error' };
@@ -469,29 +422,20 @@ export async function confirmImport(
   note: string
 ): Promise<{ success: boolean; result?: ImportConfirmSummary; error?: string }> {
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), HEAVY_TIMEOUT_MS);
+    const response = await apiFetchRaw(`/import/${entityType}/confirm`, {
+      method: 'POST',
+      body: { preview_id: previewId, note, resolutions },
+      timeoutMs: HEAVY_TIMEOUT_MS,
+    });
 
-    try {
-      const response = await fetch(`${API_BASE}/import/${entityType}/confirm`, {
-        method: 'POST',
-        headers: await getAuthHeaders(),
-        body: JSON.stringify({ preview_id: previewId, note, resolutions }),
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ detail: response.statusText }));
-        const { message } = extractErrorInfo(error.detail);
-        return { success: false, error: message || 'Không thể xác nhận import' };
-      }
-
-      const result = await response.json();
-      return { success: true, result };
-    } finally {
-      clearTimeout(timeoutId);
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: response.statusText }));
+      const { message } = extractErrorInfo(error.detail);
+      return { success: false, error: message || 'Không thể xác nhận import' };
     }
+
+    const result = await response.json();
+    return { success: true, result };
   } catch (error) {
     console.error('Error confirming import:', error);
     return { success: false, error: 'Network error' };

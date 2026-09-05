@@ -3,7 +3,7 @@
 import { cache } from 'react';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { getApiKey } from '@/lib/api/client';
+import { getApiKey, refreshAccessToken, setAuthCookies } from '@/lib/api/client';
 import type { User, UserCreatePayload, UserCreated, JobApplication, SavedJob } from '@/types/auth';
 
 /**
@@ -27,36 +27,10 @@ interface LoginResponse {
  * thu hồi TOÀN BỘ token của user). Vì vậy phải ghi đè cả 2 cookie mỗi lần
  * refresh, không phải chỉ access_token.
  */
-interface RefreshResponse {
-  access_token: string;
-  refresh_token: string;
-  token_type: string;
-}
-
-/**
- * Ghi cookie access_token + refresh_token — dùng chung cho login() và
- * auto-refresh trong getCurrentUser(), tránh lặp lại options cookie ở 2
- * chỗ (dễ lệch nhau nếu sửa 1 chỗ quên chỗ kia).
- */
-async function setAuthCookies(accessToken: string, refreshToken: string) {
-  const cookieStore = await cookies();
-
-  cookieStore.set('access_token', accessToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: 60 * 60 * 24 * 7, // 7 days
-    path: '/',
-  });
-
-  cookieStore.set('refresh_token', refreshToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: 60 * 60 * 24 * 30, // 30 days
-    path: '/',
-  });
-}
+// REFACTOR (09/2026): setAuthCookies() chuyển sang lib/api/client.ts —
+// dùng chung với apiFetchRaw() (auto-refresh cho MỌI action ghi dữ liệu
+// khác, không chỉ getCurrentUser() ở đây). Xem "Đánh giá kiến trúc" #2
+// trong plan_nextjs.md.
 
 // BUG FIX (audit 09/2026): interface cũ bịa ra "id: number" và
 // "is_staff: boolean" — 2 field này KHÔNG tồn tại trong response thật
@@ -208,86 +182,10 @@ export async function logout() {
   }
 }
 
-/**
- * BUG FIX (audit 09/2026 #4): trước đây refreshAccessToken() trả null
- * cho CẢ 2 trường hợp hoàn toàn khác nhau — (a) backend ĐÃ trả lời rõ
- * ràng "refresh_token không hợp lệ/hết hạn/bị thu hồi" (response.ok
- * false, đây là thất bại THẬT, nên xoá cookie coi như hết phiên) và
- * (b) lỗi mạng/timeout/backend tạm thời không phản hồi được (catch),
- * tức là KHÔNG HỀ biết refresh_token còn hợp lệ hay không. Gộp chung
- * 2 case này khiến 1 lần mất mạng/backend down thoáng qua cũng xoá
- * sạch cookie — người dùng bị đăng xuất oan dù cả access_token lẫn
- * refresh_token đều còn hạn dùng thật, chỉ vì kết nối chập chờn.
- *
- * Đổi kết quả trả về thành discriminated union rõ ràng để nơi gọi
- * (getCurrentUser()) tự quyết định đúng hành vi cho từng trường hợp:
- * - { ok: true, tokens } — refresh thành công.
- * - { ok: false, reason: 'invalid' } — backend xác nhận rõ ràng
- *   refresh_token không dùng được nữa -> xoá cookie, đăng xuất thật sự.
- * - { ok: false, reason: 'network_error' } — không xác định được, có
- *   thể refresh_token vẫn còn hợp lệ -> KHÔNG xoá cookie, coi như phiên
- *   này tạm thời không lấy được, thử lại ở request kế tiếp.
- */
-type RefreshResult =
-  | { ok: true; tokens: RefreshResponse }
-  | { ok: false; reason: 'invalid' | 'network_error' };
-
-/**
- * Đổi refresh_token lấy 1 cặp token mới — POST /auth/refresh (30/minute
- * rate limit theo IP, xem auth_session.py::refresh()). KHÔNG throw —
- * luôn trả RefreshResult, gọi nơi dùng tự xử lý theo "reason".
- */
-async function refreshAccessToken(refreshToken: string): Promise<RefreshResult> {
-  let response: Response;
-  try {
-    response = await fetch(`${API_BASE}/auth/refresh`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-API-Key': getApiKey(),
-      },
-      body: JSON.stringify({ refresh_token: refreshToken }),
-      cache: 'no-store',
-      // BUG FIX (audit 09/2026 #4): bản Flask gốc (backend_auth.py,
-      // REQUEST_TIMEOUT = 20) luôn set timeout tường minh cho MỌI request
-      // tới backend — comment gốc: "Render free tier có thể 'ngủ', lần
-      // gọi đầu có thể chậm". fetch() mặc định KHÔNG timeout, có thể treo
-      // vô thời hạn nếu backend đang cold-start hoặc mất kết nối nửa
-      // chừng — dùng cùng convention 30s đã có ở getDashboardStats()
-      // (actions/dashboard.ts) cho nhất quán.
-      signal: AbortSignal.timeout(30000),
-    });
-  } catch (error) {
-    // fetch() throw = lỗi mạng/timeout/DNS/kết nối bị từ chối — backend
-    // CHƯA HỀ trả lời gì, không có cơ sở nào để coi refresh_token là
-    // không hợp lệ.
-    console.error('Refresh access token network error:', error);
-    return { ok: false, reason: 'network_error' };
-  }
-
-  if (!response.ok) {
-    // Backend ĐÃ trả lời rõ ràng (401 refresh_token invalid/expired/
-    // revoked, 429 rate limit, 5xx lỗi server...) — với 401 đây là thất
-    // bại thật của refresh_token. Với 429/5xx nghiêm ngặt thì cũng
-    // không phải "refresh_token sai", nhưng backend rate-limit 30/minute
-    // vốn đã đủ rộng cho use case thật (xem docstring auth_session.py::
-    // refresh()), và 5xx tạm thời hiếm khi trùng đúng lúc access_token
-    // hết hạn — chấp nhận coi mọi !ok non-network-error là 'invalid' để
-    // giữ logic đơn giản, không phân loại quá chi tiết từng status code.
-    return { ok: false, reason: 'invalid' };
-  }
-
-  try {
-    const tokens: RefreshResponse = await response.json();
-    return { ok: true, tokens };
-  } catch (error) {
-    // response.ok nhưng body không phải JSON hợp lệ — coi như lỗi mạng/
-    // dữ liệu bất thường, KHÔNG phải refresh_token sai (backend đã nói
-    // "ok" ở status code).
-    console.error('Refresh access token: invalid JSON response', error);
-    return { ok: false, reason: 'network_error' };
-  }
-}
+// REFACTOR (09/2026): refreshAccessToken() (kèm type RefreshResult) đã
+// chuyển sang lib/api/client.ts — dùng chung với apiFetchRaw() (auto-
+// refresh cho MỌI action ghi dữ liệu khác, không chỉ getCurrentUser() ở
+// đây). Import ở đầu file. Xem "Đánh giá kiến trúc" #2 trong plan_nextjs.md.
 
 /**
  * BUG FIX (audit 09/2026 #2, race condition): (dashboard)/layout.tsx và

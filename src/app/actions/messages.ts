@@ -1,6 +1,6 @@
 'use server';
 
-import { getAuthHeaders } from '@/lib/api/client';
+import { apiFetch, apiFetchRaw, formatErrorDetail } from '@/lib/api/client';
 import type {
   ChatMessage,
   Conversation,
@@ -16,31 +16,15 @@ import type {
  * Authorization: Bearer <access_token>, không chỉ X-API-Key, giống mọi
  * hàm khác trong backend_auth.py có tiền tố tương tự).
  *
- * Trước đây file này là stub `throw new Error('Not implemented')` cho
- * cả 3 hàm (Phase 6 chưa làm) — viết lại đủ theo types/messages.ts
- * (đã đúng sẵn từ đợt audit trước, chỉ chưa ai dùng) + đúng theo
- * backend_auth.py (list_conversations, list_pending_requests,
- * get_unread_count, search_people, get_message_history,
- * get_messages_since, mark_messages_read, send_message,
- * accept/decline_message_request, cancel_pending_request,
- * block_student_in_chat, unblock_message_relationship).
+ * REFACTOR (09/2026, "Đánh giá kiến trúc" #1+#2): dùng chung apiFetch()/
+ * apiFetchRaw() (lib/api/client.ts) thay vì tự lặp fetch()/header/error-
+ * parsing 14 lần trong file này — formatErrorDetail() bản riêng (thiếu
+ * xử lý "loc") đã bị xoá, dùng thẳng bản đầy đủ nhất từ lib/api/client.ts.
+ * Có auto-refresh access_token khi 401 token_expired cho MỌI thao tác
+ * ghi (sendMessage, accept/decline, cancel, block/unblock...) — trước
+ * đây các hàm này còn không có cả timeout (không dùng AbortController),
+ * apiFetch()/apiFetchRaw() tự thêm timeout 30s mặc định cho tất cả.
  */
-
-const API_BASE = process.env.FASTAPI_URL;
-
-function formatErrorDetail(detail: unknown): string {
-  if (typeof detail === 'string') return detail;
-  if (Array.isArray(detail)) {
-    return detail
-      .map((item) =>
-        item && typeof item === 'object' && 'msg' in item
-          ? String((item as { msg: unknown }).msg)
-          : String(item)
-      )
-      .join('; ');
-  }
-  return 'Có lỗi xảy ra';
-}
 
 /**
  * GET /messages/conversations — hội thoại ĐÃ CÓ ít nhất 1 tin nhắn
@@ -49,29 +33,13 @@ function formatErrorDetail(detail: unknown): string {
  * SS-SS, không qua state machine chat_relationships).
  */
 export async function getConversations(): Promise<Conversation[]> {
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
-    try {
-      const response = await fetch(`${API_BASE}/messages/conversations`, {
-        headers: await getAuthHeaders(),
-        cache: 'no-store',
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
+  const result = await apiFetch<Conversation[]>('/messages/conversations', { cache: 'no-store' });
 
-      if (!response.ok) {
-        console.error('Failed to fetch conversations:', response.status, response.statusText);
-        return [];
-      }
-      return await response.json();
-    } finally {
-      clearTimeout(timeoutId);
-    }
-  } catch (error) {
-    console.error('Error fetching conversations:', error);
+  if (!result.success) {
+    console.error('Failed to fetch conversations:', result.status, result.error);
     return [];
   }
+  return result.data;
 }
 
 /**
@@ -82,32 +50,16 @@ export async function getConversations(): Promise<Conversation[]> {
  * ở trên — đây là mục "Yêu cầu đang chờ" riêng cho SS.
  */
 export async function getPendingRequests(): Promise<PendingRequest[]> {
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
-    try {
-      const response = await fetch(`${API_BASE}/messages/pending-requests`, {
-        headers: await getAuthHeaders(),
-        cache: 'no-store',
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
+  const result = await apiFetch<PendingRequest[]>('/messages/pending-requests', { cache: 'no-store' });
 
-      if (!response.ok) {
-        // 403 hợp lệ khi caller là student — không log như lỗi thật.
-        if (response.status !== 403) {
-          console.error('Failed to fetch pending requests:', response.status, response.statusText);
-        }
-        return [];
-      }
-      return await response.json();
-    } finally {
-      clearTimeout(timeoutId);
+  if (!result.success) {
+    // 403 hợp lệ khi caller là student — không log như lỗi thật.
+    if (result.status !== 403) {
+      console.error('Failed to fetch pending requests:', result.status, result.error);
     }
-  } catch (error) {
-    console.error('Error fetching pending requests:', error);
     return [];
   }
+  return result.data;
 }
 
 /**
@@ -115,18 +67,13 @@ export async function getPendingRequests(): Promise<PendingRequest[]> {
  * xem Sidebar.tsx) và số hiện ngay lúc tải trang lần đầu.
  */
 export async function getUnreadCount(): Promise<number> {
-  try {
-    const response = await fetch(`${API_BASE}/messages/unread-count`, {
-      headers: await getAuthHeaders(),
-      cache: 'no-store',
-    });
-    if (!response.ok) return 0;
-    const data = await response.json();
-    return data.count ?? 0;
-  } catch (error) {
-    console.error('Error fetching unread count:', error);
+  const result = await apiFetch<{ count?: number }>('/messages/unread-count', { cache: 'no-store' });
+
+  if (!result.success) {
+    console.error('Error fetching unread count:', result.status, result.error);
     return 0;
   }
+  return result.data.count ?? 0;
 }
 
 /**
@@ -139,30 +86,14 @@ export async function searchPeople(q: string): Promise<PersonSearchResult[]> {
   const query = q.trim();
   if (!query) return [];
 
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
-    try {
-      const params = new URLSearchParams({ q: query });
-      const response = await fetch(`${API_BASE}/messages/search-people?${params}`, {
-        headers: await getAuthHeaders(),
-        cache: 'no-store',
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
+  const params = new URLSearchParams({ q: query });
+  const result = await apiFetch<PersonSearchResult[]>(`/messages/search-people?${params}`, { cache: 'no-store' });
 
-      if (!response.ok) {
-        console.error('Failed to search people:', response.status, response.statusText);
-        return [];
-      }
-      return await response.json();
-    } finally {
-      clearTimeout(timeoutId);
-    }
-  } catch (error) {
-    console.error('Error searching people:', error);
+  if (!result.success) {
+    console.error('Failed to search people:', result.status, result.error);
     return [];
   }
+  return result.data;
 }
 
 /**
@@ -176,31 +107,14 @@ export async function getMessageHistory(
   partnerId: string,
   limit = 50
 ): Promise<ChatMessage[]> {
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
-    try {
-      const params = new URLSearchParams({ limit: String(limit) });
-      const response = await fetch(`${API_BASE}/messages/with/${partnerId}?${params}`, {
-        headers: await getAuthHeaders(),
-        cache: 'no-store',
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
+  const params = new URLSearchParams({ limit: String(limit) });
+  const result = await apiFetch<ChatMessage[]>(`/messages/with/${partnerId}?${params}`, { cache: 'no-store' });
 
-      if (!response.ok) {
-        console.error('Failed to fetch message history:', response.status, response.statusText);
-        return [];
-      }
-      const history: ChatMessage[] = await response.json();
-      return history.slice().reverse();
-    } finally {
-      clearTimeout(timeoutId);
-    }
-  } catch (error) {
-    console.error('Error fetching message history:', error);
+  if (!result.success) {
+    console.error('Failed to fetch message history:', result.status, result.error);
     return [];
   }
+  return result.data.slice().reverse();
 }
 
 /**
@@ -213,18 +127,14 @@ export async function getMessagesSince(
   partnerId: string,
   afterId: number
 ): Promise<ChatMessage[]> {
-  try {
-    const params = new URLSearchParams({ after_id: String(afterId) });
-    const response = await fetch(`${API_BASE}/messages/since/${partnerId}?${params}`, {
-      headers: await getAuthHeaders(),
-      cache: 'no-store',
-    });
-    if (!response.ok) return [];
-    return await response.json();
-  } catch (error) {
-    console.error('Error polling new messages:', error);
+  const params = new URLSearchParams({ after_id: String(afterId) });
+  const result = await apiFetch<ChatMessage[]>(`/messages/since/${partnerId}?${params}`, { cache: 'no-store' });
+
+  if (!result.success) {
+    console.error('Error polling new messages:', result.status, result.error);
     return [];
   }
+  return result.data;
 }
 
 /**
@@ -234,18 +144,13 @@ export async function getMessagesSince(
  * thất bại, người dùng vẫn cần xem được lịch sử tin nhắn.
  */
 export async function markMessagesRead(partnerId: string): Promise<number> {
-  try {
-    const response = await fetch(`${API_BASE}/messages/read/${partnerId}`, {
-      method: 'POST',
-      headers: await getAuthHeaders(),
-    });
-    if (!response.ok) return 0;
-    const data = await response.json();
-    return data.marked_read ?? 0;
-  } catch (error) {
-    console.error('Error marking messages read:', error);
+  const result = await apiFetch<{ marked_read?: number }>(`/messages/read/${partnerId}`, { method: 'POST' });
+
+  if (!result.success) {
+    console.error('Error marking messages read:', result.status, result.error);
     return 0;
   }
+  return result.data.marked_read ?? 0;
 }
 
 /**
@@ -255,10 +160,13 @@ export async function markMessagesRead(partnerId: string): Promise<number> {
  *   - 202: học viên vừa TẠO/GỬI LẠI request pending tới 1 SS lần đầu —
  *     CHƯA có tin nhắn nào được lưu -> { status: 'pending', message }.
  * Cả 2 mã đều nằm trong response.ok (2xx) của fetch nên phân biệt được
- * ngay qua response.status, không cần tự gọi thư viện HTTP khác như
- * bản Flask (đó là vì requests.post() ở Python coi 202 là "không phải
- * lỗi nhưng không map sẵn field .ok cho từng status" — fetch() JS thì
- * .ok đã true cho mọi 2xx nên không vướng vấn đề tương tự).
+ * ngay qua response.status.
+ *
+ * Dùng apiFetchRaw() thô (không phải apiFetch()) vì cần đọc trực tiếp
+ * response.status để phân biệt 201/202, và fallback lỗi khác nhau theo
+ * từng status code (429/409/403/404) — apiFetch() chỉ hỗ trợ 1
+ * fallbackError chung. Vẫn hưởng auto-refresh + timeout dùng chung qua
+ * apiFetchRaw().
  */
 export async function sendMessage(
   partnerId: string,
@@ -277,10 +185,9 @@ export async function sendMessage(
   }
 
   try {
-    const response = await fetch(`${API_BASE}/messages`, {
+    const response = await apiFetchRaw('/messages', {
       method: 'POST',
-      headers: await getAuthHeaders(),
-      body: JSON.stringify({ receiver_id: partnerId, content: trimmed }),
+      body: { receiver_id: partnerId, content: trimmed },
     });
 
     if (response.status === 201) {
@@ -298,13 +205,6 @@ export async function sendMessage(
     if (response.status === 409) fallback = 'Trạng thái hội thoại vừa thay đổi, tải lại trang để xem mới nhất.';
     if (response.status === 403) fallback = 'Bạn không có quyền nhắn tin với người này.';
     if (response.status === 404) fallback = 'Không tìm thấy người nhận.';
-    // BUG FIX (phát hiện lúc viết test): formatErrorDetail(undefined)
-    // KHÔNG trả falsy — nhánh cuối của nó trả cứng 'Có lỗi xảy ra' (string
-    // luôn truthy), nên `formatErrorDetail(error.detail) || fallback`
-    // không bao giờ rơi vào fallback dù backend không trả detail gì cả,
-    // 4 thông báo tiếng Việt cụ thể ở trên (429/409/403/404) im lặng
-    // không bao giờ hiện ra được. Chỉ gọi formatErrorDetail khi THỰC SỰ
-    // có detail, còn không thì dùng thẳng fallback theo status code.
     return {
       success: false,
       error: error.detail != null ? formatErrorDetail(error.detail) : fallback,
@@ -323,23 +223,16 @@ export async function sendMessage(
 export async function cancelPendingRequest(
   ssId: string
 ): Promise<{ success: boolean; error?: string }> {
-  try {
-    const response = await fetch(`${API_BASE}/messages/cancel/${ssId}`, {
-      method: 'POST',
-      headers: await getAuthHeaders(),
-    });
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: response.statusText }));
-      return {
-        success: false,
-        error: error.detail != null ? formatErrorDetail(error.detail) : 'Không thể huỷ yêu cầu',
-      };
-    }
-    return { success: true };
-  } catch (error) {
-    console.error('Error cancelling pending request:', error);
-    return { success: false, error: 'Network error' };
+  const result = await apiFetch<void>(`/messages/cancel/${ssId}`, {
+    method: 'POST',
+    fallbackError: 'Không thể huỷ yêu cầu',
+  });
+
+  if (!result.success) {
+    console.error('Error cancelling pending request:', result.status, result.error);
+    return { success: false, error: result.error };
   }
+  return { success: true };
 }
 
 /**
@@ -349,46 +242,32 @@ export async function cancelPendingRequest(
 export async function acceptMessageRequest(
   relationshipId: string
 ): Promise<{ success: boolean; error?: string }> {
-  try {
-    const response = await fetch(`${API_BASE}/messages/relationships/${relationshipId}/accept`, {
-      method: 'POST',
-      headers: await getAuthHeaders(),
-    });
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: response.statusText }));
-      return {
-        success: false,
-        error: error.detail != null ? formatErrorDetail(error.detail) : 'Không thể chấp nhận yêu cầu',
-      };
-    }
-    return { success: true };
-  } catch (error) {
-    console.error('Error accepting message request:', error);
-    return { success: false, error: 'Network error' };
+  const result = await apiFetch<void>(`/messages/relationships/${relationshipId}/accept`, {
+    method: 'POST',
+    fallbackError: 'Không thể chấp nhận yêu cầu',
+  });
+
+  if (!result.success) {
+    console.error('Error accepting message request:', result.status, result.error);
+    return { success: false, error: result.error };
   }
+  return { success: true };
 }
 
 /** POST /messages/relationships/{id}/decline — cùng điều kiện như accept. */
 export async function declineMessageRequest(
   relationshipId: string
 ): Promise<{ success: boolean; error?: string }> {
-  try {
-    const response = await fetch(`${API_BASE}/messages/relationships/${relationshipId}/decline`, {
-      method: 'POST',
-      headers: await getAuthHeaders(),
-    });
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: response.statusText }));
-      return {
-        success: false,
-        error: error.detail != null ? formatErrorDetail(error.detail) : 'Không thể từ chối yêu cầu',
-      };
-    }
-    return { success: true };
-  } catch (error) {
-    console.error('Error declining message request:', error);
-    return { success: false, error: 'Network error' };
+  const result = await apiFetch<void>(`/messages/relationships/${relationshipId}/decline`, {
+    method: 'POST',
+    fallbackError: 'Không thể từ chối yêu cầu',
+  });
+
+  if (!result.success) {
+    console.error('Error declining message request:', result.status, result.error);
+    return { success: false, error: result.error };
   }
+  return { success: true };
 }
 
 /**
@@ -400,23 +279,16 @@ export async function declineMessageRequest(
 export async function blockStudent(
   studentId: string
 ): Promise<{ success: boolean; error?: string }> {
-  try {
-    const response = await fetch(`${API_BASE}/messages/block/${studentId}`, {
-      method: 'POST',
-      headers: await getAuthHeaders(),
-    });
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: response.statusText }));
-      return {
-        success: false,
-        error: error.detail != null ? formatErrorDetail(error.detail) : 'Không thể chặn học viên',
-      };
-    }
-    return { success: true };
-  } catch (error) {
-    console.error('Error blocking student:', error);
-    return { success: false, error: 'Network error' };
+  const result = await apiFetch<void>(`/messages/block/${studentId}`, {
+    method: 'POST',
+    fallbackError: 'Không thể chặn học viên',
+  });
+
+  if (!result.success) {
+    console.error('Error blocking student:', result.status, result.error);
+    return { success: false, error: result.error };
   }
+  return { success: true };
 }
 
 /**
@@ -428,21 +300,14 @@ export async function blockStudent(
 export async function unblockRelationship(
   relationshipId: string
 ): Promise<{ success: boolean; error?: string }> {
-  try {
-    const response = await fetch(`${API_BASE}/messages/relationships/${relationshipId}/unblock`, {
-      method: 'POST',
-      headers: await getAuthHeaders(),
-    });
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: response.statusText }));
-      return {
-        success: false,
-        error: error.detail != null ? formatErrorDetail(error.detail) : 'Không thể bỏ chặn',
-      };
-    }
-    return { success: true };
-  } catch (error) {
-    console.error('Error unblocking relationship:', error);
-    return { success: false, error: 'Network error' };
+  const result = await apiFetch<void>(`/messages/relationships/${relationshipId}/unblock`, {
+    method: 'POST',
+    fallbackError: 'Không thể bỏ chặn',
+  });
+
+  if (!result.success) {
+    console.error('Error unblocking relationship:', result.status, result.error);
+    return { success: false, error: result.error };
   }
+  return { success: true };
 }
