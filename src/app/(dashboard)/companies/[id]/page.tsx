@@ -36,7 +36,10 @@ export default async function CompanyDetailPage({
   const contacts = isStaff ? await getContactsByCompany(company.company_id) : [];
 
   return (
-    <div className="page-container">
+    // BUG FIX (audit CSS 09/2026): bỏ div "page-container" ngoài cùng —
+    // class ảo, main.content (root layout.tsx) đã lo container rồi
+    // (giống fix đã áp dụng ở jobs/[id]/page.tsx).
+    <>
       <div className="page-head">
         <div>
           <span className="eyebrow">
@@ -49,11 +52,11 @@ export default async function CompanyDetailPage({
             {company.company_size && ` · ${company.company_size} nhân sự`}
           </p>
         </div>
-        <div className="page-head-actions">
-          <Link href={`/companies/${company.company_id}/edit`} className="btn btn-primary">
-            Sửa hồ sơ công ty
-          </Link>
-        </div>
+        {/* Bỏ div "page-head-actions" bọc ngoài (class ảo) — .page-head
+            vốn đã là flex space-between, nút chỉ cần là con trực tiếp. */}
+        <Link href={`/companies/${company.company_id}/edit`} className="btn btn-primary">
+          Sửa hồ sơ công ty
+        </Link>
       </div>
 
       <div className="detail-grid">
@@ -89,10 +92,16 @@ export default async function CompanyDetailPage({
           )}
         </div>
 
-        <aside className="detail-sidebar">
+        {/* BUG FIX (audit CSS 09/2026): "detail-sidebar" không tồn tại,
+            class thật là "detail-side" (public/css/06-detail-page.css,
+            gồm cả position: sticky) — giống fix ở jobs/[id]/page.tsx. */}
+        <aside className="detail-side">
           <section className="card">
             <h4>Thông tin chung</h4>
-            <dl className="detail-list">
+            {/* BUG FIX: "detail-list" không tồn tại — class thật cho
+                khối dt/dd kiểu này là "kv" (public/css/06-detail-page.css,
+                dùng chung với company_detail.html gốc). */}
+            <dl className="kv">
               <dt>Tiềm năng</dt>
               <dd>
                 <span className={`fit-chip ${partnershipPotentialClass(company.partnership_potential)}`}>
@@ -114,11 +123,15 @@ export default async function CompanyDetailPage({
                 </>
               )}
 
+              {/* Bỏ class "link" (ảo) ở 3 thẻ <a> dưới đây — "kv dd a"
+                  (public/css/06-detail-page.css) đã tự tô màu accent cho
+                  mọi link trong danh sách này rồi, giống fix ở
+                  jobs/[id]/page.tsx. */}
               {company.website && (
                 <>
                   <dt>Website</dt>
                   <dd>
-                    <a href={company.website} target="_blank" rel="noopener noreferrer" className="link">
+                    <a href={company.website} target="_blank" rel="noopener noreferrer">
                       {company.website}
                     </a>
                   </dd>
@@ -129,7 +142,7 @@ export default async function CompanyDetailPage({
                 <>
                   <dt>Fanpage</dt>
                   <dd>
-                    <a href={company.fanpage_url} target="_blank" rel="noopener noreferrer" className="link">
+                    <a href={company.fanpage_url} target="_blank" rel="noopener noreferrer">
                       Xem fanpage ↗
                     </a>
                   </dd>
@@ -140,7 +153,7 @@ export default async function CompanyDetailPage({
                 <>
                   <dt>LinkedIn</dt>
                   <dd>
-                    <a href={company.linkedin_url} target="_blank" rel="noopener noreferrer" className="link">
+                    <a href={company.linkedin_url} target="_blank" rel="noopener noreferrer">
                       Xem LinkedIn ↗
                     </a>
                   </dd>
@@ -151,9 +164,14 @@ export default async function CompanyDetailPage({
 
           <section className="card">
             <h4>Thông tin hệ thống</h4>
-            <dl className="detail-list">
+            {/* "detail-list" → "kv" (như trên). Bỏ luôn "font-mono" ở
+                dd ID — không phải class thật (--font-mono chỉ là CSS
+                variable dùng bên trong các selector khác như .skill-tag,
+                không có sẵn dạng utility class đứng riêng); job/[id]/page.tsx
+                (đã fix) cũng hiện ID dạng <dd> thường, không gắn class gì. */}
+            <dl className="kv">
               <dt>ID</dt>
-              <dd className="font-mono">{company.company_id}</dd>
+              <dd>{company.company_id}</dd>
 
               <dt>Ngày tạo</dt>
               <dd>{new Date(company.created_at).toLocaleDateString('vi-VN')}</dd>
@@ -174,6 +192,6 @@ export default async function CompanyDetailPage({
           </section>
         </aside>
       </div>
-    </div>
+    </>
   );
 }

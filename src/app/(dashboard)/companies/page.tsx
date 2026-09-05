@@ -42,7 +42,11 @@ export default async function CompaniesPage({
     `/companies?page=${p}${resolvedSearchParams.keyword ? `&keyword=${resolvedSearchParams.keyword}` : ''}${resolvedSearchParams.province ? `&province=${resolvedSearchParams.province}` : ''}`;
 
   return (
-    <div className="page-container">
+    // BUG FIX (audit CSS 09/2026): bỏ div "page-container" bọc ngoài —
+    // class ảo, không tồn tại trong CSS nào. main.content (root
+    // layout.tsx) đã tự lo container/padding cho MỌI trang rồi (giống
+    // fix đã áp dụng ở jobs/page.tsx).
+    <>
       <div className="page-head">
         <div>
           <span className="eyebrow">Career Hub / Doanh nghiệp</span>
@@ -51,11 +55,12 @@ export default async function CompaniesPage({
             Hồ sơ công ty đã tiếp cận/crawl được — vào từng công ty để xem job đã đăng.
           </p>
         </div>
-        <div className="page-head-actions">
-          <Link href="/companies/new" className="btn btn-primary">
-            + Thêm công ty
-          </Link>
-        </div>
+        {/* Bỏ div "page-head-actions" bọc ngoài (cũng là class ảo) —
+            .page-head vốn đã là flex justify-content: space-between,
+            nút chỉ cần là con trực tiếp (xem templates/companies.html gốc). */}
+        <Link href="/companies/new" className="btn btn-primary">
+          + Thêm công ty
+        </Link>
       </div>
 
       <div className="filter-bar" style={{ marginBottom: '22px' }}>
@@ -152,6 +157,6 @@ export default async function CompaniesPage({
           )}
         </div>
       )}
-    </div>
+    </>
   );
 }
