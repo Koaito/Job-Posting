@@ -159,13 +159,17 @@ export function StaffAccountsManager({ initialStaff, currentUserId, isAdmin }: S
                     <td>
                       <span className="role-chip">{s.role}</span>
                     </td>
-                    <td>
-                      {s.is_active ? (
-                        <span className="status-chip status-open">Hoạt động</span>
-                      ) : (
-                        <span className="status-chip status-closed">Đã khoá</span>
-                      )}
-                    </td>
+                    {/* BUG FIX (audit CSS 09/2026): "status-chip status-open/
+                        status-closed" là class domain job (OPEN/CLOSED),
+                        tự bịa cho tài khoản nhân viên nên mất màu hoàn
+                        toàn (không khớp CSS nào). Flask gốc
+                        (templates/staff_accounts.html dòng 86) hiện
+                        trạng thái tài khoản bằng CHỮ THƯỜNG, không hề
+                        bọc badge/chip nào — CSS thật chưa có sẵn 1 chip
+                        riêng cho domain "tài khoản hoạt động/khoá" này,
+                        nên fix đúng là bỏ chip mượn nhầm, không tự chế
+                        thêm class mới không có trong style.css. */}
+                    <td>{s.is_active ? 'Hoạt động' : 'Đã khoá'}</td>
                     <td className="muted">
                       {s.last_login_at ? new Date(s.last_login_at).toLocaleString('vi-VN') : 'Chưa đăng nhập'}
                     </td>

@@ -25,7 +25,9 @@ export default async function StudentDetailPage({
   const { student, applications, savedJobs } = data;
 
   return (
-    <div className="page-container">
+    // BUG FIX (audit CSS 09/2026): bỏ div "page-container" bọc ngoài —
+    // class ảo, main.content (root layout.tsx) đã lo container rồi.
+    <>
       <div className="page-head">
         <div>
           <span className="eyebrow">
@@ -48,13 +50,11 @@ export default async function StudentDetailPage({
           </div>
           <div>
             <dt className="muted">Trạng thái</dt>
-            <dd>
-              {student.is_active ? (
-                <span className="status-chip status-open">Hoạt động</span>
-              ) : (
-                <span className="status-chip status-closed">Đã khoá</span>
-              )}
-            </dd>
+            {/* BUG FIX (audit CSS 09/2026): cùng bug với students/page.tsx
+                — bỏ chip "status-chip status-open/status-closed" mượn
+                sai domain job, hiện chữ thường theo đúng cách Flask gốc
+                hiện trạng thái tài khoản (staff_accounts.html). */}
+            <dd>{student.is_active ? 'Hoạt động' : 'Đã khoá'}</dd>
           </div>
           <div>
             <dt className="muted">Đăng nhập gần nhất</dt>
@@ -122,6 +122,6 @@ export default async function StudentDetailPage({
       ) : (
         <div className="empty-state">Chưa lưu job nào.</div>
       )}
-    </div>
+    </>
   );
 }

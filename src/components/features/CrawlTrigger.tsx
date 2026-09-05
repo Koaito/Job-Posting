@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { startCrawl, getCrawlStatus, getCrawlLogs } from '@/app/actions/crawl';
 import type { CrawlStatus, CrawlLog } from '@/types/crawl';
+import { crawlStatusBadgeClass, crawlStatusLabel } from '@/lib/crawl/badges';
 
 /**
  * Form kích hoạt crawl đơn lẻ + khung "Log live" — dùng ở trang /crawl.
@@ -219,8 +220,15 @@ export default function CrawlTrigger({ isAdmin, sources, initialRun }: CrawlTrig
           <div style={{ marginBottom: '12px' }}>
             <p style={{ margin: '0 0 4px 0' }}>
               <strong>{runStatus.source}</strong> / {runStatus.category} —{' '}
-              <span className={`status-chip ${isRunActive ? 'status-open' : runStatus.status === 'error' ? 'status-closed' : ''}`}>
-                {runStatus.status}
+              {/* BUG FIX (audit CSS 09/2026): "status-chip status-open/
+                  status-closed" là class domain job, tự bịa ở đây không
+                  khớp CSS nào. Domain crawl dùng family khác hẳn: .badge
+                  + badge-info/badge-success/badge-danger (xem
+                  lib/crawl/badges.ts) — khớp CRAWL_STATUS_BADGE thật
+                  (crawler_client/crawl.py), cũng hiện nhãn tiếng Việt
+                  thay vì in thẳng status tiếng Anh (queued/running/...). */}
+              <span className={`badge ${crawlStatusBadgeClass(runStatus.status)}`}>
+                {crawlStatusLabel(runStatus.status)}
               </span>
             </p>
             {runStatus.progress && (

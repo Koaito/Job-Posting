@@ -25,7 +25,10 @@ export default async function StudentsPage({
   const students = await getStudents({ keyword: resolvedSearchParams.search });
 
   return (
-    <div className="page-container">
+    // BUG FIX (audit CSS 09/2026): bỏ div "page-container" bọc ngoài —
+    // class ảo, main.content (root layout.tsx) đã lo container rồi
+    // (giống fix ở jobs/page.tsx, companies/page.tsx).
+    <>
       <div className="page-head">
         <div>
           <span className="eyebrow">Career Hub / Quản lý</span>
@@ -74,13 +77,14 @@ export default async function StudentsPage({
                   <td className="muted">{s.email}</td>
                   <td className="muted">{s.phone || '—'}</td>
                   <td className="muted">{s.track || '—'}</td>
-                  <td>
-                    {s.is_active ? (
-                      <span className="status-chip status-open">Hoạt động</span>
-                    ) : (
-                      <span className="status-chip status-closed">Đã khoá</span>
-                    )}
-                  </td>
+                  {/* BUG FIX (audit CSS 09/2026): cùng bug với
+                      StaffAccountsManager.tsx — "status-chip status-open/
+                      status-closed" là class domain job, mượn sai nên
+                      mất màu. Flask gốc hiện trạng thái tài khoản bằng
+                      chữ thường, không chip (xem staff_accounts.html) —
+                      chưa có class CSS riêng cho domain này nên bỏ chip
+                      mượn nhầm thay vì tự chế class mới. */}
+                  <td>{s.is_active ? 'Hoạt động' : 'Đã khoá'}</td>
                   <td className="muted">
                     {s.last_login_at ? new Date(s.last_login_at).toLocaleString('vi-VN') : 'Chưa đăng nhập'}
                   </td>
@@ -92,6 +96,6 @@ export default async function StudentsPage({
       ) : (
         <div className="empty-state">Không tìm thấy học viên nào.</div>
       )}
-    </div>
+    </>
   );
 }
