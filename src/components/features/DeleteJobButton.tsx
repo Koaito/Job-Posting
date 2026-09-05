@@ -47,8 +47,8 @@ export default function DeleteJobButton({ jobId, jobTitle }: DeleteJobButtonProp
   }
 
   return (
-    <div className="card" style={{ padding: '16px', backgroundColor: '#fff3cd', border: '1px solid #ffc107' }}>
-      <h4 style={{ margin: '0 0 8px 0', color: '#856404' }}>⚠️ Xác nhận xóa</h4>
+    <div className="card" style={{ padding: '16px', backgroundColor: 'var(--accent-soft)', border: '1px solid var(--accent)' }}>
+      <h4 style={{ margin: '0 0 8px 0', color: 'var(--accent)' }}>⚠️ Xác nhận xóa</h4>
       <p style={{ margin: '0 0 16px 0', fontSize: '14px' }}>
         Bạn có chắc muốn xóa job <strong>"{jobTitle}"</strong>?
         <br />

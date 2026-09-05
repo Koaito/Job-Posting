@@ -53,8 +53,8 @@ export default function DeleteCompanyButton({ companyId, companyName }: DeleteCo
   }
 
   return (
-    <div className="card" style={{ padding: '16px', backgroundColor: '#fff3cd', border: '1px solid #ffc107' }}>
-      <h4 style={{ margin: '0 0 8px 0', color: '#856404' }}>⚠️ Xác nhận xoá</h4>
+    <div className="card" style={{ padding: '16px', backgroundColor: 'var(--accent-soft)', border: '1px solid var(--accent)' }}>
+      <h4 style={{ margin: '0 0 8px 0', color: 'var(--accent)' }}>⚠️ Xác nhận xoá</h4>
       <p style={{ margin: '0 0 12px 0', fontSize: '14px' }}>
         Xoá công ty <strong>&quot;{companyName}&quot;</strong>? Đây là xoá mềm — JD liên quan vẫn
         giữ nguyên, có thể xem lại qua Lịch sử thao tác.

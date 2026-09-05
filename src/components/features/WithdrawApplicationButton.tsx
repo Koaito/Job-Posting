@@ -44,8 +44,8 @@ export default function WithdrawApplicationButton({ jobId, jobTitle }: WithdrawA
   }
 
   return (
-    <div className="card" style={{ padding: '16px', backgroundColor: '#fff3cd', border: '1px solid #ffc107' }}>
-      <h4 style={{ margin: '0 0 8px 0', color: '#856404' }}>⚠️ Xác nhận rút hồ sơ</h4>
+    <div className="card" style={{ padding: '16px', backgroundColor: 'var(--accent-soft)', border: '1px solid var(--accent)' }}>
+      <h4 style={{ margin: '0 0 8px 0', color: 'var(--accent)' }}>⚠️ Xác nhận rút hồ sơ</h4>
       <p style={{ margin: '0 0 12px 0', fontSize: '14px' }}>
         Bạn có chắc muốn rút hồ sơ ứng tuyển <strong>&quot;{jobTitle}&quot;</strong>? Bạn có thể ứng tuyển
         lại sau nếu muốn.
