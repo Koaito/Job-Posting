@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { deleteCompany } from '@/app/actions/companies';
+import ConfirmActionButton from './ConfirmActionButton';
 
 /**
  * Delete Company Button — xoá MỀM (is_active=false), note BẮT BUỘC.
@@ -20,74 +20,27 @@ interface DeleteCompanyButtonProps {
 
 export default function DeleteCompanyButton({ companyId, companyName }: DeleteCompanyButtonProps) {
   const router = useRouter();
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [note, setNote] = useState('');
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const handleDelete = async () => {
-    if (!note.trim()) {
-      setError('Vui lòng nhập lý do xoá.');
-      return;
-    }
-
-    setIsDeleting(true);
-    setError(null);
-
-    const result = await deleteCompany(companyId, { note: note.trim() });
-
-    if (result.success) {
-      router.push('/companies?deleted=1');
-    } else {
-      setError(result.error || 'Không thể xoá công ty');
-      setIsDeleting(false);
-    }
-  };
-
-  if (!showConfirm) {
-    return (
-      <button onClick={() => setShowConfirm(true)} className="btn btn-block btn-danger">
-        🗑️ Xoá công ty
-      </button>
-    );
-  }
 
   return (
-    <div className="card" style={{ padding: '16px', backgroundColor: 'var(--accent-soft)', border: '1px solid var(--accent)' }}>
-      <h4 style={{ margin: '0 0 8px 0', color: 'var(--accent)' }}>⚠️ Xác nhận xoá</h4>
-      <p style={{ margin: '0 0 12px 0', fontSize: '14px' }}>
-        Xoá công ty <strong>&quot;{companyName}&quot;</strong>? Đây là xoá mềm — JD liên quan vẫn
-        giữ nguyên, có thể xem lại qua Lịch sử thao tác.
-      </p>
-
-      <textarea
-        value={note}
-        onChange={(e) => setNote(e.target.value)}
-        rows={2}
-        placeholder="Lý do xoá công ty này — bắt buộc..."
-        disabled={isDeleting}
-        style={{ width: '100%', marginBottom: '12px' }}
-      />
-
-      {error && (
-        <div className="flash flash-error" style={{ marginBottom: '12px' }}>
-          {error}
-        </div>
-      )}
-
-      <div style={{ display: 'flex', gap: '8px' }}>
-        <button onClick={handleDelete} disabled={isDeleting} className="btn btn-danger" style={{ flex: 1 }}>
-          {isDeleting ? 'Đang xoá...' : 'Xác nhận xoá'}
-        </button>
-        <button
-          onClick={() => { setShowConfirm(false); setError(null); }}
-          disabled={isDeleting}
-          className="btn btn-ghost"
-          style={{ flex: 1 }}
-        >
-          Hủy
-        </button>
-      </div>
-    </div>
+    <ConfirmActionButton
+      triggerLabel="🗑️ Xoá công ty"
+      confirmTitle="⚠️ Xác nhận xoá"
+      confirmMessage={
+        <>
+          Xoá công ty <strong>&quot;{companyName}&quot;</strong>? Đây là xoá mềm — JD liên quan vẫn
+          giữ nguyên, có thể xem lại qua Lịch sử thao tác.
+        </>
+      }
+      showNote
+      requireNote
+      noteLabel=""
+      notePlaceholder="Lý do xoá công ty này — bắt buộc..."
+      noteRequiredError="Vui lòng nhập lý do xoá."
+      confirmButtonLabel="Xác nhận xoá"
+      confirmButtonLoadingLabel="Đang xoá..."
+      defaultErrorMessage="Không thể xoá công ty"
+      onConfirm={(note) => deleteCompany(companyId, { note: note ?? '' })}
+      onSuccess={() => router.push('/companies?deleted=1')}
+    />
   );
 }

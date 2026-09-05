@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { withdrawApplication } from '@/app/actions/me';
+import ConfirmActionButton from './ConfirmActionButton';
 
 /**
  * Nút "Rút hồ sơ" dùng ở trang /my-applications — kèm modal nhập lý do
@@ -17,69 +17,26 @@ interface WithdrawApplicationButtonProps {
 
 export default function WithdrawApplicationButton({ jobId, jobTitle }: WithdrawApplicationButtonProps) {
   const router = useRouter();
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [note, setNote] = useState('');
-  const [isWithdrawing, setIsWithdrawing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function handleWithdraw() {
-    setIsWithdrawing(true);
-    setError(null);
-    const result = await withdrawApplication(jobId, note || undefined);
-    setIsWithdrawing(false);
-
-    if (result.success) {
-      router.refresh();
-    } else {
-      setError(result.error || 'Không thể rút hồ sơ');
-    }
-  }
-
-  if (!showConfirm) {
-    return (
-      <button onClick={() => setShowConfirm(true)} className="btn btn-ghost btn-block">
-        Rút hồ sơ
-      </button>
-    );
-  }
 
   return (
-    <div className="card" style={{ padding: '16px', backgroundColor: 'var(--accent-soft)', border: '1px solid var(--accent)' }}>
-      <h4 style={{ margin: '0 0 8px 0', color: 'var(--accent)' }}>⚠️ Xác nhận rút hồ sơ</h4>
-      <p style={{ margin: '0 0 12px 0', fontSize: '14px' }}>
-        Bạn có chắc muốn rút hồ sơ ứng tuyển <strong>&quot;{jobTitle}&quot;</strong>? Bạn có thể ứng tuyển
-        lại sau nếu muốn.
-      </p>
-
-      <label htmlFor={`withdraw-note-${jobId}`} style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '12px' }}>
-        Lý do rút hồ sơ (tuỳ chọn)
-        <textarea
-          id={`withdraw-note-${jobId}`}
-          rows={2}
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-        />
-      </label>
-
-      {error && (
-        <div className="flash flash-error" style={{ marginBottom: '12px' }}>
-          {error}
-        </div>
-      )}
-
-      <div style={{ display: 'flex', gap: '8px' }}>
-        <button onClick={handleWithdraw} disabled={isWithdrawing} className="btn btn-danger" style={{ flex: 1 }}>
-          {isWithdrawing ? 'Đang rút...' : 'Xác nhận rút hồ sơ'}
-        </button>
-        <button
-          onClick={() => setShowConfirm(false)}
-          disabled={isWithdrawing}
-          className="btn btn-ghost"
-          style={{ flex: 1 }}
-        >
-          Huỷ
-        </button>
-      </div>
-    </div>
+    <ConfirmActionButton
+      triggerLabel="Rút hồ sơ"
+      triggerClassName="btn btn-ghost btn-block"
+      confirmTitle="⚠️ Xác nhận rút hồ sơ"
+      confirmMessage={
+        <>
+          Bạn có chắc muốn rút hồ sơ ứng tuyển <strong>&quot;{jobTitle}&quot;</strong>? Bạn có thể ứng tuyển
+          lại sau nếu muốn.
+        </>
+      }
+      showNote
+      noteLabel="Lý do rút hồ sơ (tuỳ chọn)"
+      confirmButtonLabel="Xác nhận rút hồ sơ"
+      confirmButtonLoadingLabel="Đang rút..."
+      cancelButtonLabel="Huỷ"
+      defaultErrorMessage="Không thể rút hồ sơ"
+      onConfirm={(note) => withdrawApplication(jobId, note)}
+      onSuccess={() => router.refresh()}
+    />
   );
 }
