@@ -1,6 +1,7 @@
 import { getMyApplications } from '@/app/actions/me';
 import Link from 'next/link';
 import WithdrawApplicationButton from '@/components/features/WithdrawApplicationButton';
+import { jobStatusChipClass, jobStatusLabel } from '@/lib/jobs/badges';
 
 /**
  * My Applications Page (Đơn ứng tuyển của tôi)
@@ -15,7 +16,8 @@ export default async function MyApplicationsPage() {
   const applications = await getMyApplications();
 
   return (
-    <div className="page-container">
+    // BUG FIX (audit CSS 09/2026): bỏ "page-container" ảo.
+    <>
       <div className="page-head">
         <div>
           <span className="eyebrow">Trang cá nhân</span>
@@ -45,18 +47,25 @@ export default async function MyApplicationsPage() {
               >
                 <div>
                   <h3 style={{ margin: '0 0 4px 0' }}>
-                    <Link href={`/jobs/${app.job_id}`} className="link">
+                    {/* BUG FIX (audit CSS 09/2026): bỏ class "link" (ảo) —
+                        không cần, thẻ <a> trong <h3> đã đủ nổi bật. */}
+                    <Link href={`/jobs/${app.job_id}`}>
                       {app.job_title}
                     </Link>
                   </h3>
                   <p className="muted" style={{ margin: '0 0 8px 0' }}>{app.company_name}</p>
-                  <dl className="detail-list">
+                  {/* BUG FIX: "detail-list" -> "kv" (class thật, xem fix
+                      ở jobs/[id]/page.tsx). "status-chip status-open/
+                      status-closed" cũng là bug y hệt jobs/page.tsx —
+                      dùng lại helper thật lib/jobs/badges.ts thay vì tự
+                      lowercase job_status. */}
+                  <dl className="kv">
                     {app.job_status && (
                       <>
                         <dt>Trạng thái job</dt>
                         <dd>
-                          <span className={`status-chip status-${app.job_status.toLowerCase()}`}>
-                            {app.job_status === 'OPEN' ? 'Đang tuyển' : 'Đã đóng'}
+                          <span className={`status-chip ${jobStatusChipClass(app.job_status)}`}>
+                            {jobStatusLabel(app.job_status)}
                           </span>
                         </dd>
                       </>
@@ -77,6 +86,6 @@ export default async function MyApplicationsPage() {
           ))}
         </div>
       )}
-    </div>
+    </>
   );
 }

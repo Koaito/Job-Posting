@@ -43,14 +43,15 @@ export default async function DataManagementPage({
 
   if (!isStaff) {
     return (
-      <div className="page-container">
+      // BUG FIX (audit CSS 09/2026): bỏ "page-container" ảo.
+      <>
         <div className="page-head">
           <h1>Import / Export dữ liệu</h1>
         </div>
         <div className="empty-state">
           <p>Trang này chỉ dành cho nhân viên (ss_team/admin).</p>
         </div>
-      </div>
+      </>
     );
   }
 
@@ -58,7 +59,8 @@ export default async function DataManagementPage({
   const tab: 'export' | 'import' = sp.tab === 'import' ? 'import' : 'export';
 
   return (
-    <div className="page-container">
+    // BUG FIX (audit CSS 09/2026): bỏ "page-container" ảo.
+    <>
       <div className="page-head">
         <div>
           <span className="eyebrow">Career Hub / Vận hành</span>
@@ -103,6 +105,6 @@ export default async function DataManagementPage({
           <ImportPanel entityType={entity} />
         )}
       </div>
-    </div>
+    </>
   );
 }

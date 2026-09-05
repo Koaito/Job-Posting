@@ -3,6 +3,7 @@ import { getCrawlSources, getLatestCrawlRun, getCrawlHistory } from '@/app/actio
 import { getCurrentUser } from '@/app/actions/auth';
 import { isStaffRole, isAdminRole } from '@/lib/auth/roles';
 import CrawlTrigger from '@/components/features/CrawlTrigger';
+import { crawlStatusBadgeClass, crawlStatusLabel } from '@/lib/crawl/badges';
 
 /**
  * Crawl Page — kích hoạt crawl mới + log live + lịch sử crawl.
@@ -34,14 +35,15 @@ export default async function CrawlPage({
 
   if (!isStaff) {
     return (
-      <div className="page-container">
+      // BUG FIX (audit CSS 09/2026): bỏ "page-container" ảo.
+      <>
         <div className="page-head">
           <h1>Crawler</h1>
         </div>
         <div className="empty-state">
           <p>Trang này chỉ dành cho nhân viên (ss_team/admin).</p>
         </div>
-      </div>
+      </>
     );
   }
 
@@ -62,7 +64,8 @@ export default async function CrawlPage({
     `/crawl?page=${p}` + (sp.source ? `&source=${sp.source}` : '') + (sp.status ? `&status=${sp.status}` : '');
 
   return (
-    <div className="page-container">
+    // BUG FIX (audit CSS 09/2026): bỏ "page-container" ảo.
+    <>
       <div className="page-head">
         <div>
           <span className="eyebrow">Career Hub / Quản lý</span>
@@ -115,12 +118,14 @@ export default async function CrawlPage({
                       <td>{run.source}</td>
                       <td className="muted">{run.category}</td>
                       <td>
-                        <span
-                          className={`status-chip ${
-                            run.status === 'done' ? 'status-open' : run.status === 'error' ? 'status-closed' : ''
-                          }`}
-                        >
-                          {run.status}
+                        {/* BUG FIX (audit CSS 09/2026): cùng bug với
+                            CrawlTrigger.tsx — "status-chip status-open/
+                            status-closed" là class domain job, mượn sai
+                            cho crawl. Dùng lại helper thật
+                            (lib/crawl/badges.ts, khớp CRAWL_STATUS_BADGE/
+                            CRAWL_STATUS_LABELS — crawler_client/crawl.py). */}
+                        <span className={`badge ${crawlStatusBadgeClass(run.status)}`}>
+                          {crawlStatusLabel(run.status)}
                         </span>
                       </td>
                       <td className="muted">{run.triggered_by_name || 'Tự động'}</td>
@@ -154,6 +159,6 @@ export default async function CrawlPage({
           </div>
         )}
       </section>
-    </div>
+    </>
   );
 }

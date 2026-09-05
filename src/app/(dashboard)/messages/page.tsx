@@ -23,7 +23,9 @@ export default async function MessagesPage() {
   ]);
 
   return (
-    <div className="page-container">
+    // BUG FIX (audit CSS 09/2026): bỏ "page-container" ảo — main.content
+    // (root layout.tsx) đã lo container rồi.
+    <>
       <header className="page-head">
         <div>
           <span className="eyebrow">Career Hub / Nhắn tin</span>
@@ -44,6 +46,6 @@ export default async function MessagesPage() {
         initialPendingRequests={pendingRequests}
         isStaff={isStaff}
       />
-    </div>
+    </>
   );
 }

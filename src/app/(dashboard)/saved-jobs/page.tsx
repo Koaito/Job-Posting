@@ -1,6 +1,7 @@
 import { getMySavedJobs } from '@/app/actions/me';
 import Link from 'next/link';
 import UnsaveJobButton from '@/components/features/UnsaveJobButton';
+import { jobStatusChipClass, jobStatusLabel } from '@/lib/jobs/badges';
 
 /**
  * Saved Jobs Page (Job đã lưu)
@@ -16,7 +17,8 @@ export default async function SavedJobsPage() {
   const savedJobs = await getMySavedJobs();
 
   return (
-    <div className="page-container">
+    // BUG FIX (audit CSS 09/2026): bỏ "page-container" ảo.
+    <>
       <div className="page-head">
         <div>
           <span className="eyebrow">Trang cá nhân</span>
@@ -46,18 +48,22 @@ export default async function SavedJobsPage() {
               >
                 <div>
                   <h3 style={{ margin: '0 0 4px 0' }}>
-                    <Link href={`/jobs/${sj.job_id}`} className="link">
+                    {/* BUG FIX (audit CSS 09/2026): bỏ class "link" (ảo). */}
+                    <Link href={`/jobs/${sj.job_id}`}>
                       {sj.job_title}
                     </Link>
                   </h3>
                   <p className="muted" style={{ margin: '0 0 8px 0' }}>{sj.company_name}</p>
-                  <dl className="detail-list">
+                  {/* BUG FIX: "detail-list" -> "kv"; "status-chip
+                      status-open/status-closed" -> helper thật
+                      lib/jobs/badges.ts (cùng bug jobs/page.tsx). */}
+                  <dl className="kv">
                     {sj.job_status && (
                       <>
                         <dt>Trạng thái job</dt>
                         <dd>
-                          <span className={`status-chip status-${sj.job_status.toLowerCase()}`}>
-                            {sj.job_status === 'OPEN' ? 'Đang tuyển' : 'Đã đóng'}
+                          <span className={`status-chip ${jobStatusChipClass(sj.job_status)}`}>
+                            {jobStatusLabel(sj.job_status)}
                           </span>
                         </dd>
                       </>
@@ -72,6 +78,6 @@ export default async function SavedJobsPage() {
           ))}
         </div>
       )}
-    </div>
+    </>
   );
 }

@@ -165,7 +165,10 @@ export function MessageThread({
     isStudent && history.length === 0 && (partnerRole === 'ss_team' || partnerRole === 'admin');
 
   return (
-    <div className="page-container">
+    // BUG FIX (audit CSS 09/2026): bỏ "page-container" ảo — Flask gốc
+    // (messages_thread.html) không có div bọc nào ngoài {% block content %},
+    // main.content (root layout.tsx) đã lo container rồi.
+    <>
       <header className="page-head chat-head">
         <div>
           <Link className="back-link" href="/messages">
@@ -244,6 +247,6 @@ export function MessageThread({
           </div>
         )}
       </div>
-    </div>
+    </>
   );
 }

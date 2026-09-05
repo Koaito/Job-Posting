@@ -46,14 +46,16 @@ export default async function ContactsPage({
 
   if (!isStaff) {
     return (
-      <div className="page-container">
+      // BUG FIX (audit CSS 09/2026): bỏ "page-container" ảo — main.content
+      // (root layout.tsx) đã lo container rồi.
+      <>
         <div className="page-head">
           <h1>Liên hệ</h1>
         </div>
         <div className="empty-state">
           <p>Trang này chỉ dành cho nhân viên (ss_team/admin).</p>
         </div>
-      </div>
+      </>
     );
   }
 
@@ -87,7 +89,9 @@ export default async function ContactsPage({
     (sp.include_inactive === 'true' ? `&include_inactive=true` : '');
 
   return (
-    <div className="page-container">
+    // BUG FIX (audit CSS 09/2026): bỏ "page-container" ảo — main.content
+    // (root layout.tsx) đã lo container rồi.
+    <>
       <div className="page-head">
         <div>
           <span className="eyebrow">Career Hub / Doanh nghiệp</span>
@@ -154,7 +158,15 @@ export default async function ContactsPage({
                       {c.phone_number && <div>{c.phone_number}</div>}
                     </td>
                     <td>
-                      <span className="status-chip">{statusLabel(c.contact_status)}</span>
+                      {/* BUG FIX (audit CSS 09/2026): "status-chip" không
+                          có màu cho contact_status — CSS thật không hề
+                          định nghĩa domain này dạng chip màu, Flask gốc
+                          (_contact_status_cell.html) hiện trạng thái bằng
+                          chữ thường trong 1 <summary class="btn btn-text">
+                          (mở dropdown đổi trạng thái), không phải badge
+                          màu. Bỏ .status-chip mượn nhầm, không tự chế
+                          class mới không tồn tại trong style.css. */}
+                      {statusLabel(c.contact_status)}
                     </td>
                     <td className="actions-cell">
                       <Link className="btn btn-text" href={`/companies/${c.company_id}`}>
@@ -185,6 +197,6 @@ export default async function ContactsPage({
           {hasFilters && <Link href="/contacts" className="btn">Xóa bộ lọc</Link>}
         </div>
       )}
-    </div>
+    </>
   );
 }

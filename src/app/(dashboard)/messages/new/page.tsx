@@ -28,7 +28,8 @@ export default async function NewMessagePage({
   const results = q.trim() ? await searchPeople(q) : [];
 
   return (
-    <div className="page-container">
+    // BUG FIX (audit CSS 09/2026): bỏ "page-container" ảo.
+    <>
       <header className="page-head">
         <div>
           <span className="eyebrow">Career Hub / Nhắn tin</span>
@@ -84,6 +85,6 @@ export default async function NewMessagePage({
           </div>
         )
       )}
-    </div>
+    </>
   );
 }

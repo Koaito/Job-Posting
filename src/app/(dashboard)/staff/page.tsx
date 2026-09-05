@@ -19,7 +19,9 @@ export default async function StaffPage() {
   const [staff, currentUser] = await Promise.all([getStaff(), getCurrentUser()]);
 
   return (
-    <div className="page-container">
+    // BUG FIX (audit CSS 09/2026): bỏ "page-container" ảo — main.content
+    // (root layout.tsx) đã lo container rồi.
+    <>
       <div className="page-head">
         <div>
           <span className="eyebrow">Career Hub / Quản lý</span>
@@ -33,6 +35,6 @@ export default async function StaffPage() {
         currentUserId={currentUser?.ss_user_id || ''}
         isAdmin={isAdminRole(currentUser?.role)}
       />
-    </div>
+    </>
   );
 }
