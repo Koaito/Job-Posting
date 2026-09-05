@@ -1,28 +1,53 @@
-import Link from 'next/link';
-import { getCrawlSources, getLatestCrawlRun, getCrawlHistory } from '@/app/actions/crawl';
+import {
+  getCrawlSources,
+  getLatestCrawlRun,
+  getCrawlHistory,
+  getCompanyDataHealth,
+  getJobDataHealth,
+  getMaintenanceHistory,
+} from '@/app/actions/crawl';
 import { getCurrentUser } from '@/app/actions/auth';
 import { isStaffRole, isAdminRole } from '@/lib/auth/roles';
 import CrawlTrigger from '@/components/features/CrawlTrigger';
-import { crawlStatusBadgeClass, crawlStatusLabel } from '@/lib/crawl/badges';
+import CrawlTabNav from '@/components/features/CrawlTabNav';
+import DataHealthView from '@/components/features/DataHealthView';
+import MaintenanceGrid from '@/components/features/MaintenanceGrid';
+import HistoryView from '@/components/features/HistoryView';
+import type { MaintenanceStatus } from '@/types/crawl';
 
 /**
- * Crawl Page — kích hoạt crawl mới + log live + lịch sử crawl.
- * Corresponds to Flask: templates/crawl.html
- * Backend thật: api/routers/crawl.py.
+ * Crawl Page ("Van hanh du lieu") -- 4 tab, khop dung
+ * blueprints/crawl.py (Flask goc): crawl / status / maintenance / history.
+ * Backend that: api/routers/crawl.py, api/routers/maintenance.py,
+ * api/routers/companies.py + jobs.py (data-health).
  *
- * Mới 09/2026 — trước đây thư mục crawl/ hoàn toàn rỗng (404 thật, xem
- * Sidebar TODO). QUYỀN: xem trang (log/lịch sử) cần 'ss_team' trở lên;
- * BẤM kích hoạt crawl (POST /crawl) cần 'admin' — ẩn form cho ss_team
- * thường, hiện thông báo thay vì để bấm rồi nhận 403 (xem CrawlTrigger).
+ * Moi 09/2026 -- truoc day thu muc crawl/ hoan toan rong (404 that,
+ * xem Sidebar TODO). QUYEN: xem trang (log/lich su) can 'ss_team' tro
+ * len; BAM kich hoat crawl/bao tri can 'admin' -- an form cho ss_team
+ * thuong, hien thong bao thay vi de bam roi nhan 403 (xem CrawlTrigger,
+ * MaintenanceJobCard).
+ *
+ * THEM 09/2026 (ra soat #3, chat139) -- truoc dot nay trang nay chi co
+ * 1/4 tab (chi noi dung tab "crawl", KHONG co tab nav nao ca, va bang
+ * lich su crawl nam LAN vao chung tab "crawl" thay vi tab "history"
+ * rieng nhu Flask that). Dot nay: them tab nav that + 3 tab con thieu
+ * (status/maintenance/history) + doi bang lich su crawl sang dung tab
+ * "history" cho khop kien truc goc.
  */
 
 interface SearchParams {
-  source?: string;
-  status?: string;
-  page?: string;
+  tab?: string;
+  // Tab "history" - bang crawl (tien to c_)
+  c_source?: string;
+  c_status?: string;
+  c_page?: string;
+  // Tab "history" - bang bao tri (tien to m_)
+  m_job_type?: string;
+  m_status?: string;
+  m_page?: string;
 }
 
-const STATUS_OPTIONS = ['queued', 'running', 'done', 'error'];
+const VALID_TABS = ['crawl', 'status', 'maintenance', 'history'];
 
 export default async function CrawlPage({
   searchParams,
@@ -32,133 +57,92 @@ export default async function CrawlPage({
   const sp = await searchParams;
   const currentUser = await getCurrentUser();
   const isStaff = isStaffRole(currentUser?.role);
+  const isAdmin = isAdminRole(currentUser?.role);
 
   if (!isStaff) {
     return (
-      // BUG FIX (audit CSS 09/2026): bỏ "page-container" ảo.
       <>
         <div className="page-head">
           <h1>Crawler</h1>
         </div>
         <div className="empty-state">
-          <p>Trang này chỉ dành cho nhân viên (ss_team/admin).</p>
+          <p>Trang nay chi danh cho nhan vien (ss_team/admin).</p>
         </div>
       </>
     );
   }
 
-  const page = parseInt(sp.page || '1');
-  const limit = 20;
-  const offset = (page - 1) * limit;
-
-  const [sources, latestRun, history] = await Promise.all([
-    getCrawlSources(),
-    getLatestCrawlRun(),
-    getCrawlHistory({ source: sp.source, status: sp.status, limit, offset }),
-  ]);
-
-  const { items: runs, total } = history;
-  const totalPages = Math.ceil(total / limit);
-  const hasFilters = Boolean(sp.source || sp.status);
-  const qs = (p: number) =>
-    `/crawl?page=${p}` + (sp.source ? `&source=${sp.source}` : '') + (sp.status ? `&status=${sp.status}` : '');
+  const tab = VALID_TABS.includes(sp.tab || '') ? (sp.tab as string) : 'crawl';
 
   return (
-    // BUG FIX (audit CSS 09/2026): bỏ "page-container" ảo.
     <>
       <div className="page-head">
         <div>
-          <span className="eyebrow">Career Hub / Quản lý</span>
-          <h1>Crawler</h1>
-          <p className="lede">Kích hoạt crawl JD mới + theo dõi tiến độ/lịch sử.</p>
+          <span className="eyebrow">Career Hub / Quan ly</span>
+          <h1>Van hanh du lieu</h1>
+          <p className="lede">Kich hoat crawl JD moi, bao tri du lieu, va theo doi tinh trang/lich su.</p>
         </div>
       </div>
 
-      <CrawlTrigger isAdmin={isAdminRole(currentUser?.role)} sources={sources} initialRun={latestRun} />
+      <CrawlTabNav active={tab} />
 
-      <section style={{ marginTop: '28px' }}>
-        <h4>Lịch sử crawl</h4>
-
-        <div className="filter-bar" style={{ marginBottom: '16px' }}>
-          <form method="get" action="/crawl" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-            <select name="source" defaultValue={sp.source || ''}>
-              <option value="">Mọi nguồn</option>
-              {Object.keys(sources).map((s) => (
-                <option key={s} value={s}>{s}</option>
-              ))}
-            </select>
-            <select name="status" defaultValue={sp.status || ''}>
-              <option value="">Mọi trạng thái</option>
-              {STATUS_OPTIONS.map((s) => (
-                <option key={s} value={s}>{s}</option>
-              ))}
-            </select>
-            <button type="submit" className="btn">Lọc</button>
-            {hasFilters && <Link href="/crawl" className="btn">Xoá lọc</Link>}
-          </form>
-        </div>
-
-        {runs.length > 0 ? (
-          <>
-            <div className="contact-table-wrap">
-              <table className="contact-table">
-                <thead>
-                  <tr>
-                    <th>Nguồn</th>
-                    <th>Ngành</th>
-                    <th>Trạng thái</th>
-                    <th>Người kích hoạt</th>
-                    <th>Bắt đầu</th>
-                    <th>Kết quả</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {runs.map((run) => (
-                    <tr key={run.run_id}>
-                      <td>{run.source}</td>
-                      <td className="muted">{run.category}</td>
-                      <td>
-                        {/* BUG FIX (audit CSS 09/2026): cùng bug với
-                            CrawlTrigger.tsx — "status-chip status-open/
-                            status-closed" là class domain job, mượn sai
-                            cho crawl. Dùng lại helper thật
-                            (lib/crawl/badges.ts, khớp CRAWL_STATUS_BADGE/
-                            CRAWL_STATUS_LABELS — crawler_client/crawl.py). */}
-                        <span className={`badge ${crawlStatusBadgeClass(run.status)}`}>
-                          {crawlStatusLabel(run.status)}
-                        </span>
-                      </td>
-                      <td className="muted">{run.triggered_by_name || 'Tự động'}</td>
-                      <td className="muted">{new Date(run.started_at).toLocaleString('vi-VN')}</td>
-                      <td className="muted">
-                        {run.error ? (
-                          <span style={{ color: '#B23A22' }}>{run.error}</span>
-                        ) : run.stats ? (
-                          JSON.stringify(run.stats)
-                        ) : (
-                          '—'
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {totalPages > 1 && (
-              <div className="pagination">
-                {page > 1 && <Link href={qs(page - 1)} className="page-btn">← Trang trước</Link>}
-                <span className="page-status">Trang {page} / {totalPages}</span>
-                {page < totalPages && <Link href={qs(page + 1)} className="page-btn">Trang sau →</Link>}
-              </div>
-            )}
-          </>
-        ) : (
-          <div className="empty-state">
-            <p>Chưa có lượt crawl nào khớp bộ lọc.</p>
-          </div>
-        )}
-      </section>
+      {tab === 'crawl' && <CrawlTabContent isAdmin={isAdmin} />}
+      {tab === 'status' && <StatusTabContent />}
+      {tab === 'maintenance' && <MaintenanceTabContent isAdmin={isAdmin} />}
+      {tab === 'history' && <HistoryTabContent sp={sp} />}
     </>
+  );
+}
+
+async function CrawlTabContent({ isAdmin }: { isAdmin: boolean }) {
+  const [sources, latestRun] = await Promise.all([getCrawlSources(), getLatestCrawlRun()]);
+  return <CrawlTrigger isAdmin={isAdmin} sources={sources} initialRun={latestRun} />;
+}
+
+async function StatusTabContent() {
+  const [companyHealth, jobHealth] = await Promise.all([getCompanyDataHealth(), getJobDataHealth()]);
+  return <DataHealthView companyHealth={companyHealth} jobHealth={jobHealth} />;
+}
+
+async function MaintenanceTabContent({ isAdmin }: { isAdmin: boolean }) {
+  // Lay cac luot dang 'running'/'queued' de biet job_type nao dang chay khi vua vao trang
+  // (khop active_runs ben Flask goc) -- uu tien 'running' hon 'queued' khi ca 2 cung ton tai.
+  const [runningRuns, queuedRuns] = await Promise.all([
+    getMaintenanceHistory({ status: 'running', limit: 50 }),
+    getMaintenanceHistory({ status: 'queued', limit: 50 }),
+  ]);
+
+  const activeRuns: Record<string, MaintenanceStatus> = {};
+  for (const run of queuedRuns.items) activeRuns[run.job_type] = run;
+  for (const run of runningRuns.items) activeRuns[run.job_type] = run;
+
+  return <MaintenanceGrid isAdmin={isAdmin} activeRuns={activeRuns} />;
+}
+
+async function HistoryTabContent({ sp }: { sp: SearchParams }) {
+  const limit = 20;
+  const crawlPage = parseInt(sp.c_page || '1');
+  const maintenancePage = parseInt(sp.m_page || '1');
+
+  const [sources, crawlRuns, maintenanceRuns] = await Promise.all([
+    getCrawlSources(),
+    getCrawlHistory({ source: sp.c_source, status: sp.c_status, limit, offset: (crawlPage - 1) * limit }),
+    getMaintenanceHistory({ job_type: sp.m_job_type, status: sp.m_status, limit, offset: (maintenancePage - 1) * limit }),
+  ]);
+
+  return (
+    <HistoryView
+      sources={Object.keys(sources)}
+      crawlRuns={crawlRuns}
+      crawlPage={crawlPage}
+      crawlLimit={limit}
+      crawlSource={sp.c_source}
+      crawlStatus={sp.c_status}
+      maintenanceRuns={maintenanceRuns}
+      maintenancePage={maintenancePage}
+      maintenanceLimit={limit}
+      maintenanceJobType={sp.m_job_type}
+      maintenanceStatus={sp.m_status}
+    />
   );
 }

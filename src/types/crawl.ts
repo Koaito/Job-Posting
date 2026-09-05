@@ -126,3 +126,129 @@ export interface PaginatedCrawlBatches {
   offset: number;
   items: CrawlBatchSummary[];
 }
+
+/**
+ * THÊM 09/2026 (rà soát #3, chat139) — trước đây chỉ có types cho crawl
+ * nguồn ngoài. Giờ thêm tab "status" (Tình trạng dữ liệu) + "maintenance"
+ * (Bảo trì dữ liệu) + "history" (Lịch sử vận hành) của trang /crawl,
+ * bám đúng api/schemas/companies.py::FieldHealthRow/CompanyDataHealth và
+ * api/schemas/jobs.py::JobHealthRow/JobHealthListItem/JobHealthBySource/
+ * DuplicateJobGroup/JobDataHealth + api/schemas/maintenance.py.
+ */
+
+/** Khớp FieldHealthRow (dùng chung cho cả company và job data-health). */
+export interface FieldHealthRow {
+  field: string;
+  label: string;
+  missing: number;
+  total: number;
+  pct_missing: number;
+}
+
+/** Khớp CompanyDataHealth — GET /companies/data-health. */
+export interface CompanyDataHealth {
+  company_health_rows: FieldHealthRow[];
+  company_health_total: number;
+  company_no_contact_missing: number;
+  company_no_contact_total: number;
+}
+
+/** Khớp JobHealthListItem — 1 job rút gọn trong expired_open_jobs/duplicate_job_groups[].jobs. */
+export interface JobHealthListItem {
+  id: string;
+  position: string;
+  company: string;
+  deadline?: string | null;
+  source: string;
+  /** THÊM ở frontend (không có ở backend) — gán tại chỗ cho duplicate_job_groups,
+   * xem crawl_status.py::_annotate_duplicate_keep_suggestion() bên Flask gốc:
+   * true = job này nên giữ (deadline xa nhất trong nhóm), false = job khác nên
+   * giữ, null/undefined = không đủ căn cứ (không hiện badge gì). */
+  suggest_keep?: boolean | null;
+}
+
+export interface JobHealthBySource {
+  source: string;
+  total: number;
+  rows: FieldHealthRow[];
+}
+
+export interface DuplicateJobGroup {
+  company: string;
+  position: string;
+  jobs: JobHealthListItem[];
+}
+
+/** Khớp JobDataHealth — GET /jobs/data-health. */
+export interface JobDataHealth {
+  job_health_rows: FieldHealthRow[];
+  job_health_total: number;
+  expired_open_jobs: JobHealthListItem[];
+  job_health_by_source: JobHealthBySource[];
+  duplicate_job_groups: DuplicateJobGroup[];
+}
+
+/** Khớp 5 job_type ở MAINTENANCE_JOB_TYPES (api/schemas/maintenance.py). */
+export type MaintenanceJobType =
+  | 'backfill_company_profiles'
+  | 'enrich_profile_from_website'
+  | 'enrich_web_info'
+  | 'get_fb_linkedin'
+  | 'check_expired_jobs';
+
+/** Khớp MaintenanceRunRequest — POST /maintenance/{job_type}. */
+export interface MaintenanceRunPayload {
+  limit?: number;
+  dry_run?: boolean;
+  check_deadline_only?: boolean;
+}
+
+/** Khớp MaintenanceAccepted. */
+export interface MaintenanceAccepted {
+  run_id: string;
+  job_type: string;
+  status: string; // "queued"
+}
+
+/** Khớp MaintenanceStatusOut — GET /maintenance/{run_id}, và từng item trong list. */
+export interface MaintenanceStatus {
+  run_id: string;
+  job_type: string;
+  params: Record<string, unknown>;
+  status: string; // "queued" | "running" | "done" | "error"
+  stats?: Record<string, unknown> | null;
+  error?: string | null;
+  triggered_by?: string | null;
+  triggered_by_name?: string | null;
+  started_at: string;
+  finished_at?: string | null;
+}
+
+/** Khớp query param thật của GET /maintenance (lịch sử bảo trì). */
+export interface MaintenanceHistoryFilters {
+  job_type?: string;
+  status?: string;
+  triggered_by?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface PaginatedMaintenanceRuns {
+  total: number;
+  limit: number;
+  offset: number;
+  items: MaintenanceStatus[];
+}
+
+/** Khớp MaintenanceLogOut/MaintenanceLogsOut — GET /maintenance/{run_id}/logs. */
+export interface MaintenanceLog {
+  id: number;
+  level: string;
+  message: string;
+  created_at: string;
+}
+
+export interface MaintenanceLogsResponse {
+  last_id: number;
+  items: MaintenanceLog[];
+}

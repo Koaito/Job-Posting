@@ -12,6 +12,15 @@ import type {
   CrawlBatchAccepted,
   CrawlBatchStatus,
   PaginatedCrawlBatches,
+  CompanyDataHealth,
+  JobDataHealth,
+  DuplicateJobGroup,
+  MaintenanceRunPayload,
+  MaintenanceAccepted,
+  MaintenanceStatus,
+  MaintenanceHistoryFilters,
+  PaginatedMaintenanceRuns,
+  MaintenanceLogsResponse,
 } from '@/types/crawl';
 
 /**
@@ -204,6 +213,163 @@ export async function getCrawlBatchHistory(filters?: CrawlHistoryFilters): Promi
 
   if (!result.success) {
     console.error('Failed to fetch crawl batch history:', result.status, result.error);
+    return { total: 0, limit, offset, items: [] };
+  }
+  return result.data;
+}
+
+/**
+ * THEM 09/2026 (ra soat #3, chat139) -- tab "Tinh trang du lieu" +
+ * "Bao tri du lieu" + "Lich su van hanh" cua trang /crawl. Truoc day
+ * Next.js chi co 1/4 tab (chi tab "crawl" nguon ngoai) -- 2 ham nhom
+ * data-health + 5 ham nhom maintenance duoi day la phan con thieu,
+ * bam dung api/routers/companies.py::get_company_data_health(),
+ * api/routers/jobs.py::get_job_data_health(), api/routers/maintenance.py.
+ */
+
+/**
+ * "Tinh trang du lieu" -- company thieu field gi/ti le bao nhieu + so
+ * cong ty chua co contact. require_role("ss_team") -- JOIN qua contact
+ * (thong tin nhay cam), khac getJobDataHealth() ben duoi (public).
+ */
+export async function getCompanyDataHealth(): Promise<CompanyDataHealth> {
+  const result = await apiFetch<CompanyDataHealth>('/companies/data-health', { cache: 'no-store' });
+
+  if (!result.success) {
+    console.error('Failed to fetch company data health:', result.status, result.error);
+    return {
+      company_health_rows: [], company_health_total: 0,
+      company_no_contact_missing: 0, company_no_contact_total: 0,
+    };
+  }
+  return result.data;
+}
+
+/**
+ * "Tinh trang du lieu" -- job thieu field gi, job het han con OPEN,
+ * breakdown theo nguon, va nhom job nghi trung lap. Public (khong co
+ * thong tin nhay cam nhu contact), giong GET /jobs.
+ */
+export async function getJobDataHealth(): Promise<JobDataHealth> {
+  const result = await apiFetch<JobDataHealth>('/jobs/data-health', { cache: 'no-store' });
+
+  if (!result.success) {
+    console.error('Failed to fetch job data health:', result.status, result.error);
+    return {
+      job_health_rows: [], job_health_total: 0, expired_open_jobs: [],
+      job_health_by_source: [], duplicate_job_groups: [],
+    };
+  }
+  return { ...result.data, duplicate_job_groups: annotateDuplicateKeepSuggestion(result.data.duplicate_job_groups) };
+}
+
+/**
+ * Gan them 'suggest_keep' (true/false/null) cho tung job trong moi
+ * nhom duplicate_job_groups -- backend (Scrap_JD) KHONG tra san field
+ * nay (JobHealthListItem khong co suggest_keep), day la logic nghiep
+ * vu rieng cua tung frontend (BFF), mirror dung
+ * blueprints/crawl_status.py::_annotate_duplicate_keep_suggestion() ben
+ * Flask: ca 2 job trong 1 nhom deu dang "Dang tuyen" (OPEN) nen KHONG
+ * the dua vao status de phan biet -- chi con deadline la tin hieu san
+ * co, coi job co deadline XA NHAT trong nhom la ban "moi hon, nen giu".
+ * CHI gan khi co CAN CU RO RANG (it nhat 2 job parse duoc deadline VA
+ * cac deadline do khong trung nhau het) -- neu khong, moi job trong
+ * nhom nhan suggest_keep=null (khong hien badge gi).
+ */
+function annotateDuplicateKeepSuggestion(groups: DuplicateJobGroup[]): DuplicateJobGroup[] {
+  return groups.map((group) => {
+    const parsed = (group.jobs || []).map((job) => {
+      const time = job.deadline ? new Date(job.deadline).getTime() : NaN;
+      return { time: Number.isNaN(time) ? null : time, job };
+    });
+    const validTimes = new Set(parsed.filter((p) => p.time !== null).map((p) => p.time as number));
+
+    if (validTimes.size < 2) {
+      return { ...group, jobs: parsed.map(({ job }) => ({ ...job, suggest_keep: null })) };
+    }
+
+    const latest = Math.max(...validTimes);
+    return {
+      ...group,
+      jobs: parsed.map(({ time, job }) => ({ ...job, suggest_keep: time === latest })),
+    };
+  });
+}
+
+/**
+ * Kich hoat 1 luot chay job bao tri du lieu -- CHAY NEN, tra run_id
+ * ngay (doi xung startCrawl()). Yeu cau role 'admin'. Backend tra 409
+ * neu job_type nay dang co luot 'queued'/'running' chua xong, 400 neu
+ * thieu 'limit' cho job_type bat buoc (enrich_web_info).
+ */
+export async function triggerMaintenance(
+  jobType: string,
+  data: MaintenanceRunPayload
+): Promise<{ success: boolean; result?: MaintenanceAccepted; error?: string }> {
+  const result = await apiFetch<MaintenanceAccepted>(`/maintenance/${jobType}`, {
+    method: 'POST',
+    body: data,
+    fallbackError: 'Khong the kich hoat job bao tri',
+  });
+
+  if (!result.success) {
+    console.error('Error triggering maintenance run:', result.status, result.error);
+    return { success: false, error: result.error };
+  }
+  return { success: true, result: result.data };
+}
+
+/** Poll tien do/ket qua 1 luot chay bao tri -- GET /maintenance/{run_id}. */
+export async function getMaintenanceStatus(runId: string): Promise<MaintenanceStatus | null> {
+  const result = await apiFetch<MaintenanceStatus>(`/maintenance/${runId}`, {
+    cache: 'no-store',
+    timeoutMs: 15000,
+  });
+
+  if (!result.success) {
+    if (result.status !== 404) {
+      console.error('Failed to fetch maintenance status:', result.status, result.error);
+    }
+    return null;
+  }
+  return result.data;
+}
+
+/**
+ * Log live cua 1 luot bao tri -- poll lap lai voi afterId = last_id cua
+ * lan goi truoc, doi xung getCrawlLogs().
+ */
+export async function getMaintenanceLogs(runId: string, afterId: number = 0): Promise<MaintenanceLogsResponse> {
+  const params = new URLSearchParams({ after_id: String(afterId) });
+  const result = await apiFetch<MaintenanceLogsResponse>(`/maintenance/${runId}/logs?${params}`, {
+    cache: 'no-store',
+    timeoutMs: 15000,
+  });
+
+  if (!result.success) {
+    console.error('Failed to fetch maintenance logs:', result.status, result.error);
+    return { last_id: afterId, items: [] };
+  }
+  return result.data;
+}
+
+/** Lich su bao tri -- GET /maintenance, filter + phan trang, doi xung getCrawlHistory(). */
+export async function getMaintenanceHistory(filters?: MaintenanceHistoryFilters): Promise<PaginatedMaintenanceRuns> {
+  const limit = filters?.limit || 50;
+  const offset = filters?.offset || 0;
+
+  const params = buildParams({
+    job_type: filters?.job_type,
+    status: filters?.status,
+    triggered_by: filters?.triggered_by,
+    limit,
+    offset,
+  });
+
+  const result = await apiFetch<PaginatedMaintenanceRuns>(`/maintenance?${params}`, { cache: 'no-store' });
+
+  if (!result.success) {
+    console.error('Failed to fetch maintenance history:', result.status, result.error);
     return { total: 0, limit, offset, items: [] };
   }
   return result.data;

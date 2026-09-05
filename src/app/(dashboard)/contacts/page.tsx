@@ -1,7 +1,9 @@
 import Link from 'next/link';
 import { getContacts } from '@/app/actions/contacts';
+import { getEmailTemplates, getPlaceholderHelp } from '@/app/actions/email-templates';
 import { getCurrentUser } from '@/app/actions/auth';
 import { isStaffRole } from '@/lib/auth/roles';
+import EmailTemplateManager from '@/components/features/EmailTemplateManager';
 
 /**
  * Contacts List Page — danh sách liên hệ HR GỘP TẤT CẢ công ty.
@@ -15,9 +17,16 @@ import { isStaffRole } from '@/lib/auth/roles';
  * — trang này CHỈ đọc + tìm kiếm, mỗi hàng link sang company detail để
  * thao tác, giữ đúng phạm vi route thật của backend (GET /contacts
  * không có body sửa liên hệ).
+ *
+ * THÊM 09/2026 (rà soát #3, chat139) — thêm tab thứ 2 "Quản lý mẫu
+ * email" (?tab=quan-ly), khớp templates/contacts.html Flask gốc (2 tab:
+ * danh-sach + quan-ly, dùng chung 1 <nav class="tab-nav"> với /activity).
+ * Trước đợt này Next.js chỉ có mỗi tab "danh-sach", module mẫu email
+ * hoàn toàn chưa có (0 action, 0 UI) dù CSS đã chuẩn bị sẵn.
  */
 
 interface SearchParams {
+  tab?: string;
   search?: string;
   contact_status?: string;
   include_inactive?: string;
@@ -55,6 +64,35 @@ export default async function ContactsPage({
         <div className="empty-state">
           <p>Trang này chỉ dành cho nhân viên (ss_team/admin).</p>
         </div>
+      </>
+    );
+  }
+
+  const tab = sp.tab === 'quan-ly' ? 'quan-ly' : 'danh-sach';
+
+  const tabNav = (
+    <nav className="tab-nav" style={{ marginBottom: '22px' }}>
+      <Link href="/contacts?tab=danh-sach" className={tab !== 'quan-ly' ? 'active' : ''}>
+        Danh sách contact
+      </Link>
+      <Link href="/contacts?tab=quan-ly" className={tab === 'quan-ly' ? 'active' : ''}>
+        Quản lý mẫu email
+      </Link>
+    </nav>
+  );
+
+  if (tab === 'quan-ly') {
+    const [templates, placeholderHelp] = await Promise.all([getEmailTemplates(), getPlaceholderHelp()]);
+    return (
+      <>
+        <div className="page-head">
+          <div>
+            <span className="eyebrow">Career Hub / Doanh nghiệp</span>
+            <h1>Quản lý mẫu email</h1>
+          </div>
+        </div>
+        {tabNav}
+        <EmailTemplateManager initialTemplates={templates} placeholderHelp={placeholderHelp} />
       </>
     );
   }
@@ -99,6 +137,8 @@ export default async function ContactsPage({
           <p className="lede">Toàn bộ liên hệ HR đã thu thập, gộp mọi công ty.</p>
         </div>
       </div>
+
+      {tabNav}
 
       <div className="filter-bar" style={{ marginBottom: '22px' }}>
         <form method="get" action="/contacts" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>

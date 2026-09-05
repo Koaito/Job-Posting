@@ -1,6 +1,7 @@
 import { getStudentById } from '@/app/actions/students';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import CvDownloadButton from '@/components/features/CvDownloadButton';
 
 /**
  * Student Detail Page — hồ sơ học viên + đơn ứng tuyển + job đã lưu.
@@ -8,6 +9,12 @@ import { notFound } from 'next/navigation';
  * Mới 09/2026 — dùng GET /auth/users/{id}/applications và
  * GET /auth/users/{id}/saved-jobs (ss_team trở lên), gộp với thông tin
  * cơ bản lọc từ GET /auth/users (không có endpoint GET 1 user đơn lẻ).
+ *
+ * THÊM 09/2026 (rà soát #3, chat139) — cột "CV" ở bảng "Đã ứng tuyển":
+ * Flask (/students/cv/<application_id>) cho staff tải CV ngay tại đây,
+ * Next.js trước đợt này chỉ gọi getCvSignedUrl() ở JobApplicantsPanel
+ * (trang chi tiết job) — cùng action, cùng quyền, chỉ thiếu gắn vào
+ * đúng chỗ này.
  */
 export default async function StudentDetailPage({
   params,
@@ -73,6 +80,7 @@ export default async function StudentDetailPage({
                 <th>Công ty</th>
                 <th>Trạng thái job</th>
                 <th>Ngày ứng tuyển</th>
+                <th>CV</th>
               </tr>
             </thead>
             <tbody>
@@ -84,6 +92,7 @@ export default async function StudentDetailPage({
                   <td className="muted">{a.company_name}</td>
                   <td className="muted">{a.job_status || '—'}</td>
                   <td className="muted">{new Date(a.applied_at).toLocaleDateString('vi-VN')}</td>
+                  <td>{a.cv_url ? <CvDownloadButton applicationId={a.application_id} /> : <span className="muted">—</span>}</td>
                 </tr>
               ))}
             </tbody>
