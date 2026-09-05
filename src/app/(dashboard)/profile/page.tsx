@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/app/actions/auth';
-import { roleLabel } from '@/lib/auth/roles';
+import { roleLabel, isStaffRole } from '@/lib/auth/roles';
 import ProfileSubnav from '@/components/features/ProfileSubnav';
 import ProfileOverviewForm from '@/components/features/ProfileOverviewForm';
 
@@ -41,7 +41,7 @@ export default async function ProfilePage() {
         <h1>Trang cá nhân</h1>
         <p className="lede">Xem và cập nhật thông tin tài khoản của bạn.</p>
 
-        <ProfileSubnav active="overview" />
+        <ProfileSubnav active="overview" isStudent={isStudent} isStaff={isStaffRole(user.role)} />
 
         <dl className="profile-info-grid">
           <div>

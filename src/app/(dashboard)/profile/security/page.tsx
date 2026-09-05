@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/app/actions/auth';
+import { isStaffRole } from '@/lib/auth/roles';
 import ProfileSubnav from '@/components/features/ProfileSubnav';
 import ProfileSecurityForm from '@/components/features/ProfileSecurityForm';
 
@@ -36,7 +37,11 @@ export default async function ProfileSecurityPage() {
         <h1>Trang cá nhân</h1>
         <p className="lede">Đổi mật khẩu đăng nhập của bạn.</p>
 
-        <ProfileSubnav active="security" />
+        <ProfileSubnav
+          active="security"
+          isStudent={user.role === 'user'}
+          isStaff={isStaffRole(user.role)}
+        />
 
         <ProfileSecurityForm mustChangePassword={user.must_change_password} />
       </div>
