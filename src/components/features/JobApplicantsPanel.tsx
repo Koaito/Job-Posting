@@ -41,13 +41,13 @@ export default function JobApplicantsPanel({ applicants, savers }: JobApplicants
       <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
         <button
           onClick={() => setTab('applicants')}
-          className={tab === 'applicants' ? 'btn btn-primary' : 'btn btn-secondary'}
+          className={tab === 'applicants' ? 'btn btn-primary' : 'btn btn-ghost'}
         >
           Người đã ứng tuyển ({applicants.length})
         </button>
         <button
           onClick={() => setTab('savers')}
-          className={tab === 'savers' ? 'btn btn-primary' : 'btn btn-secondary'}
+          className={tab === 'savers' ? 'btn btn-primary' : 'btn btn-ghost'}
         >
           Người đã lưu ({savers.length})
         </button>
@@ -84,7 +84,7 @@ export default function JobApplicantsPanel({ applicants, savers }: JobApplicants
                       <button
                         onClick={() => handleViewCv(a.application_id)}
                         disabled={loadingCvId === a.application_id}
-                        className="btn btn-secondary"
+                        className="btn btn-ghost"
                       >
                         {loadingCvId === a.application_id ? 'Đang tải...' : 'Xem CV'}
                       </button>

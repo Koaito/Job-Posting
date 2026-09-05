@@ -76,7 +76,7 @@ export default function DeleteJobButton({ jobId, jobTitle }: DeleteJobButtonProp
         <button
           onClick={() => setShowConfirm(false)}
           disabled={isDeleting}
-          className="btn btn-secondary"
+          className="btn btn-ghost"
           style={{ flex: 1 }}
         >
           Hủy

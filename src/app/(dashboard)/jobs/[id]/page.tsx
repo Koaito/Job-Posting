@@ -1,6 +1,7 @@
 import { getJobById, getJobApplicants, getJobSavers } from '@/app/actions/jobs';
 import { getCurrentUser } from '@/app/actions/auth';
 import { getMyApplications, getMySavedJobs } from '@/app/actions/me';
+import { jobStatusChipClass, jobStatusLabel } from '@/lib/jobs/badges';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import DeleteJobButton from '@/components/features/DeleteJobButton';
@@ -46,7 +47,9 @@ export default async function JobDetailPage({
     : [[], []];
 
   return (
-    <div className="page-container">
+    // CHUYỂN 09/2026 (audit CSS): bỏ div "page-container" ngoài cùng —
+    // class ảo, main.content (root layout.tsx) đã lo container rồi.
+    <>
       <div className="page-head">
         <div>
           <span className="eyebrow">
@@ -55,11 +58,11 @@ export default async function JobDetailPage({
           <h1>{job.job_title}</h1>
           <p className="lede">{job.company_name || 'Công ty chưa xác định'}</p>
         </div>
-        <div className="page-head-actions">
-          <Link href={`/jobs/${job.job_id}/edit`} className="btn btn-primary">
-            Sửa Job
-          </Link>
-        </div>
+        {/* Bỏ div "page-head-actions" bọc ngoài (class ảo) — .page-head
+            vốn đã là flex space-between, nút chỉ cần là con trực tiếp. */}
+        <Link href={`/jobs/${job.job_id}/edit`} className="btn btn-primary">
+          Sửa Job
+        </Link>
       </div>
 
       <div className="detail-grid">
@@ -67,11 +70,15 @@ export default async function JobDetailPage({
         <div className="detail-main">
           <section className="card">
             <h3>Thông tin chung</h3>
-            <dl className="detail-list">
+            {/* BUG FIX (audit CSS 09/2026): "detail-list" không tồn tại
+                trong CSS nào — class thật cho khối dt/dd kiểu này là
+                "kv" (public/css/06-detail-page.css, dùng chung với
+                job_detail.html/company_detail.html gốc). */}
+            <dl className="kv">
               <dt>Trạng thái</dt>
               <dd>
-                <span className={`status-chip status-${job.job_status.toLowerCase()}`}>
-                  {job.job_status === 'OPEN' ? 'Đang tuyển' : 'Đã đóng'}
+                <span className={`status-chip ${jobStatusChipClass(job.job_status)}`}>
+                  {jobStatusLabel(job.job_status)}
                 </span>
               </dd>
 
@@ -112,7 +119,12 @@ export default async function JobDetailPage({
                   <dd>
                     {new Date(job.deadline).toLocaleDateString('vi-VN')}
                     {new Date(job.deadline) < new Date() && (
-                      <span className="badge-error" style={{ marginLeft: '8px' }}>Đã hết hạn</span>
+                      // BUG FIX (audit CSS 09/2026): "badge-error" không
+                      // tồn tại — class thật là "badge-danger", LUÔN đi
+                      // kèm base "badge" (shape/padding riêng, xem
+                      // public/css/12-activity-logs.css), không đứng 1
+                      // mình như .status-chip/.badge-info.
+                      <span className="badge badge-danger" style={{ marginLeft: '8px' }}>Đã hết hạn</span>
                     )}
                   </dd>
                 </>
@@ -125,42 +137,40 @@ export default async function JobDetailPage({
               chi tiết" bất kể có dữ liệu hay không. GET /jobs/{job_id}
               (api/db/jobs.py::get_job_by_id) luôn trả kèm parsed_content
               (khác GET /jobs list cần include_content=true) nên field
-              này thực ra đã có sẵn — chỉ là chưa được đọc/render. */}
+              này thực ra đã có sẵn — chỉ là chưa được đọc/render.
+              Bỏ luôn div "job-description" bọc ngoài (class ảo, không
+              cần wrapper — Flask gốc không có, để <p> nằm thẳng trong
+              .card, dùng "empty-placeholder" (class thật) thay vì
+              "muted" cho trạng thái trống, khớp job_detail.html gốc. */}
           <section className="card">
             <h3>Mô tả công việc</h3>
-            <div className="job-description">
-              {job.parsed_content?.job_description ? (
-                <p style={{ whiteSpace: 'pre-wrap' }}>{job.parsed_content.job_description}</p>
-              ) : (
-                <p className="muted">Chưa có mô tả chi tiết cho job này.</p>
-              )}
-            </div>
+            {job.parsed_content?.job_description ? (
+              <p style={{ whiteSpace: 'pre-wrap' }}>{job.parsed_content.job_description}</p>
+            ) : (
+              <p className="empty-placeholder">Chưa có mô tả chi tiết cho job này.</p>
+            )}
           </section>
 
           {job.parsed_content?.requirements && (
             <section className="card">
               <h3>Yêu cầu ứng viên</h3>
-              <div className="job-description">
-                <p style={{ whiteSpace: 'pre-wrap' }}>{job.parsed_content.requirements}</p>
-              </div>
+              <p style={{ whiteSpace: 'pre-wrap' }}>{job.parsed_content.requirements}</p>
             </section>
           )}
 
           {job.parsed_content?.perks && (
             <section className="card">
               <h3>Quyền lợi</h3>
-              <div className="job-description">
-                <p style={{ whiteSpace: 'pre-wrap' }}>{job.parsed_content.perks}</p>
-              </div>
+              <p style={{ whiteSpace: 'pre-wrap' }}>{job.parsed_content.perks}</p>
             </section>
           )}
 
           {job.parsed_content?.required_skills && job.parsed_content.required_skills.length > 0 && (
             <section className="card">
               <h3>Kỹ năng yêu cầu</h3>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+              <div className="skill-row">
                 {job.parsed_content.required_skills.map((skill) => (
-                  <span key={skill} className="badge-info">{skill}</span>
+                  <span key={skill} className="skill-tag">{skill}</span>
                 ))}
               </div>
             </section>
@@ -170,13 +180,15 @@ export default async function JobDetailPage({
           {isStaff && <JobApplicantsPanel applicants={applicants} savers={savers} />}
         </div>
 
-        {/* Sidebar */}
-        <aside className="detail-sidebar">
+        {/* Sidebar — BUG FIX (audit CSS 09/2026): "detail-sidebar" không
+            tồn tại, class thật là "detail-side" (public/css/06-detail-page.css,
+            gồm cả position: sticky). */}
+        <aside className="detail-side">
           <section className="card">
             <h4>Thông tin hệ thống</h4>
-            <dl className="detail-list">
+            <dl className="kv">
               <dt>ID</dt>
-              <dd className="font-mono">{job.job_id}</dd>
+              <dd>{job.job_id}</dd>
 
               <dt>Ngày tạo</dt>
               <dd>{new Date(job.created_at).toLocaleDateString('vi-VN')}</dd>
@@ -188,7 +200,9 @@ export default async function JobDetailPage({
                 <>
                   <dt>Công ty ID</dt>
                   <dd>
-                    <Link href={`/companies/${job.company_id}`} className="link">
+                    {/* Bỏ class "link" (ảo) — "kv dd a" đã tự tô màu
+                        accent cho mọi link trong danh sách này rồi. */}
+                    <Link href={`/companies/${job.company_id}`}>
                       {job.company_id.slice(0, 8)}...
                     </Link>
                   </dd>
@@ -200,7 +214,7 @@ export default async function JobDetailPage({
           {isStaff ? (
             <section className="card">
               <h4>Hành động</h4>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div className="action-row">
                 <Link href={`/jobs/${job.job_id}/edit`} className="btn btn-block">
                   ✏️ Sửa Job
                 </Link>
@@ -222,6 +236,6 @@ export default async function JobDetailPage({
           )}
         </aside>
       </div>
-    </div>
+    </>
   );
 }

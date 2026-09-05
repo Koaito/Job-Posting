@@ -31,10 +31,12 @@ export default async function DashboardPage() {
   const recentActivity = isStaff ? await getRecentActivity(8) : [];
 
   return (
-    <div className="page-container">
+    // CHUYỂN 09/2026 (audit CSS): bỏ div "page-container" bọc ngoài —
+    // class ảo, main.content (root layout.tsx) đã lo container rồi.
+    <>
       <div className="page-head">
         <h1>Tổng quan thị trường job & database doanh nghiệp</h1>
-        <p className="muted">Số liệu cập nhật theo dữ liệu hiện có trong hệ thống.</p>
+        <p className="lede">Số liệu cập nhật theo dữ liệu hiện có trong hệ thống.</p>
       </div>
 
       {/* KPI Cards - Matches Flask dashboard exactly (6 cards) */}
@@ -72,13 +74,24 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Welcome message */}
-      <div className="welcome-section" style={{ marginTop: '32px' }}>
+      {/* Welcome message — "welcome-section" (class ảo, không tồn tại
+          trong CSS nào, và Flask gốc không có khối này — đây là phần
+          Next.js tự thêm) đổi sang ".card" (class thật, panel bo góc
+          có sẵn, dùng chung với khối "Hoạt động gần đây" ngay dưới) để
+          nhất quán, thay vì để trơ không style. */}
+      <div className="card" style={{ marginTop: '32px' }}>
         <h2>Chào mừng trở lại, {user?.full_name || 'bạn'}! 👋</h2>
-        <p className="muted">
+        <p>
           {/* BUG FIX: text cũ báo "Phase 3: Jobs CRUD đang chờ phát triển"
               dù thực tế đã code xong (dù trước đây đang lỗi) — cập nhật
-              lại đúng trạng thái sau khi Sprint 1 đã sửa Jobs CRUD. */}
+              lại đúng trạng thái sau khi Sprint 1 đã sửa Jobs CRUD.
+              Lưu ý: trước đây dùng className="muted" ở đây — bỏ vì
+              ".muted" KHÔNG phải utility toàn cục, chỉ có tác dụng khi
+              nằm trong vài khối cha cụ thể (.applicant-list .muted,
+              .contact-table td.muted...), đứng riêng như thế này không
+              lấy được màu gì cả. Không có class chung nào khác thay thế
+              đúng ngữ nghĩa "chữ mờ" cho đoạn văn thường — để plain,
+              tránh gán bừa 1 class không đúng ý nghĩa chỉ để có style. */}
           ✅ Phase 2 hoàn thành: Dashboard stats đang hiển thị 6 KPIs (khớp Flask dashboard)<br />
           ✅ Phase 3 hoàn thành: Jobs CRUD (list, create, edit, delete)
         </p>
@@ -92,7 +105,10 @@ export default async function DashboardPage() {
         <div className="card" style={{ marginTop: '24px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h3 style={{ margin: 0 }}>Hoạt động gần đây</h3>
-            <Link href="/activity" className="link">Xem tất cả →</Link>
+            {/* BUG FIX (audit CSS 09/2026): class "link" không tồn tại
+                — dùng "btn btn-text" (class thật, đúng kiểu link-hành-
+                động nhỏ đã dùng ở mọi nơi khác trong app). */}
+            <Link href="/activity" className="btn btn-text">Xem tất cả →</Link>
           </div>
           {recentActivity.length > 0 ? (
             <ul style={{ listStyle: 'none', padding: 0, margin: '12px 0 0 0' }}>
@@ -110,10 +126,10 @@ export default async function DashboardPage() {
               ))}
             </ul>
           ) : (
-            <p className="muted" style={{ margin: '12px 0 0 0' }}>Chưa có hoạt động nào.</p>
+            <p className="empty-placeholder" style={{ margin: '12px 0 0 0' }}>Chưa có hoạt động nào.</p>
           )}
         </div>
       )}
-    </div>
+    </>
   );
 }

@@ -107,15 +107,19 @@ export default function JobApplyActions({
         <button
           onClick={handleWithdraw}
           disabled={isWithdrawing}
-          className="btn btn-block btn-secondary"
+          className="btn btn-block btn-ghost"
         >
           {isWithdrawing ? 'Đang rút hồ sơ...' : '✅ Đã ứng tuyển — Rút hồ sơ'}
         </button>
       ) : isOpen ? (
         showApplyForm ? (
           <form onSubmit={handleApplySubmit} className="card" style={{ padding: '16px' }}>
-            <div className="form-group">
-              <label htmlFor="cv_file">File CV (.pdf, tối đa 5MB) *</label>
+            {/* BUG FIX (audit CSS 09/2026): "form-group" không tồn tại
+                trong CSS nào — convention thật là bọc trực tiếp bằng
+                <label> (xem .form-grid > label, public/css/07-forms.css),
+                không cần div wrapper riêng. */}
+            <label htmlFor="cv_file" style={{ display: 'block', marginBottom: '12px' }}>
+              File CV (.pdf, tối đa 5MB) *
               <input
                 ref={fileInputRef}
                 id="cv_file"
@@ -124,9 +128,9 @@ export default function JobApplyActions({
                 accept=".pdf"
                 required
               />
-            </div>
-            <div className="form-group">
-              <label htmlFor="apply_note">Ghi chú (tuỳ chọn)</label>
+            </label>
+            <label htmlFor="apply_note" style={{ display: 'block', marginBottom: '12px' }}>
+              Ghi chú (tuỳ chọn)
               <textarea
                 id="apply_note"
                 name="apply_note"
@@ -135,7 +139,7 @@ export default function JobApplyActions({
                 onChange={(e) => setNote(e.target.value)}
                 placeholder="Vài dòng giới thiệu bản thân..."
               />
-            </div>
+            </label>
             <div style={{ display: 'flex', gap: '8px' }}>
               <button type="submit" disabled={isApplying} className="btn btn-primary" style={{ flex: 1 }}>
                 {isApplying ? 'Đang gửi...' : 'Gửi hồ sơ ứng tuyển'}
@@ -144,7 +148,7 @@ export default function JobApplyActions({
                 type="button"
                 disabled={isApplying}
                 onClick={() => setShowApplyForm(false)}
-                className="btn btn-secondary"
+                className="btn btn-ghost"
                 style={{ flex: 1 }}
               >
                 Huỷ
@@ -163,7 +167,7 @@ export default function JobApplyActions({
       )}
 
       {/* Lưu / Bỏ lưu — luôn cho phép, kể cả job đã CLOSED */}
-      <button onClick={handleToggleSave} disabled={isSaving} className="btn btn-block btn-secondary">
+      <button onClick={handleToggleSave} disabled={isSaving} className="btn btn-block btn-ghost">
         {isSaving ? 'Đang xử lý...' : saved ? '★ Đã lưu — Bỏ lưu' : '☆ Lưu job'}
       </button>
     </div>
