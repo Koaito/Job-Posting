@@ -21,7 +21,9 @@ export default async function CompanyEditPage({
   }
 
   return (
-    <div className="page-container">
+    // CHUYỂN 09/2026 (audit CSS): bỏ div "page-container"/"form-container"
+    // ngoài cùng — class ảo, main.content đã lo container rồi.
+    <>
       <div className="page-head">
         <div>
           <span className="eyebrow">
@@ -31,9 +33,7 @@ export default async function CompanyEditPage({
         </div>
       </div>
 
-      <div className="form-container">
-        <CompanyForm mode="edit" initialData={company} />
-      </div>
-    </div>
+      <CompanyForm mode="edit" initialData={company} />
+    </>
   );
 }

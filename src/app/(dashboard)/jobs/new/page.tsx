@@ -9,7 +9,11 @@ import JobForm from '@/components/features/JobForm';
 
 export default function JobNewPage() {
   return (
-    <div className="page-container">
+    // CHUYỂN 09/2026 (audit CSS): bỏ div "page-container" ngoài cùng và
+    // "form-container" bọc JobForm — cả 2 đều là class ảo, không tồn
+    // tại trong CSS nào. main.content (root layout.tsx) đã lo container
+    // rồi, JobForm tự có "card form-card" của chính nó.
+    <>
       <div className="page-head">
         <div>
           <span className="eyebrow">
@@ -20,9 +24,7 @@ export default function JobNewPage() {
         </div>
       </div>
 
-      <div className="form-container">
-        <JobForm mode="create" />
-      </div>
-    </div>
+      <JobForm mode="create" />
+    </>
   );
 }

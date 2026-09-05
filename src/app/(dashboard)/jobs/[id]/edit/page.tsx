@@ -20,12 +20,15 @@ export default async function JobEditPage({ params }: PageProps) {
   }
 
   return (
-    <div className="page-container">
-      <div className="page-header">
+    // CHUYỂN 09/2026 (audit CSS): bỏ div "page-container" ngoài cùng —
+    // class ảo. "page-header" cũng là class ảo (không phải "page-head"
+    // thật) — main.content đã lo container, chỉ cần header đúng class.
+    <>
+      <div className="page-head">
         <h1>Sửa Job: {job.job_title}</h1>
       </div>
 
       <JobForm mode="edit" initialData={job} />
-    </div>
+    </>
   );
 }

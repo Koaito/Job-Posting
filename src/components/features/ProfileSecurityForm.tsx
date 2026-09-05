@@ -59,7 +59,7 @@ export default function ProfileSecurityForm({ mustChangePassword }: { mustChange
   };
 
   return (
-    <form onSubmit={handleSubmit} className="auth-form">
+    <form onSubmit={handleSubmit}>
       {error && <div className="flash flash-error">{error}</div>}
 
       <label>

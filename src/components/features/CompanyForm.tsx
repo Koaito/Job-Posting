@@ -88,11 +88,15 @@ export default function CompanyForm({ mode, initialData }: CompanyFormProps) {
 
       {error && <div className="flash flash-error">{error}</div>}
 
+      {/* BUG FIX (audit CSS 09/2026, giống JobForm.tsx): bỏ div
+          "form-field"/"form-field-full" (ảo) — CSS thật định nghĩa
+          ".form-grid > label.span-N" (07-forms.css), label phải là con
+          trực tiếp của .form-grid để nhận layout lưới 4 cột. Bỏ luôn
+          span "required" (ảo) — Flask gốc chỉ ghi "*" ngay trong text
+          label. */}
       <div className="form-grid">
-        <div className="form-field form-field-full">
-          <label htmlFor="company_name">
-            Tên công ty <span className="required">*</span>
-          </label>
+        <label className="span-4" htmlFor="company_name">
+          Tên công ty *
           <input
             type="text"
             id="company_name"
@@ -101,15 +105,15 @@ export default function CompanyForm({ mode, initialData }: CompanyFormProps) {
             defaultValue={initialData?.company_name}
             placeholder="VD: Công ty TNHH ABC"
           />
-        </div>
+        </label>
 
-        <div className="form-field">
-          <label htmlFor="tax_id">Mã số thuế</label>
+        <label className="span-1" htmlFor="tax_id">
+          Mã số thuế
           <input type="text" id="tax_id" name="tax_id" defaultValue={initialData?.tax_id || ''} />
-        </div>
+        </label>
 
-        <div className="form-field">
-          <label htmlFor="website">Website</label>
+        <label className="span-1" htmlFor="website">
+          Website
           <input
             type="url"
             id="website"
@@ -117,10 +121,10 @@ export default function CompanyForm({ mode, initialData }: CompanyFormProps) {
             defaultValue={initialData?.website || ''}
             placeholder="https://..."
           />
-        </div>
+        </label>
 
-        <div className="form-field">
-          <label htmlFor="industry">Lĩnh vực</label>
+        <label className="span-1" htmlFor="industry">
+          Lĩnh vực
           <input
             type="text"
             id="industry"
@@ -128,10 +132,10 @@ export default function CompanyForm({ mode, initialData }: CompanyFormProps) {
             defaultValue={initialData?.industry || ''}
             placeholder="VD: CNTT - Phần mềm"
           />
-        </div>
+        </label>
 
-        <div className="form-field">
-          <label htmlFor="company_size">Quy mô</label>
+        <label className="span-1" htmlFor="company_size">
+          Quy mô
           <input
             type="text"
             id="company_size"
@@ -139,20 +143,20 @@ export default function CompanyForm({ mode, initialData }: CompanyFormProps) {
             defaultValue={initialData?.company_size || ''}
             placeholder="VD: 50-200 nhân sự"
           />
-        </div>
+        </label>
 
-        <div className="form-field">
-          <label htmlFor="province_name">Tỉnh/thành</label>
+        <label className="span-2" htmlFor="province_name">
+          Tỉnh/thành
           <select id="province_name" name="province_name" defaultValue={initialData?.province_name || ''}>
             <option value="">-- Chọn tỉnh/thành --</option>
             {PROVINCE_OPTIONS.map((p) => (
               <option key={p} value={p}>{p}</option>
             ))}
           </select>
-        </div>
+        </label>
 
-        <div className="form-field">
-          <label htmlFor="partnership_potential">Tiềm năng hợp tác</label>
+        <label className="span-2" htmlFor="partnership_potential">
+          Tiềm năng hợp tác
           <select
             id="partnership_potential"
             name="partnership_potential"
@@ -162,15 +166,15 @@ export default function CompanyForm({ mode, initialData }: CompanyFormProps) {
               <option key={o.value} value={o.value}>{o.label}</option>
             ))}
           </select>
-        </div>
+        </label>
 
-        <div className="form-field form-field-full">
-          <label htmlFor="address">Địa chỉ</label>
+        <label className="span-4" htmlFor="address">
+          Địa chỉ
           <input type="text" id="address" name="address" defaultValue={initialData?.address || ''} />
-        </div>
+        </label>
 
-        <div className="form-field">
-          <label htmlFor="fanpage_url">Fanpage</label>
+        <label className="span-2" htmlFor="fanpage_url">
+          Fanpage
           <input
             type="url"
             id="fanpage_url"
@@ -178,10 +182,10 @@ export default function CompanyForm({ mode, initialData }: CompanyFormProps) {
             defaultValue={initialData?.fanpage_url || ''}
             placeholder="https://facebook.com/..."
           />
-        </div>
+        </label>
 
-        <div className="form-field">
-          <label htmlFor="linkedin_url">LinkedIn</label>
+        <label className="span-2" htmlFor="linkedin_url">
+          LinkedIn
           <input
             type="url"
             id="linkedin_url"
@@ -189,13 +193,13 @@ export default function CompanyForm({ mode, initialData }: CompanyFormProps) {
             defaultValue={initialData?.linkedin_url || ''}
             placeholder="https://linkedin.com/company/..."
           />
-        </div>
+        </label>
 
         {mode === 'edit' && (
-          <div className="form-field form-field-full">
-            <label htmlFor="note">Ghi chú sửa đổi (cho lịch sử thao tác)</label>
+          <label className="span-4" htmlFor="note">
+            Ghi chú sửa đổi (cho lịch sử thao tác)
             <textarea id="note" name="note" rows={2} placeholder="Không bắt buộc..." />
-          </div>
+          </label>
         )}
       </div>
 
@@ -203,7 +207,7 @@ export default function CompanyForm({ mode, initialData }: CompanyFormProps) {
         <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
           {isSubmitting ? 'Đang lưu...' : mode === 'create' ? 'Tạo công ty' : 'Cập nhật'}
         </button>
-        <button type="button" className="btn btn-secondary" onClick={() => router.back()} disabled={isSubmitting}>
+        <button type="button" className="btn btn-ghost" onClick={() => router.back()} disabled={isSubmitting}>
           Hủy
         </button>
       </div>

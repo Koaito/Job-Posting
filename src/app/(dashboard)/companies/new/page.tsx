@@ -8,7 +8,9 @@ import CompanyForm from '@/components/features/CompanyForm';
  */
 export default function CompanyNewPage() {
   return (
-    <div className="page-container">
+    // CHUYỂN 09/2026 (audit CSS): bỏ div "page-container"/"form-container"
+    // ngoài cùng — class ảo, main.content đã lo container rồi.
+    <>
       <div className="page-head">
         <div>
           <span className="eyebrow">
@@ -19,9 +21,7 @@ export default function CompanyNewPage() {
         </div>
       </div>
 
-      <div className="form-container">
-        <CompanyForm mode="create" />
-      </div>
-    </div>
+      <CompanyForm mode="create" />
+    </>
   );
 }

@@ -61,7 +61,7 @@ export default function ProfileOverviewForm({ user }: { user: User }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="auth-form">
+    <form onSubmit={handleSubmit}>
       {error && <div className="flash flash-error">{error}</div>}
       {success && <div className="flash flash-success">{success}</div>}
 

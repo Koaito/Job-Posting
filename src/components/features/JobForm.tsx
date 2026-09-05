@@ -7,7 +7,7 @@ import { createJob, updateJob } from '@/app/actions/jobs';
 /**
  * Reusable Job Form Component
  * Used for both create and edit modes
- * Matches Flask: templates/job_form.html
+ * Matches Flask: templates/_job_form.html
  */
 
 interface JobFormProps {
@@ -102,12 +102,20 @@ export default function JobForm({ mode, initialData }: JobFormProps) {
         </div>
       )}
 
+      {/* BUG FIX (audit CSS 09/2026): trước đây mỗi field bọc trong
+          <div class="form-field[ form-field-full]"> rồi mới tới <label>
+          bên trong — 2 class đó không tồn tại, và quan trọng hơn: CSS
+          thật định nghĩa ".form-grid > label.span-N" (public/css/
+          07-forms.css) — tức LABEL phải là con trực tiếp của
+          .form-grid thì mới nhận layout lưới 4 cột + độ rộng span-N.
+          Bọc thêm div ở giữa khiến toàn bộ input rơi về layout mặc định
+          (xếp dọc từng dòng), không phải grid 4 cột như thiết kế. Viết
+          lại: label chính là grid item, class="required" (ảo) bỏ hẳn —
+          Flask gốc chỉ ghi dấu "*" ngay trong text label, không cần
+          class riêng gì cho dấu sao. */}
       <div className="form-grid">
-        {/* Job Title */}
-        <div className="form-field form-field-full">
-          <label htmlFor="job_title">
-            Tên Job <span className="required">*</span>
-          </label>
+        <label className="span-2" htmlFor="job_title">
+          Tên Job *
           <input
             type="text"
             id="job_title"
@@ -116,13 +124,13 @@ export default function JobForm({ mode, initialData }: JobFormProps) {
             defaultValue={initialData?.job_title}
             placeholder="VD: Frontend Developer"
           />
-        </div>
+        </label>
 
-        {/* Company ID - TODO: Replace with autocomplete */}
-        <div className="form-field">
-          <label htmlFor="company_id">
-            Company ID <span className="required">*</span>
-          </label>
+        {/* Company ID - TODO: Replace with autocomplete (Flask gốc dùng
+            _company_combobox.html — chưa làm ở Next.js, giữ input text
+            đơn giản, chỉ sửa cấu trúc/class cho đúng thật). */}
+        <label className="span-2" htmlFor="company_id">
+          Company ID *
           <input
             type="text"
             id="company_id"
@@ -131,14 +139,13 @@ export default function JobForm({ mode, initialData }: JobFormProps) {
             defaultValue={initialData?.company_id}
             placeholder="UUID của công ty"
           />
-          <p className="form-hint">
+          <span style={{ fontSize: '12px', color: 'var(--muted)', fontWeight: 400 }}>
             TODO: Thay bằng autocomplete selector
-          </p>
-        </div>
+          </span>
+        </label>
 
-        {/* Industry */}
-        <div className="form-field">
-          <label htmlFor="matching_industry">Ngành</label>
+        <label className="span-2" htmlFor="matching_industry">
+          Ngành
           <select
             id="matching_industry"
             name="matching_industry"
@@ -151,11 +158,11 @@ export default function JobForm({ mode, initialData }: JobFormProps) {
             <option value="Thiết kế - Mỹ thuật">Thiết kế - Mỹ thuật</option>
             <option value="Khác">Khác</option>
           </select>
-        </div>
+        </label>
 
         {/* Level - TODO: Load from backend /enums */}
-        <div className="form-field">
-          <label htmlFor="level_code">Level</label>
+        <label className="span-1" htmlFor="level_code">
+          Level
           <select
             id="level_code"
             name="level_code"
@@ -173,11 +180,11 @@ export default function JobForm({ mode, initialData }: JobFormProps) {
             <option value="Lead">Lead</option>
             <option value="Manager">Manager</option>
           </select>
-        </div>
+        </label>
 
         {/* Province - TODO: Load from backend */}
-        <div className="form-field">
-          <label htmlFor="province_name">Địa điểm</label>
+        <label className="span-1" htmlFor="province_name">
+          Địa điểm
           <select
             id="province_name"
             name="province_name"
@@ -190,14 +197,14 @@ export default function JobForm({ mode, initialData }: JobFormProps) {
             <option value="Hồ Chí Minh">Hồ Chí Minh</option>
             <option value="Đà Nẵng">Đà Nẵng</option>
           </select>
-        </div>
+        </label>
 
         {/* Work Type — khớp _job_form.html gốc (work_types), trước đây
             bị bỏ sót hoàn toàn khỏi form React. Value là mã enum
             backend chờ (work_type_enum), nhãn hiển thị tiếng Việt
             khớp WORK_TYPE_MAP bên Flask (crawler_client/jobs.py). */}
-        <div className="form-field">
-          <label htmlFor="work_type">Hình thức làm việc</label>
+        <label className="span-1" htmlFor="work_type">
+          Hình thức làm việc
           <select
             id="work_type"
             name="work_type"
@@ -209,35 +216,10 @@ export default function JobForm({ mode, initialData }: JobFormProps) {
             <option value="INTERNSHIP">Thực tập</option>
             <option value="OTHER">Khác</option>
           </select>
-        </div>
+        </label>
 
-        {/* Salary Min */}
-        <div className="form-field">
-          <label htmlFor="salary_min">Lương tối thiểu (VNĐ)</label>
-          <input
-            type="number"
-            id="salary_min"
-            name="salary_min"
-            defaultValue={initialData?.salary_min}
-            placeholder="10000000"
-          />
-        </div>
-
-        {/* Salary Max */}
-        <div className="form-field">
-          <label htmlFor="salary_max">Lương tối đa (VNĐ)</label>
-          <input
-            type="number"
-            id="salary_max"
-            name="salary_max"
-            defaultValue={initialData?.salary_max}
-            placeholder="20000000"
-          />
-        </div>
-
-        {/* Salary Type */}
-        <div className="form-field">
-          <label htmlFor="salary_type">Loại lương</label>
+        <label className="span-1" htmlFor="salary_type">
+          Loại lương
           <select
             id="salary_type"
             name="salary_type"
@@ -254,14 +236,14 @@ export default function JobForm({ mode, initialData }: JobFormProps) {
                 job loại này không tạo/sửa được đúng qua web. */}
             <option value="UNPAID">Không lương</option>
           </select>
-        </div>
+        </label>
 
         {/* Salary Period — mới 08/2026 bên Flask (salary_period), form
             React trước đây chưa có ô này -> mọi job nhập lương NĂM qua
             web bị backend mặc định hiểu nhầm thành lương/tháng (sai
             lệch 12 lần, xem migration_add_salary_period.sql). */}
-        <div className="form-field">
-          <label htmlFor="salary_period">Chu kỳ lương</label>
+        <label className="span-1" htmlFor="salary_period">
+          Chu kỳ lương
           <select
             id="salary_period"
             name="salary_period"
@@ -270,11 +252,32 @@ export default function JobForm({ mode, initialData }: JobFormProps) {
             <option value="MONTH">Tháng</option>
             <option value="YEAR">Năm</option>
           </select>
-        </div>
+        </label>
 
-        {/* Currency */}
-        <div className="form-field">
-          <label htmlFor="currency">Tiền tệ</label>
+        <label className="span-1" htmlFor="salary_min">
+          Lương tối thiểu (VNĐ)
+          <input
+            type="number"
+            id="salary_min"
+            name="salary_min"
+            defaultValue={initialData?.salary_min}
+            placeholder="10000000"
+          />
+        </label>
+
+        <label className="span-1" htmlFor="salary_max">
+          Lương tối đa (VNĐ)
+          <input
+            type="number"
+            id="salary_max"
+            name="salary_max"
+            defaultValue={initialData?.salary_max}
+            placeholder="20000000"
+          />
+        </label>
+
+        <label className="span-1" htmlFor="currency">
+          Tiền tệ
           <select
             id="currency"
             name="currency"
@@ -283,56 +286,57 @@ export default function JobForm({ mode, initialData }: JobFormProps) {
             <option value="VNĐ">VNĐ</option>
             <option value="USD">USD</option>
           </select>
-        </div>
+        </label>
 
-        {/* Deadline */}
-        <div className="form-field">
-          <label htmlFor="deadline">Hạn nộp</label>
+        <label className="span-1" htmlFor="deadline">
+          Hạn nộp
           <input
             type="date"
             id="deadline"
             name="deadline"
             defaultValue={initialData?.deadline}
           />
-        </div>
+        </label>
 
-        {/* Status */}
-        <div className="form-field">
-          <label htmlFor="job_status">Trạng thái</label>
-          <select
-            id="job_status"
-            name="job_status"
-            defaultValue={initialData?.job_status || 'OPEN'}
-          >
-            <option value="OPEN">Đang tuyển</option>
-            <option value="CLOSED">Đã đóng</option>
-          </select>
-        </div>
+        {mode === 'edit' && (
+          <label className="span-1" htmlFor="job_status">
+            Trạng thái
+            <select
+              id="job_status"
+              name="job_status"
+              defaultValue={initialData?.job_status || 'OPEN'}
+            >
+              <option value="OPEN">Đang tuyển</option>
+              <option value="CLOSED">Đã đóng</option>
+            </select>
+          </label>
+        )}
 
-        {/* Notes */}
-        <div className="form-field form-field-full">
-          <label htmlFor="ss_team_notes">Ghi chú nội bộ</label>
-          <textarea
-            id="ss_team_notes"
-            name="ss_team_notes"
-            rows={4}
-            defaultValue={initialData?.ss_team_notes}
-            placeholder="Ghi chú cho team SS..."
-          />
-        </div>
+        {mode === 'edit' && (
+          <label className="span-4" htmlFor="ss_team_notes">
+            Ghi chú nội bộ
+            <textarea
+              id="ss_team_notes"
+              name="ss_team_notes"
+              rows={4}
+              defaultValue={initialData?.ss_team_notes}
+              placeholder="Ghi chú cho team SS..."
+            />
+          </label>
+        )}
       </div>
 
       <div className="form-actions">
-        <button 
-          type="submit" 
+        <button
+          type="submit"
           className="btn btn-primary"
           disabled={isSubmitting}
         >
           {isSubmitting ? 'Đang lưu...' : (mode === 'create' ? 'Tạo Job' : 'Cập nhật')}
         </button>
-        <button 
-          type="button" 
-          className="btn btn-secondary"
+        <button
+          type="button"
+          className="btn btn-ghost"
           onClick={() => router.back()}
           disabled={isSubmitting}
         >
