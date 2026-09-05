@@ -1,12 +1,15 @@
 import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/app/actions/auth';
-import { Sidebar } from '@/components/ui/layout/Sidebar';
 
 /**
- * Dashboard Layout
- * Wraps all protected pages with sidebar navigation
+ * Dashboard route-group layout
+ *
+ * CHUYỂN 09/2026 (xem chat134): Sidebar + .shell/.content đã dời lên
+ * root layout.tsx (bọc TOÀN app, kể cả (auth)/) — file này giờ CHỈ còn
+ * lo phần đặc thù của nhóm (dashboard)/: bắt buộc đăng nhập + ép đổi
+ * mật khẩu tạm trước khi dùng bất kỳ trang nào khác. KHÔNG tự vẽ
+ * layout/sidebar riêng nữa (tránh lồng 2 lớp .shell/.sidebar).
  */
-
 export default async function DashboardLayout({
   children,
 }: {
@@ -30,12 +33,5 @@ export default async function DashboardLayout({
     redirect('/change-password');
   }
 
-  return (
-    <div className="dashboard-layout">
-      <Sidebar user={user} />
-      <main className="dashboard-main">
-        {children}
-      </main>
-    </div>
-  );
+  return <>{children}</>;
 }

@@ -1,23 +1,8 @@
-/* Import all CSS files from Flask project in order */
-@import url("../../public/css/00-tokens.css");
-@import url("../../public/css/01-sidebar.css");
-@import url("../../public/css/02-auth.css");
-@import url("../../public/css/03-layout.css");
-@import url("../../public/css/04-job-cards.css");
-@import url("../../public/css/05-contact-table.css");
-@import url("../../public/css/06-detail-page.css");
-@import url("../../public/css/07-forms.css");
-@import url("../../public/css/08-dashboard.css");
-@import url("../../public/css/09-misc-toasts.css");
-@import url("../../public/css/10-pagination-responsive.css");
-@import url("../../public/css/11-student-activity.css");
-@import url("../../public/css/12-activity-logs.css");
-@import url("../../public/css/13-data-management.css");
-@import url("../../public/css/14-email-templates.css");
-@import url("../../public/css/15-crawl.css");
-@import url("../../public/css/16-email-template-manager.css");
-@import url("../../public/css/17-error-pages.css");
-@import url("../../public/css/18-messages.css");
+/* CSS thật của toàn app (00-tokens.css ... 18-messages.css) được load
+   qua <link> trong src/app/layout.tsx (root) — trước đây file này còn
+   @import lại y hệt các file đó lần nữa, khiến mọi stylesheet bị tải và
+   parse 2 lần cho mỗi trang. Dọn theo chat134 (mục 3), giữ lại đúng 1
+   nguồn duy nhất (<link>). */
 
 /* Reset styles from Next.js default */
 :root {
