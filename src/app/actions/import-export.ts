@@ -9,7 +9,6 @@ import type {
   ImportPreviewRow,
   ImportRowResolution,
   ImportConfirmSummary,
-  ImportCompanySuggestion,
   ImportFieldError,
 } from '@/types/import-export';
 
@@ -24,6 +23,13 @@ import type {
  * do UI tự xây (ImportPanel.tsx quyết định action/level_code/
  * confirm_reactivate cho từng dòng cần xử lý tay), KHÔNG còn tự động
  * skip mọi dòng không sạch như bản MVP trước.
+ *
+ * DỌN DEAD CODE (rà soát #3, 09/2026 — xem mục 6.10 plan_nextjs.md):
+ * getCompanySuggestions() thêm ở đợt 2 nói trên hoá ra không nơi nào
+ * gọi — UI resolve công ty dùng thẳng `company_resolution.suggestions`
+ * có sẵn từ lúc build preview (getImportPreview()), không cần làm mới
+ * riêng lẻ theo từng dòng. Đã xoá hàm này (giữ nguyên verifyField() +
+ * resolveCompany(), cả 2 đều có UI gọi thật qua ImportPanel.tsx).
  *
  * REFACTOR (09/2026, "Đánh giá kiến trúc" #1+#2): dùng chung
  * apiFetchRaw() (lib/api/client.ts, KHÔNG dùng apiFetch() cấp cao hơn)
@@ -300,37 +306,6 @@ export async function getImportPreview(
 // ------------------------------------------------------------------
 // Import — bước 1b: resolve tại chỗ (verify-field / resolve-company)
 // ------------------------------------------------------------------
-
-/**
- * Gợi ý công ty tương tự cho 1 dòng cụ thể (fuzzy match theo tên) —
- * dòng company_resolution.suggestions đã có sẵn từ lúc build preview,
- * hàm này chỉ dùng khi staff muốn LÀM MỚI lại gợi ý cho riêng 1 dòng
- * (vd sau khi có công ty mới được tạo ở tab khác) mà không cần tải lại
- * nguyên preview.
- */
-export async function getCompanySuggestions(
-  entityType: ImportExportEntityType,
-  previewId: string,
-  rowIndex: number
-): Promise<{ success: boolean; suggestions?: ImportCompanySuggestion[]; error?: string }> {
-  try {
-    const response = await apiFetchRaw(
-      `/import/${entityType}/preview/${previewId}/company-suggestions?row_index=${rowIndex}`,
-      { cache: 'no-store', timeoutMs: DEFAULT_TIMEOUT_MS }
-    );
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: response.statusText }));
-      const { message } = extractErrorInfo(error.detail);
-      return { success: false, error: message || 'Không thể lấy gợi ý công ty' };
-    }
-    const data = await response.json();
-    return { success: true, suggestions: data.suggestions };
-  } catch (error) {
-    console.error('Error fetching company suggestions:', error);
-    return { success: false, error: 'Network error' };
-  }
-}
 
 /**
  * Staff sửa 1 ô lỗi trên bảng preview, bấm "Xác nhận" cạnh ô đó —

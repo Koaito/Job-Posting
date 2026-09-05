@@ -25,7 +25,6 @@ import {
   exportEntity,
   uploadImportFile,
   getImportPreview,
-  getCompanySuggestions,
   verifyField,
   resolveCompany,
   confirmImport,
@@ -36,7 +35,6 @@ import {
   mockImportRowNoConflict,
   mockImportRowNeedsLevelResolve,
   mockImportConfirmSummary,
-  mockCompanySuggestions,
   mockFetchSuccess,
   mockFetchError,
   mockFetchStatus,
@@ -247,24 +245,11 @@ describe('import-export.ts Server Actions', () => {
 
   // ------------------------------------------------------------------
   // Import — resolve tại chỗ (đúng 3 route mới bổ sung ở đợt 2)
+  //
+  // DỌN DEAD CODE (rà soát #3, 09/2026): đã xoá describe('getCompanySuggestions()')
+  // — hàm tương ứng không nơi nào gọi thật, xem docstring
+  // actions/import-export.ts + mục 6.10 plan_nextjs.md.
   // ------------------------------------------------------------------
-
-  describe('getCompanySuggestions()', () => {
-    it('should gọi đúng URL kèm previewId + rowIndex', async () => {
-      (global.fetch as jest.Mock).mockImplementation(() =>
-        mockFetchSuccess({ suggestions: mockCompanySuggestions })
-      );
-
-      const result = await getCompanySuggestions('job', 'preview-abc-123', 2);
-
-      expect(result.success).toBe(true);
-      expect(result.suggestions).toHaveLength(2);
-      const [url] = (global.fetch as jest.Mock).mock.calls[0];
-      expect(url).toBe(
-        `${process.env.FASTAPI_URL}/import/job/preview/preview-abc-123/company-suggestions?row_index=2`
-      );
-    });
-  });
 
   describe('verifyField()', () => {
     it('should trả row đã cập nhật + fieldError=null khi sửa hợp lệ', async () => {

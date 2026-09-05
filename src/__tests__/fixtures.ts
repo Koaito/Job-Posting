@@ -523,8 +523,3 @@ export const mockImportConfirmSummary = {
   skipped: 2,
 };
 
-export const mockCompanySuggestions = [
-  { company_id: 'company-9', company_name: 'ACME Corporation', tax_id: '0123456789', is_active: true, similarity: 0.92 },
-  { company_id: 'company-10', company_name: 'ACME Corp Ltd', tax_id: null, is_active: true, similarity: 0.81 },
-];
-

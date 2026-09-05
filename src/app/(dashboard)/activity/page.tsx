@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import { getAuditLogs } from '@/app/actions/audit';
 import AuditLogNoteEditor from '@/components/features/AuditLogNoteEditor';
-import { getCurrentUser } from '@/app/actions/auth';
+import { getCurrentUser, listUsers } from '@/app/actions/auth';
+import { getCompanies } from '@/app/actions/companies';
 import { isStaffRole } from '@/lib/auth/roles';
 
 /**
@@ -16,11 +17,22 @@ import { isStaffRole } from '@/lib/auth/roles';
  * tập con hành động nhạy cảm (sửa/xoá JD, sửa/xoá company, mọi thao
  * tác HR contact), kèm note — 2 CÁCH LỌC trên CÙNG 1 bảng, không phải
  * 2 nguồn dữ liệu khác nhau (xem docstring backend).
+ *
+ * BUG FIX (rà soát #3, 09/2026 — xem mục 6.10 plan_nextjs.md): dropdown
+ * lọc theo công ty (company_id) và người thực hiện (actor_id) bị thiếu
+ * dù `AuditLogFilters`/`getAuditLogs()` (actions/audit.ts) đã hỗ trợ
+ * sẵn 2 param này từ trước — chỉ chưa có UI. Thêm 2 dropdown, tái dùng
+ * `getCompanies()` (đã dùng ở /companies) và `listUsers()` (đã dùng ở
+ * /profile/activity, /staff.ts) lọc `role !== 'user'` (chỉ nhân viên
+ * mới có thể là actor của audit log — học viên không tạo/sửa/xoá
+ * JD/company/contact).
  */
 
 interface SearchParams {
   view?: 'auto' | 'manual';
   entity_type?: string;
+  company_id?: string;
+  actor_id?: string;
   action_type?: string;
   pending_note?: string;
   page?: string;
@@ -74,14 +86,23 @@ export default async function ActivityPage({
   const limit = 50;
   const offset = (page - 1) * limit;
 
-  const { items: logs, total } = await getAuditLogs({
-    view,
-    entity_type: sp.entity_type,
-    action_type: sp.action_type,
-    pending_note: view === 'manual' && sp.pending_note === 'true' ? true : undefined,
-    limit,
-    offset,
-  });
+  const [{ items: logs, total }, companiesResult, allUsers] = await Promise.all([
+    getAuditLogs({
+      view,
+      entity_type: sp.entity_type,
+      company_id: sp.company_id,
+      actor_id: sp.actor_id,
+      action_type: sp.action_type,
+      pending_note: view === 'manual' && sp.pending_note === 'true' ? true : undefined,
+      limit,
+      offset,
+    }),
+    getCompanies({ limit: 500, offset: 0 }),
+    listUsers(),
+  ]);
+
+  const companies = companiesResult.items;
+  const staffUsers = allUsers.filter((u) => u.role !== 'user');
 
   const totalPages = Math.ceil(total / limit);
   const qs = (overrides: Partial<SearchParams>) => {
@@ -89,6 +110,8 @@ export default async function ActivityPage({
     const params = new URLSearchParams();
     if (merged.view) params.append('view', merged.view);
     if (merged.entity_type) params.append('entity_type', merged.entity_type);
+    if (merged.company_id) params.append('company_id', merged.company_id);
+    if (merged.actor_id) params.append('actor_id', merged.actor_id);
     if (merged.action_type) params.append('action_type', merged.action_type);
     if (merged.pending_note) params.append('pending_note', merged.pending_note);
     if (merged.page) params.append('page', merged.page);
@@ -140,6 +163,18 @@ export default async function ActivityPage({
               <option key={t} value={t}>{t}</option>
             ))}
           </select>
+          <select name="company_id" defaultValue={sp.company_id || ''}>
+            <option value="">Mọi công ty</option>
+            {companies.map((c) => (
+              <option key={c.company_id} value={c.company_id}>{c.company_name}</option>
+            ))}
+          </select>
+          <select name="actor_id" defaultValue={sp.actor_id || ''}>
+            <option value="">Mọi người thực hiện</option>
+            {staffUsers.map((u) => (
+              <option key={u.ss_user_id} value={u.ss_user_id}>{u.full_name}</option>
+            ))}
+          </select>
           <select name="action_type" defaultValue={sp.action_type || ''}>
             <option value="">Mọi hành động</option>
             {ACTION_TYPE_OPTIONS.map((a) => (
@@ -158,7 +193,17 @@ export default async function ActivityPage({
             </label>
           )}
           <button type="submit" className="btn">Lọc</button>
-          <Link href={qs({ entity_type: undefined, action_type: undefined, pending_note: undefined, page: '1' })} className="btn">
+          <Link
+            href={qs({
+              entity_type: undefined,
+              company_id: undefined,
+              actor_id: undefined,
+              action_type: undefined,
+              pending_note: undefined,
+              page: '1',
+            })}
+            className="btn"
+          >
             Xoá lọc
           </Link>
         </form>
