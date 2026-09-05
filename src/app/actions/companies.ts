@@ -1,6 +1,6 @@
 'use server';
 
-import { apiFetch } from '@/lib/api/client';
+import { apiFetch, buildParams } from '@/lib/api/client';
 import type {
   Company,
   CompanyDetail,
@@ -37,14 +37,15 @@ import type {
 export async function getCompanies(filters?: CompanyFilters): Promise<PaginatedCompanies> {
   const fallback = { items: [], total: 0, limit: filters?.limit || 50, offset: filters?.offset || 0 };
 
-  const params = new URLSearchParams();
-  if (filters?.keyword) params.append('keyword', filters.keyword);
-  if (filters?.province) params.append('province', filters.province);
-  if (filters?.has_social !== undefined) params.append('has_social', String(filters.has_social));
-  if (filters?.created_by) params.append('created_by', filters.created_by);
-  if (filters?.include_inactive) params.append('include_inactive', String(filters.include_inactive));
-  params.append('limit', String(filters?.limit || 50));
-  params.append('offset', String(filters?.offset || 0));
+  const params = buildParams({
+    keyword: filters?.keyword,
+    province: filters?.province,
+    has_social: filters?.has_social,
+    created_by: filters?.created_by,
+    include_inactive: filters?.include_inactive,
+    limit: filters?.limit || 50,
+    offset: filters?.offset || 0,
+  });
 
   const result = await apiFetch<PaginatedCompanies>(`/companies?${params}`, { auth: false, cache: 'no-store' });
 

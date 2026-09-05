@@ -434,3 +434,47 @@ export async function handleServerAction<T>(
     );
   }
 }
+
+/**
+ * REFACTOR (09/2026, "Đánh giá kiến trúc" #5, ưu tiên thấp): 9 hàm list
+ * (getJobs, getCompanies, getContacts, getContactsByCompany, getAuditLogs,
+ * getCrawlHistory, getCrawlBatchHistory, getExportPreview/exportEntity)
+ * trước đây tự viết `new URLSearchParams()` rồi chuỗi
+ * `if (filters?.x) params.append('x', ...)` thủ công cho từng field —
+ * đúng chỗ đã xảy ra bug thật (GET /jobs gửi "search" nhưng backend chờ
+ * "keyword", lọc bị bỏ qua trong im lặng vì query lạ không bị FastAPI từ
+ * chối). buildParams() KHÔNG giảm được rủi ro sai *tên* param (dev vẫn
+ * phải tự đối chiếu đúng tên query thật của backend), nhưng giảm rủi ro
+ * quên/thừa dòng `if` khi filter object có nhiều field — mỗi hàm list
+ * giờ chỉ cần khai 1 object literal.
+ *
+ * QUY TẮC bỏ qua field (gộp đúng 2 kiểu check khác nhau đã tồn tại rải
+ * rác trước đây về CHUNG 1 quy tắc):
+ *   - `undefined`/`null`/chuỗi rỗng `''` -> BỎ QUA (không lọc theo field
+ *     này) — khớp đúng hành vi các `if (filters?.x)` cũ dùng cho field
+ *     string (keyword, province, search...).
+ *   - `false` (boolean) -> VẪN GỬI (`"...=false"`) — khớp đúng hành vi
+ *     các chỗ cũ tự check `!== undefined` riêng cho field boolean
+ *     (has_social, include_inactive, pending_note...), vì `false` là 1
+ *     giá trị lọc CÓ CHỦ Ý, khác hẳn "không truyền field này".
+ *   - Số `0` -> VẪN GỬI (khác `''`) — an toàn cho field số có thể hợp lệ
+ *     bằng 0 sau này (hiện `limit`/`offset` luôn được set giá trị mặc
+ *     định trước khi truyền vào, không đi qua nhánh "bỏ qua" này).
+ *
+ * LƯU Ý THỨ TỰ: `Object.entries()` giữ đúng thứ tự khai báo trong
+ * object literal truyền vào — gọi nơi dùng vẫn chủ động kiểm soát được
+ * thứ tự param trên query string y hệt trước đây (1 vài test cũ so
+ * khớp cả chuỗi URL, vd `/jobs?limit=50&offset=0`) bằng cách đặt
+ * `limit`/`offset` ở cuối object literal.
+ */
+export function buildParams(
+  filters: Record<string, string | number | boolean | undefined | null>
+): URLSearchParams {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(filters)) {
+    if (value === undefined || value === null || value === '') continue;
+    params.append(key, String(value));
+  }
+  return params;
+}
+

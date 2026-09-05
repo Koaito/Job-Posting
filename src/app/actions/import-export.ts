@@ -1,6 +1,6 @@
 'use server';
 
-import { apiFetchRaw } from '@/lib/api/client';
+import { apiFetchRaw, buildParams } from '@/lib/api/client';
 import type {
   ImportExportEntityType,
   ExportFilters,
@@ -115,15 +115,15 @@ function extractErrorInfo(detail: unknown): {
 /** Gom query param filter export — dùng chung cho preview lẫn tải file,
  * khớp đúng _export_filter_params ở router (tránh lệch tên/param 2 nơi). */
 function buildExportQueryParams(filters?: ExportFilters): URLSearchParams {
-  const params = new URLSearchParams();
-  if (filters?.status) params.append('status', filters.status);
-  if (filters?.is_active !== undefined) params.append('is_active', String(filters.is_active));
-  if (filters?.company_id) params.append('company_id', filters.company_id);
-  if (filters?.date_field) params.append('date_field', filters.date_field);
-  if (filters?.from_date) params.append('from_date', filters.from_date);
-  if (filters?.to_date) params.append('to_date', filters.to_date);
-  if (filters?.limit !== undefined) params.append('limit', String(filters.limit));
-  return params;
+  return buildParams({
+    status: filters?.status,
+    is_active: filters?.is_active,
+    company_id: filters?.company_id,
+    date_field: filters?.date_field,
+    from_date: filters?.from_date,
+    to_date: filters?.to_date,
+    limit: filters?.limit,
+  });
 }
 
 // ------------------------------------------------------------------

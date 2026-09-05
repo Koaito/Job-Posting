@@ -1,6 +1,6 @@
 'use server';
 
-import { apiFetch } from '@/lib/api/client';
+import { apiFetch, buildParams } from '@/lib/api/client';
 // BUG FIX (audit 09/2026 #11 — dọn "type debt"): file này trước đây tự
 // khai lại 1 interface Job RIÊNG, thiếu hẳn work_type/salary_period/
 // source_url/source_name so với JobOut thật, và job_status khai bắt buộc
@@ -60,17 +60,20 @@ export async function getJobs(filters?: JobFilters): Promise<PaginatedJobs> {
   const fallback = { items: [], total: 0, limit: filters?.limit || 50, offset: filters?.offset || 0 };
 
   // Build query params — PHẢI đúng tên param thật của GET /jobs, xem
-  // ghi chú ở đầu file.
-  const params = new URLSearchParams();
-  if (filters?.industry) params.append('industry', filters.industry);
-  if (filters?.province) params.append('province', filters.province);
-  if (filters?.level) params.append('level', filters.level);
-  if (filters?.work_type) params.append('work_type', filters.work_type);
-  if (filters?.status) params.append('status', filters.status);
-  if (filters?.keyword) params.append('keyword', filters.keyword);
-  if (filters?.created_by) params.append('created_by', filters.created_by);
-  params.append('limit', (filters?.limit || 50).toString());
-  params.append('offset', (filters?.offset || 0).toString());
+  // ghi chú ở đầu file. Dùng buildParams() dùng chung (lib/api/client.ts)
+  // thay vì tự viết chuỗi if — limit/offset đặt CUỐI object literal để
+  // giữ đúng thứ tự "/jobs?limit=50&offset=0" khi không có filter nào.
+  const params = buildParams({
+    industry: filters?.industry,
+    province: filters?.province,
+    level: filters?.level,
+    work_type: filters?.work_type,
+    status: filters?.status,
+    keyword: filters?.keyword,
+    created_by: filters?.created_by,
+    limit: filters?.limit || 50,
+    offset: filters?.offset || 0,
+  });
 
   const result = await apiFetch<PaginatedJobs>(`/jobs?${params}`, { auth: false, cache: 'no-store' });
 

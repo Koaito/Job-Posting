@@ -1,6 +1,6 @@
 'use server';
 
-import { apiFetch } from '@/lib/api/client';
+import { apiFetch, buildParams } from '@/lib/api/client';
 import type { AuditLog, AuditLogFilters, PaginatedAuditLogs } from '@/types/audit';
 
 /**
@@ -29,17 +29,16 @@ export async function getAuditLogs(filters?: AuditLogFilters): Promise<Paginated
   const limit = filters?.limit || 50;
   const offset = filters?.offset || 0;
 
-  const params = new URLSearchParams();
-  params.append('view', filters?.view || 'auto');
-  if (filters?.entity_type) params.append('entity_type', filters.entity_type);
-  if (filters?.company_id) params.append('company_id', filters.company_id);
-  if (filters?.actor_id) params.append('actor_id', filters.actor_id);
-  if (filters?.action_type) params.append('action_type', filters.action_type);
-  if (filters?.pending_note !== undefined) {
-    params.append('pending_note', String(filters.pending_note));
-  }
-  params.append('limit', String(limit));
-  params.append('offset', String(offset));
+  const params = buildParams({
+    view: filters?.view || 'auto',
+    entity_type: filters?.entity_type,
+    company_id: filters?.company_id,
+    actor_id: filters?.actor_id,
+    action_type: filters?.action_type,
+    pending_note: filters?.pending_note,
+    limit,
+    offset,
+  });
 
   const result = await apiFetch<PaginatedAuditLogs>(`/audit-logs?${params}`, { cache: 'no-store' });
 

@@ -1,6 +1,6 @@
 'use server';
 
-import { apiFetch } from '@/lib/api/client';
+import { apiFetch, buildParams } from '@/lib/api/client';
 import type {
   CrawlTriggerPayload,
   CrawlAccepted,
@@ -154,12 +154,13 @@ export async function getCrawlHistory(filters?: CrawlHistoryFilters): Promise<Pa
   const limit = filters?.limit || 50;
   const offset = filters?.offset || 0;
 
-  const params = new URLSearchParams();
-  if (filters?.source) params.append('source', filters.source);
-  if (filters?.status) params.append('status', filters.status);
-  if (filters?.triggered_by) params.append('triggered_by', filters.triggered_by);
-  params.append('limit', String(limit));
-  params.append('offset', String(offset));
+  const params = buildParams({
+    source: filters?.source,
+    status: filters?.status,
+    triggered_by: filters?.triggered_by,
+    limit,
+    offset,
+  });
 
   const result = await apiFetch<PaginatedCrawlRuns>(`/crawl?${params}`, { cache: 'no-store' });
 
@@ -191,12 +192,13 @@ export async function getCrawlBatchHistory(filters?: CrawlHistoryFilters): Promi
   const limit = filters?.limit || 50;
   const offset = filters?.offset || 0;
 
-  const params = new URLSearchParams();
-  if (filters?.source) params.append('source', filters.source);
-  if (filters?.status) params.append('status', filters.status);
-  if (filters?.triggered_by) params.append('triggered_by', filters.triggered_by);
-  params.append('limit', String(limit));
-  params.append('offset', String(offset));
+  const params = buildParams({
+    source: filters?.source,
+    status: filters?.status,
+    triggered_by: filters?.triggered_by,
+    limit,
+    offset,
+  });
 
   const result = await apiFetch<PaginatedCrawlBatches>(`/crawl/batch?${params}`, { cache: 'no-store' });
 

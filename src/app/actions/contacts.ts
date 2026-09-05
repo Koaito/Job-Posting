@@ -1,6 +1,6 @@
 'use server';
 
-import { apiFetch } from '@/lib/api/client';
+import { apiFetch, buildParams } from '@/lib/api/client';
 import type {
   CompanyContact,
   CompanyContactWithCompany,
@@ -57,13 +57,14 @@ import type {
  * trả thẳng mảng, để page.tsx tự phân trang phía FE (slice).
  */
 export async function getContacts(filters?: ContactFilters): Promise<CompanyContactWithCompany[]> {
-  const params = new URLSearchParams();
-  if (filters?.include_inactive) params.append('include_inactive', String(filters.include_inactive));
-  if (filters?.contact_status) params.append('contact_status', filters.contact_status);
-  if (filters?.company_id) params.append('company_id', filters.company_id);
-  if (filters?.search) params.append('search', filters.search);
-  if (filters?.created_by) params.append('created_by', filters.created_by);
-  if (filters?.assigned_ss_user) params.append('assigned_ss_user', filters.assigned_ss_user);
+  const params = buildParams({
+    include_inactive: filters?.include_inactive,
+    contact_status: filters?.contact_status,
+    company_id: filters?.company_id,
+    search: filters?.search,
+    created_by: filters?.created_by,
+    assigned_ss_user: filters?.assigned_ss_user,
+  });
 
   const result = await apiFetch<CompanyContactWithCompany[]>(`/contacts?${params}`, { cache: 'no-store' });
 
@@ -84,8 +85,7 @@ export async function getContactsByCompany(
   companyId: string,
   includeInactive?: boolean
 ): Promise<CompanyContact[]> {
-  const params = new URLSearchParams();
-  if (includeInactive) params.append('include_inactive', String(includeInactive));
+  const params = buildParams({ include_inactive: includeInactive });
 
   const result = await apiFetch<CompanyContact[]>(`/companies/${companyId}/contacts?${params}`, {
     cache: 'no-store',
