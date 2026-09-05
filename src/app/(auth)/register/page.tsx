@@ -12,6 +12,18 @@ import { register } from '@/app/actions/auth';
  * trước khi login được (xem docstring register() ở backend). Vì vậy
  * sau khi đăng ký thành công, trang này CHỈ hiện thông báo "kiểm tra
  * email", KHÔNG tự chuyển tới /dashboard hay /jobs.
+ *
+ * FIX (đối chiếu templates/register.html + 02-auth.css thật, 09/2026):
+ * y hệt login — auth-wrapper/auth-header/form-group/auth-footer đều
+ * không tồn tại trong CSS. Đổi lại auth-shell/eyebrow/lede/label bọc
+ * input trực tiếp/auth-foot, và xếp lại đúng thứ tự + gộp 2 cột
+ * (password|confirm, phone|track) như bản gốc.
+ *
+ * LƯU Ý: trường "track" (định hướng ngành) ở bản gốc là <select> lấy
+ * danh sách industries từ server-side view function truyền vào — ở đây
+ * CHƯA có nguồn dữ liệu industries nào được fetch, nên tạm giữ dạng
+ * text input tự do (KHÔNG phải lỗi CSS, mà là thiếu 1 phần dữ liệu/
+ * chức năng so với bản gốc — cần bổ sung sau nếu muốn khớp 100%).
  */
 export default function RegisterPage() {
   const [fullName, setFullName] = useState('');
@@ -48,7 +60,10 @@ export default function RegisterPage() {
       });
 
       if (result.success) {
-        setMessage(result.message || 'Đăng ký thành công — kiểm tra email để xác thực tài khoản trước khi đăng nhập.');
+        setMessage(
+          result.message ||
+            'Đăng ký thành công — kiểm tra email để xác thực tài khoản trước khi đăng nhập.'
+        );
       } else {
         setError(result.error || 'Đăng ký thất bại');
       }
@@ -61,49 +76,47 @@ export default function RegisterPage() {
 
   if (message) {
     return (
-      <div className="auth-wrapper">
+      <div className="auth-shell">
         <div className="auth-card">
-          <div className="auth-header">
-            <h1>Kiểm tra email của bạn</h1>
-          </div>
+          <span className="eyebrow">Career Hub / Học viên</span>
+          <h1>Kiểm tra email của bạn</h1>
           <div className="flash flash-success">{message}</div>
-          <div className="auth-footer">
-            <Link href="/login" className="link-muted">Về trang đăng nhập</Link>
-          </div>
+          <p className="auth-foot">
+            <Link href="/login">Về trang đăng nhập</Link>
+          </p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="auth-wrapper">
+    <div className="auth-shell">
       <div className="auth-card">
-        <div className="auth-header">
-          <h1>Đăng ký tài khoản</h1>
-          <p>Tạo tài khoản học viên để ứng tuyển và lưu job trên MindX Jobs</p>
-        </div>
+        <span className="eyebrow">Career Hub / Học viên</span>
+        <h1>Đăng ký tài khoản</h1>
+        <p className="lede">
+          Tạo tài khoản để lưu job yêu thích và theo dõi cơ hội việc làm phù hợp với bạn.
+        </p>
 
         {error && <div className="flash flash-error">{error}</div>}
 
-        <form onSubmit={handleSubmit} className="auth-form">
-          <div className="form-group">
-            <label htmlFor="full_name">Họ tên</label>
+        <form onSubmit={handleSubmit}>
+          <label>
+            Họ và tên *
             <input
               type="text"
-              id="full_name"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               required
               disabled={loading}
               autoComplete="name"
             />
-          </div>
+          </label>
 
-          <div className="form-group">
-            <label htmlFor="email">Email</label>
+          <label>
+            Email *
             <input
               type="email"
-              id="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="email@example.com"
@@ -111,67 +124,69 @@ export default function RegisterPage() {
               disabled={loading}
               autoComplete="email"
             />
+          </label>
+
+          <div className="two-col">
+            <label>
+              Mật khẩu * (tối thiểu 8 ký tự)
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={8}
+                disabled={loading}
+                autoComplete="new-password"
+              />
+            </label>
+
+            <label>
+              Nhập lại mật khẩu *
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                minLength={8}
+                disabled={loading}
+                autoComplete="new-password"
+              />
+            </label>
           </div>
 
-          <div className="form-group">
-            <label htmlFor="phone">Số điện thoại (không bắt buộc)</label>
-            <input
-              type="tel"
-              id="phone"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              disabled={loading}
-              autoComplete="tel"
-            />
+          <div className="two-col">
+            <label>
+              Số điện thoại
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                disabled={loading}
+                autoComplete="tel"
+              />
+            </label>
+
+            <label>
+              Định hướng ngành
+              <input
+                type="text"
+                value={track}
+                onChange={(e) => setTrack(e.target.value)}
+                disabled={loading}
+              />
+            </label>
           </div>
 
-          <div className="form-group">
-            <label htmlFor="track">Lớp / track (không bắt buộc)</label>
-            <input
-              type="text"
-              id="track"
-              value={track}
-              onChange={(e) => setTrack(e.target.value)}
-              disabled={loading}
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="password">Mật khẩu</label>
-            <input
-              type="password"
-              id="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Tối thiểu 8 ký tự"
-              required
-              minLength={8}
-              disabled={loading}
-              autoComplete="new-password"
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="confirmPassword">Xác nhận mật khẩu</label>
-            <input
-              type="password"
-              id="confirmPassword"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-              minLength={8}
-              disabled={loading}
-              autoComplete="new-password"
-            />
-          </div>
-
-          <button type="submit" className="btn btn-primary btn-block" disabled={loading}>
-            {loading ? 'Đang đăng ký...' : 'Đăng ký'}
+          <button className="btn btn-primary" type="submit" disabled={loading}>
+            {loading ? 'Đang đăng ký...' : 'Tạo tài khoản'}
           </button>
         </form>
 
-        <div className="auth-footer">
-          <Link href="/login" className="link-muted">Đã có tài khoản? Đăng nhập</Link>
+        <p className="auth-foot">
+          Đã có tài khoản? <Link href="/login">Đăng nhập</Link>
+        </p>
+        <div className="demo-hint">
+          Sau khi đăng ký, kiểm tra email để bấm link xác thực trước khi đăng nhập được.
         </div>
       </div>
     </div>

@@ -18,6 +18,11 @@ import { resetPassword } from '@/app/actions/auth';
  * xem lỗi thật "useSearchParams() should be wrapped in a suspense
  * boundary" nếu bỏ Suspense ở đây), nên tách phần đọc token ra 1
  * component con, default export chỉ lo bọc Suspense.
+ *
+ * FIX (đối chiếu templates/reset_password.html + 02-auth.css thật):
+ * auth-wrapper/auth-header/form-group/auth-footer không tồn tại trong
+ * CSS — đổi lại auth-shell (chỉ 1 lớp ngoài cùng, .auth-card nằm bên
+ * trong từng nhánh trạng thái)/eyebrow/lede/label bọc input/auth-foot.
  */
 function ResetPasswordForm() {
   const searchParams = useSearchParams();
@@ -32,13 +37,14 @@ function ResetPasswordForm() {
   if (!token) {
     return (
       <div className="auth-card">
-        <div className="auth-header">
-          <h1>Link không hợp lệ</h1>
-          <p>Thiếu token trong đường dẫn — vui lòng dùng đúng link trong email, hoặc xin link mới.</p>
-        </div>
-        <div className="auth-footer">
-          <Link href="/forgot-password" className="link-muted">Xin link đặt lại mật khẩu mới</Link>
-        </div>
+        <span className="eyebrow">Career Hub / Tài khoản</span>
+        <h1>Link không hợp lệ</h1>
+        <p className="lede">
+          Thiếu token trong đường dẫn — vui lòng dùng đúng link trong email, hoặc xin link mới.
+        </p>
+        <p className="auth-foot">
+          <Link href="/forgot-password">Xin link đặt lại mật khẩu mới</Link>
+        </p>
       </div>
     );
   }
@@ -60,7 +66,9 @@ function ResetPasswordForm() {
     try {
       const result = await resetPassword(token, newPassword);
       if (result.success) {
-        setMessage(result.message || 'Đặt lại mật khẩu thành công — vui lòng đăng nhập lại bằng mật khẩu mới.');
+        setMessage(
+          result.message || 'Đặt lại mật khẩu thành công — vui lòng đăng nhập lại bằng mật khẩu mới.'
+        );
       } else {
         setError(result.error || 'Đặt lại mật khẩu thất bại — link có thể đã hết hạn hoặc đã được dùng.');
       }
@@ -74,31 +82,29 @@ function ResetPasswordForm() {
   if (message) {
     return (
       <div className="auth-card">
-        <div className="auth-header">
-          <h1>Thành công</h1>
-        </div>
+        <span className="eyebrow">Career Hub / Tài khoản</span>
+        <h1>Thành công</h1>
         <div className="flash flash-success">{message}</div>
-        <div className="auth-footer">
-          <Link href="/login" className="link-muted">Về trang đăng nhập</Link>
-        </div>
+        <p className="auth-foot">
+          <Link href="/login">Về trang đăng nhập</Link>
+        </p>
       </div>
     );
   }
 
   return (
     <div className="auth-card">
-      <div className="auth-header">
-        <h1>Đặt lại mật khẩu</h1>
-      </div>
+      <span className="eyebrow">Career Hub / Tài khoản</span>
+      <h1>Đặt lại mật khẩu</h1>
+      <p className="lede">Nhập mật khẩu mới cho tài khoản của bạn.</p>
 
       {error && <div className="flash flash-error">{error}</div>}
 
-      <form onSubmit={handleSubmit} className="auth-form">
-        <div className="form-group">
-          <label htmlFor="newPassword">Mật khẩu mới</label>
+      <form onSubmit={handleSubmit}>
+        <label>
+          Mật khẩu mới
           <input
             type="password"
-            id="newPassword"
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
             placeholder="Tối thiểu 8 ký tự"
@@ -106,14 +112,14 @@ function ResetPasswordForm() {
             minLength={8}
             disabled={loading}
             autoComplete="new-password"
+            autoFocus
           />
-        </div>
+        </label>
 
-        <div className="form-group">
-          <label htmlFor="confirmPassword">Xác nhận mật khẩu mới</label>
+        <label>
+          Nhập lại mật khẩu mới
           <input
             type="password"
-            id="confirmPassword"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             required
@@ -121,9 +127,9 @@ function ResetPasswordForm() {
             disabled={loading}
             autoComplete="new-password"
           />
-        </div>
+        </label>
 
-        <button type="submit" className="btn btn-primary btn-block" disabled={loading}>
+        <button className="btn btn-primary" type="submit" disabled={loading}>
           {loading ? 'Đang đặt lại...' : 'Đặt lại mật khẩu'}
         </button>
       </form>
@@ -133,7 +139,7 @@ function ResetPasswordForm() {
 
 export default function ResetPasswordPage() {
   return (
-    <div className="auth-wrapper">
+    <div className="auth-shell">
       <Suspense fallback={<div className="auth-card">Đang tải...</div>}>
         <ResetPasswordForm />
       </Suspense>

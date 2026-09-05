@@ -20,6 +20,15 @@ import { changePassword } from '@/app/actions/auth';
  * redirect loop: (dashboard)/layout.tsx redirect vào đây khi
  * must_change_password=true, nên trang này không được nằm trong cùng
  * route group đó.
+ *
+ * LƯU Ý: bản Flask gốc KHÔNG có trang auth-shell riêng cho route này —
+ * /change-password bên đó chỉ redirect sang profile.security (form đổi
+ * mật khẩu nằm trong trang cá nhân, xem 08/2026 note ở blueprints/
+ * auth.py). Trang Next.js này là 1 route THẬT SỰ mới (không có trong
+ * Flask) để tránh redirect loop nêu trên — vẫn giữ nguyên, chỉ sửa lại
+ * đúng class CSS theo đúng bộ .auth-shell/.auth-card đã dùng chung cho
+ * mọi trang auth khác (auth-wrapper/auth-header/form-group cũ không
+ * tồn tại trong bất kỳ file CSS nào).
  */
 export default function ChangePasswordPage() {
   const router = useRouter();
@@ -65,41 +74,34 @@ export default function ChangePasswordPage() {
   };
 
   return (
-    <div className="auth-wrapper">
+    <div className="auth-shell">
       <div className="auth-card">
-        <div className="auth-header">
-          <h1>Đổi mật khẩu</h1>
-          <p>
-            Tài khoản của bạn đang dùng mật khẩu tạm — vui lòng đặt mật khẩu
-            mới trước khi tiếp tục sử dụng hệ thống.
-          </p>
-        </div>
+        <span className="eyebrow">Career Hub / Tài khoản</span>
+        <h1>Đổi mật khẩu</h1>
+        <p className="lede">
+          Tài khoản của bạn đang dùng mật khẩu tạm — vui lòng đặt mật khẩu mới trước khi tiếp tục
+          sử dụng hệ thống.
+        </p>
 
-        {error && (
-          <div className="flash flash-error">
-            {error}
-          </div>
-        )}
+        {error && <div className="flash flash-error">{error}</div>}
 
-        <form onSubmit={handleSubmit} className="auth-form">
-          <div className="form-group">
-            <label htmlFor="oldPassword">Mật khẩu hiện tại (bỏ trống nếu là mật khẩu tạm)</label>
+        <form onSubmit={handleSubmit}>
+          <label>
+            Mật khẩu hiện tại (bỏ trống nếu là mật khẩu tạm)
             <input
               type="password"
-              id="oldPassword"
               value={oldPassword}
               onChange={(e) => setOldPassword(e.target.value)}
               placeholder="••••••••"
               disabled={loading}
               autoComplete="current-password"
             />
-          </div>
+          </label>
 
-          <div className="form-group">
-            <label htmlFor="newPassword">Mật khẩu mới</label>
+          <label>
+            Mật khẩu mới
             <input
               type="password"
-              id="newPassword"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               placeholder="Tối thiểu 8 ký tự"
@@ -108,13 +110,12 @@ export default function ChangePasswordPage() {
               disabled={loading}
               autoComplete="new-password"
             />
-          </div>
+          </label>
 
-          <div className="form-group">
-            <label htmlFor="confirmPassword">Xác nhận mật khẩu mới</label>
+          <label>
+            Xác nhận mật khẩu mới
             <input
               type="password"
-              id="confirmPassword"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="Nhập lại mật khẩu mới"
@@ -123,13 +124,9 @@ export default function ChangePasswordPage() {
               disabled={loading}
               autoComplete="new-password"
             />
-          </div>
+          </label>
 
-          <button
-            type="submit"
-            className="btn btn-primary btn-block"
-            disabled={loading}
-          >
+          <button type="submit" className="btn btn-primary" disabled={loading}>
             {loading ? 'Đang đổi mật khẩu...' : 'Đổi mật khẩu'}
           </button>
         </form>

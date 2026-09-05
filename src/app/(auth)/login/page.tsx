@@ -1,10 +1,20 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { login } from '@/app/actions/auth';
 import { isStaffRole } from '@/lib/auth/roles';
 
+/**
+ * FIX (đối chiếu templates/login.html + 02-auth.css thật, 09/2026):
+ * class cũ dùng ở đây (auth-wrapper/auth-header/form-group/auth-footer/
+ * link-muted/separator/auth-form) KHÔNG tồn tại trong bất kỳ file CSS
+ * nào — trang render như div/label/input trơn không style (mất
+ * max-width, spacing, border...). Đổi đúng lại theo cấu trúc CSS gốc:
+ *   .auth-shell > .auth-card > (span.eyebrow, h1, p.lede, form, p.auth-foot)
+ *   .auth-card label bọc TRỰC TIẾP text + input (không qua form-group)
+ */
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
@@ -33,7 +43,7 @@ export default function LoginPage() {
       } else {
         setError(result.error || 'Đăng nhập thất bại');
       }
-    } catch (err) {
+    } catch {
       setError('Đã xảy ra lỗi. Vui lòng thử lại.');
     } finally {
       setLoading(false);
@@ -41,65 +51,57 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="auth-wrapper">
+    <div className="auth-shell">
       <div className="auth-card">
-        <div className="auth-header">
-          <h1>Đăng nhập</h1>
-          <p>Chào mừng trở lại với MindX Jobs</p>
-        </div>
+        <span className="eyebrow">Career Hub / Học viên</span>
+        <h1>Đăng nhập</h1>
+        <p className="lede">
+          Đăng nhập để lưu job yêu thích và quản lý danh sách ứng tuyển của bạn.
+        </p>
 
-        {error && (
-          <div className="flash flash-error">
-            {error}
-          </div>
-        )}
+        {error && <div className="flash flash-error">{error}</div>}
 
-        <form onSubmit={handleSubmit} className="auth-form">
-          <div className="form-group">
-            <label htmlFor="email">Email</label>
+        <form onSubmit={handleSubmit}>
+          <label>
+            Email
             <input
               type="email"
-              id="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="email@example.com"
               required
               disabled={loading}
               autoComplete="email"
+              autoFocus
             />
-          </div>
+          </label>
 
-          <div className="form-group">
-            <label htmlFor="password">Mật khẩu</label>
+          <label>
+            Mật khẩu
             <input
               type="password"
-              id="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
               required
               disabled={loading}
               autoComplete="current-password"
             />
-          </div>
+          </label>
 
-          <button
-            type="submit"
-            className="btn btn-primary btn-block"
-            disabled={loading}
-          >
+          <button className="btn btn-primary" type="submit" disabled={loading}>
             {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
           </button>
         </form>
 
-        <div className="auth-footer">
-          <a href="/forgot-password" className="link-muted">
-            Quên mật khẩu?
-          </a>
-          <span className="separator">•</span>
-          <a href="/register" className="link-muted">
-            Đăng ký tài khoản mới
-          </a>
+        <p className="auth-foot">
+          <Link href="/forgot-password">Quên mật khẩu?</Link>
+        </p>
+        <p className="auth-foot">
+          Chưa có tài khoản? <Link href="/register">Đăng ký ngay</Link>
+        </p>
+
+        <div className="demo-hint">
+          Tài khoản team SS do admin tạo sẵn phía backend — dùng chung form đăng nhập này.
         </div>
       </div>
     </div>

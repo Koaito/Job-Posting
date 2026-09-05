@@ -11,6 +11,10 @@ import { forgotPassword } from '@/app/actions/auth';
  * tồn tại trong hệ thống hay không (chống dò email hàng loạt — xem
  * docstring backend). Vì vậy UI này KHÔNG được diễn giải success=false
  * thành "email không tồn tại" — chỉ dùng cho lỗi mạng/rate-limit thật.
+ *
+ * FIX (đối chiếu templates/forgot_password.html + 02-auth.css thật):
+ * auth-wrapper/auth-header/form-group/auth-footer không tồn tại trong
+ * CSS — đổi lại auth-shell/eyebrow/lede/label bọc input/auth-foot.
  */
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -41,41 +45,42 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="auth-wrapper">
+    <div className="auth-shell">
       <div className="auth-card">
-        <div className="auth-header">
-          <h1>Quên mật khẩu</h1>
-          <p>Nhập email đã đăng ký, chúng tôi sẽ gửi link đặt lại mật khẩu (hết hạn sau 1 giờ).</p>
-        </div>
+        <span className="eyebrow">Career Hub / Tài khoản</span>
+        <h1>Quên mật khẩu</h1>
+        <p className="lede">
+          Nhập email đã đăng ký, chúng tôi sẽ gửi link đặt lại mật khẩu (hết hạn sau 1 giờ).
+        </p>
 
         {error && <div className="flash flash-error">{error}</div>}
         {message && <div className="flash flash-success">{message}</div>}
 
         {!message && (
-          <form onSubmit={handleSubmit} className="auth-form">
-            <div className="form-group">
-              <label htmlFor="email">Email</label>
+          <form onSubmit={handleSubmit}>
+            <label>
+              Email
               <input
                 type="email"
-                id="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="email@example.com"
                 required
                 disabled={loading}
                 autoComplete="email"
+                autoFocus
               />
-            </div>
+            </label>
 
-            <button type="submit" className="btn btn-primary btn-block" disabled={loading}>
+            <button className="btn btn-primary" type="submit" disabled={loading}>
               {loading ? 'Đang gửi...' : 'Gửi link đặt lại mật khẩu'}
             </button>
           </form>
         )}
 
-        <div className="auth-footer">
-          <Link href="/login" className="link-muted">Về trang đăng nhập</Link>
-        </div>
+        <p className="auth-foot">
+          <Link href="/login">Quay lại đăng nhập</Link>
+        </p>
       </div>
     </div>
   );
