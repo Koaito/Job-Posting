@@ -121,11 +121,24 @@ export async function getAuthHeadersForUpload(): Promise<Record<string, string>>
 const API_BASE = process.env.FASTAPI_URL;
 
 /**
- * Chuẩn hoá "detail" lỗi từ FastAPI về 1 chuỗi dễ đọc — 2 dạng thật có thể
- * gặp: string đơn giản (raise thủ công trong router) hoặc mảng object
- * {loc, msg, type} (Pydantic tự validate, extra="forbid"/min_length...).
- * Bản đầy đủ nhất trong 7 bản từng bị khai trùng lặp — có xử lý "loc" để
- * biết lỗi thuộc field nào (trước đây chỉ jobs.ts có, 6 file khác thiếu).
+ * Chuẩn hoá "detail" lỗi từ FastAPI về 1 chuỗi dễ đọc — 3 dạng thật có thể
+ * gặp: string đơn giản (raise thủ công trong router), mảng object
+ * {loc, msg, type} (Pydantic tự validate, extra="forbid"/min_length...),
+ * hoặc object {error_code, message} (api/deps.py — các lỗi auth: xem
+ * BUG FIX bên dưới). Bản đầy đủ nhất trong 7 bản từng bị khai trùng lặp —
+ * có xử lý "loc" để biết lỗi thuộc field nào (trước đây chỉ jobs.ts có,
+ * 6 file khác thiếu).
+ *
+ * BUG FIX (Giai đoạn 0, 09/2026): trước đây nhánh object chỉ
+ * `JSON.stringify(detail)` — 5 chỗ raise trong api/deps.py đã trả
+ * `{"error_code": "token_expired", "message": "..."}` dạng object, nên
+ * user thấy nguyên chuỗi JSON thô (`{"error_code":"token_expired",...}`)
+ * trên UI thay vì message tiếng Việt, ở 1 số lỗi auth hiếm gặp (session
+ * bị thay thế/hết hạn). Sửa: đọc `detail.message` trước nếu có — đây
+ * cũng chính là điểm cắm sẵn cho tầng dịch theo `error_code` ở Giai đoạn
+ * 3 (i18n) sau này. Object không có `message` dạng string (shape lạ,
+ * chưa từng gặp) mới rơi về `JSON.stringify()` như cũ — thà hiện JSON
+ * thô còn hơn nuốt lỗi thành thông báo chung chung không debug được.
  */
 export function formatErrorDetail(detail: unknown): string {
   if (typeof detail === 'string') return detail;
@@ -144,7 +157,11 @@ export function formatErrorDetail(detail: unknown): string {
       })
       .join('; ');
   }
-  if (detail && typeof detail === 'object') return JSON.stringify(detail);
+  if (detail && typeof detail === 'object') {
+    const message = (detail as { message?: unknown }).message;
+    if (typeof message === 'string') return message;
+    return JSON.stringify(detail);
+  }
   return 'Có lỗi xảy ra';
 }
 

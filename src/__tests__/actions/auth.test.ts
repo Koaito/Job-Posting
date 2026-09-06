@@ -31,8 +31,20 @@
  * verify được gì và không verify được gì.
  */
 
-import { login, logout, getCurrentUser, changePassword } from '@/app/actions/auth';
-import { mockUser, mockStudentUser, mockFetchNetworkError } from '../fixtures';
+import {
+  login,
+  logout,
+  getCurrentUser,
+  changePassword,
+  updateProfile,
+  createUser,
+  updateUserRole,
+  updateUserActiveStatus,
+  register,
+  forgotPassword,
+  resetPassword,
+} from '@/app/actions/auth';
+import { mockUser, mockStudentUser, mockUserCreated, mockFetchNetworkError } from '../fixtures';
 
 global.fetch = jest.fn();
 
@@ -649,6 +661,282 @@ describe('Auth Server Actions', () => {
       (global.fetch as jest.Mock).mockImplementationOnce(() => mockFetchNetworkError());
 
       const result = await changePassword('newStrongPass123');
+
+      expect(result.success).toBe(false);
+    });
+  });
+
+  /**
+   * Giai đoạn 0 (09/2026) — bổ sung test cho các hàm trước đây CHƯA CÓ
+   * test riêng (updateProfile, createUser, updateUserRole,
+   * updateUserActiveStatus, register, forgotPassword, resetPassword),
+   * đúng lúc thay formatUserErrorDetail() (bản thiếu, nuốt object lỗi
+   * thành 'Có lỗi xảy ra') bằng formatErrorDetail() dùng chung. Trọng
+   * tâm test: happy path cơ bản + case detail dạng object
+   * {error_code, message} — TRƯỚC bản sửa này, response 401/403/400 có
+   * detail object sẽ bị formatUserErrorDetail() nuốt thành 'Có lỗi xảy
+   * ra' (không đọc field 'message'), giờ phải hiện đúng message backend.
+   */
+  describe('updateProfile()', () => {
+    it('should PATCH /auth/me and sync user_data cookie on success', async () => {
+      mockCookieGet.mockImplementation((name: string) =>
+        name === 'access_token' ? { value: 'valid-access-token' } : undefined
+      );
+      (global.fetch as jest.Mock).mockImplementationOnce(() => mockJsonSuccess(mockUser));
+
+      const result = await updateProfile({ full_name: 'Staff User Mới', phone: '0900000000' });
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/auth/me'),
+        expect.objectContaining({ method: 'PATCH' })
+      );
+      expect(result.success).toBe(true);
+      expect(result.user).toEqual(mockUser);
+      expect(mockCookieSet).toHaveBeenCalledWith('user_data', expect.any(String), expect.anything());
+    });
+
+    it('should return error without calling API when no access_token cookie exists', async () => {
+      mockCookieGet.mockImplementation(() => undefined);
+
+      const result = await updateProfile({ full_name: 'X' });
+
+      expect(result.success).toBe(false);
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it('BUG FIX: should surface detail.message when backend returns object detail, not "Có lỗi xảy ra"', async () => {
+      mockCookieGet.mockImplementation((name: string) =>
+        name === 'access_token' ? { value: 'valid-access-token' } : undefined
+      );
+      (global.fetch as jest.Mock).mockImplementationOnce(() =>
+        Promise.resolve({
+          ok: false,
+          json: async () => ({ detail: { error_code: 'profile_locked', message: 'Hồ sơ đang bị khoá.' } }),
+        } as Response)
+      );
+
+      const result = await updateProfile({ full_name: 'X' });
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Hồ sơ đang bị khoá.');
+    });
+  });
+
+  describe('createUser()', () => {
+    it('should POST /auth/users and return created user (with temp_password) on success', async () => {
+      mockCookieGet.mockImplementation((name: string) =>
+        name === 'access_token' ? { value: 'admin-token' } : undefined
+      );
+      (global.fetch as jest.Mock).mockImplementationOnce(() => mockJsonSuccess(mockUserCreated));
+
+      const result = await createUser({ full_name: 'New Staff', email: 'new@example.com', role: 'ss_team' });
+
+      expect(result.success).toBe(true);
+      expect(result.user).toEqual(mockUserCreated);
+    });
+
+    it('should return error without calling API when no access_token cookie exists', async () => {
+      mockCookieGet.mockImplementation(() => undefined);
+
+      const result = await createUser({ full_name: 'X', email: 'x@example.com', role: 'user' });
+
+      expect(result.success).toBe(false);
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it('BUG FIX: should surface detail.message on object-shaped error (e.g. duplicate email)', async () => {
+      mockCookieGet.mockImplementation((name: string) =>
+        name === 'access_token' ? { value: 'admin-token' } : undefined
+      );
+      (global.fetch as jest.Mock).mockImplementationOnce(() =>
+        Promise.resolve({
+          ok: false,
+          json: async () => ({ detail: { error_code: 'email_already_exists', message: 'Email đã tồn tại.' } }),
+        } as Response)
+      );
+
+      const result = await createUser({ full_name: 'X', email: 'dup@example.com', role: 'user' });
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Email đã tồn tại.');
+    });
+
+    it('should return "Network error" message on network failure', async () => {
+      mockCookieGet.mockImplementation((name: string) =>
+        name === 'access_token' ? { value: 'admin-token' } : undefined
+      );
+      (global.fetch as jest.Mock).mockImplementationOnce(() => mockFetchNetworkError());
+
+      const result = await createUser({ full_name: 'X', email: 'x@example.com', role: 'user' });
+
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe('updateUserRole()', () => {
+    it('should PATCH /auth/users/{id}/role on success', async () => {
+      mockCookieGet.mockImplementation((name: string) =>
+        name === 'access_token' ? { value: 'admin-token' } : undefined
+      );
+      (global.fetch as jest.Mock).mockImplementationOnce(() => mockJsonSuccess({ ...mockUser, role: 'admin' }));
+
+      const result = await updateUserRole('user-1', 'admin');
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/auth/users/user-1/role'),
+        expect.objectContaining({ method: 'PATCH', body: JSON.stringify({ role: 'admin' }) })
+      );
+      expect(result.success).toBe(true);
+    });
+
+    it('BUG FIX: should surface detail.message when backend blocks self role change (400)', async () => {
+      mockCookieGet.mockImplementation((name: string) =>
+        name === 'access_token' ? { value: 'admin-token' } : undefined
+      );
+      (global.fetch as jest.Mock).mockImplementationOnce(() =>
+        Promise.resolve({
+          ok: false,
+          json: async () => ({ detail: { error_code: 'cannot_change_own_role', message: 'Không thể tự đổi vai trò của chính mình.' } }),
+        } as Response)
+      );
+
+      const result = await updateUserRole('user-1', 'user');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Không thể tự đổi vai trò của chính mình.');
+    });
+  });
+
+  describe('updateUserActiveStatus()', () => {
+    it('should PATCH /auth/users/{id}/active-status on success', async () => {
+      mockCookieGet.mockImplementation((name: string) =>
+        name === 'access_token' ? { value: 'admin-token' } : undefined
+      );
+      (global.fetch as jest.Mock).mockImplementationOnce(() => mockJsonSuccess({ ...mockUser, is_active: false }));
+
+      const result = await updateUserActiveStatus('user-1', false);
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/auth/users/user-1/active-status'),
+        expect.objectContaining({ method: 'PATCH', body: JSON.stringify({ is_active: false }) })
+      );
+      expect(result.success).toBe(true);
+    });
+
+    it('BUG FIX: should surface detail.message when backend blocks self-lockout (400)', async () => {
+      mockCookieGet.mockImplementation((name: string) =>
+        name === 'access_token' ? { value: 'admin-token' } : undefined
+      );
+      (global.fetch as jest.Mock).mockImplementationOnce(() =>
+        Promise.resolve({
+          ok: false,
+          json: async () => ({ detail: { error_code: 'cannot_deactivate_self', message: 'Không thể tự khoá tài khoản của chính mình.' } }),
+        } as Response)
+      );
+
+      const result = await updateUserActiveStatus('user-1', false);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Không thể tự khoá tài khoản của chính mình.');
+    });
+  });
+
+  describe('register()', () => {
+    it('should POST /auth/register without auth header and return message on success', async () => {
+      (global.fetch as jest.Mock).mockImplementationOnce(() => mockJsonSuccess({ message: 'Vui lòng kiểm tra email để xác thực.' }));
+
+      const result = await register({
+        full_name: 'New User',
+        email: 'newuser@example.com',
+        password: 'StrongPass123',
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.message).toBe('Vui lòng kiểm tra email để xác thực.');
+    });
+
+    it('BUG FIX: should surface detail.message on 409 duplicate email', async () => {
+      (global.fetch as jest.Mock).mockImplementationOnce(() =>
+        Promise.resolve({
+          ok: false,
+          json: async () => ({ detail: { error_code: 'email_already_exists', message: 'Email này đã được đăng ký.' } }),
+        } as Response)
+      );
+
+      const result = await register({
+        full_name: 'New User',
+        email: 'dup@example.com',
+        password: 'StrongPass123',
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Email này đã được đăng ký.');
+    });
+  });
+
+  describe('forgotPassword()', () => {
+    it('should always return success message regardless of whether email exists', async () => {
+      (global.fetch as jest.Mock).mockImplementationOnce(() =>
+        mockJsonSuccess({ message: 'Nếu email tồn tại, chúng tôi đã gửi hướng dẫn đặt lại mật khẩu.' })
+      );
+
+      const result = await forgotPassword('someone@example.com');
+
+      expect(result.success).toBe(true);
+      expect(result.message).toBeDefined();
+    });
+
+    it('BUG FIX: should surface detail.message on rate-limit (object detail)', async () => {
+      (global.fetch as jest.Mock).mockImplementationOnce(() =>
+        Promise.resolve({
+          ok: false,
+          json: async () => ({ detail: { error_code: 'rate_limited', message: 'Bạn thao tác quá nhanh, thử lại sau.' } }),
+        } as Response)
+      );
+
+      const result = await forgotPassword('someone@example.com');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Bạn thao tác quá nhanh, thử lại sau.');
+    });
+  });
+
+  describe('resetPassword()', () => {
+    it('should POST /auth/reset-password with token + new_password on success', async () => {
+      (global.fetch as jest.Mock).mockImplementationOnce(() =>
+        mockJsonSuccess({ message: 'Đặt lại mật khẩu thành công.' })
+      );
+
+      const result = await resetPassword('reset-token-abc', 'NewStrongPass123');
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/auth/reset-password'),
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ token: 'reset-token-abc', new_password: 'NewStrongPass123' }),
+        })
+      );
+      expect(result.success).toBe(true);
+    });
+
+    it('BUG FIX: should surface detail.message when token expired/invalid (object detail)', async () => {
+      (global.fetch as jest.Mock).mockImplementationOnce(() =>
+        Promise.resolve({
+          ok: false,
+          json: async () => ({ detail: { error_code: 'reset_token_invalid', message: 'Link đặt lại mật khẩu đã hết hạn hoặc không hợp lệ.' } }),
+        } as Response)
+      );
+
+      const result = await resetPassword('expired-token', 'NewStrongPass123');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Link đặt lại mật khẩu đã hết hạn hoặc không hợp lệ.');
+    });
+
+    it('should return error on network failure', async () => {
+      (global.fetch as jest.Mock).mockImplementationOnce(() => mockFetchNetworkError());
+
+      const result = await resetPassword('some-token', 'NewStrongPass123');
 
       expect(result.success).toBe(false);
     });
