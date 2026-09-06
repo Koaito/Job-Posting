@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { changePassword } from '@/app/actions/auth';
 
 /**
@@ -32,6 +33,8 @@ import { changePassword } from '@/app/actions/auth';
  */
 export default function ChangePasswordPage() {
   const router = useRouter();
+  const t = useTranslations('auth.changePassword');
+  const tc = useTranslations('auth.common');
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -43,12 +46,12 @@ export default function ChangePasswordPage() {
     setError('');
 
     if (newPassword.length < 8) {
-      setError('Mật khẩu mới phải có ít nhất 8 ký tự.');
+      setError(tc('passwordMinLength'));
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setError('Xác nhận mật khẩu không khớp.');
+      setError(tc('passwordMismatch'));
       return;
     }
 
@@ -64,10 +67,10 @@ export default function ChangePasswordPage() {
         router.push('/login');
         router.refresh();
       } else {
-        setError(result.error || 'Đổi mật khẩu thất bại');
+        setError(result.error || t('error'));
       }
     } catch {
-      setError('Đã xảy ra lỗi. Vui lòng thử lại.');
+      setError(tc('genericError'));
     } finally {
       setLoading(false);
     }
@@ -76,18 +79,17 @@ export default function ChangePasswordPage() {
   return (
     <div className="auth-shell">
       <div className="auth-card">
-        <span className="eyebrow">Career Hub / Tài khoản</span>
-        <h1>Đổi mật khẩu</h1>
+        <span className="eyebrow">{tc('eyebrowAccount')}</span>
+        <h1>{t('title')}</h1>
         <p className="lede">
-          Tài khoản của bạn đang dùng mật khẩu tạm — vui lòng đặt mật khẩu mới trước khi tiếp tục
-          sử dụng hệ thống.
+          {t('lede')}
         </p>
 
         {error && <div className="flash flash-error">{error}</div>}
 
         <form onSubmit={handleSubmit}>
           <label>
-            Mật khẩu hiện tại (bỏ trống nếu là mật khẩu tạm)
+            {t('oldPasswordLabel')}
             <input
               type="password"
               value={oldPassword}
@@ -99,12 +101,12 @@ export default function ChangePasswordPage() {
           </label>
 
           <label>
-            Mật khẩu mới
+            {t('newPasswordLabel')}
             <input
               type="password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="Tối thiểu 8 ký tự"
+              placeholder={t('newPasswordPlaceholder')}
               required
               minLength={8}
               disabled={loading}
@@ -113,12 +115,12 @@ export default function ChangePasswordPage() {
           </label>
 
           <label>
-            Xác nhận mật khẩu mới
+            {t('confirmPasswordLabel')}
             <input
               type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Nhập lại mật khẩu mới"
+              placeholder={t('confirmPasswordPlaceholder')}
               required
               minLength={8}
               disabled={loading}
@@ -127,7 +129,7 @@ export default function ChangePasswordPage() {
           </label>
 
           <button type="submit" className="btn btn-primary" disabled={loading}>
-            {loading ? 'Đang đổi mật khẩu...' : 'Đổi mật khẩu'}
+            {loading ? t('submitLoading') : t('submit')}
           </button>
         </form>
       </div>

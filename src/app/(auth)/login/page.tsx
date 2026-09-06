@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { login } from '@/app/actions/auth';
 import { isStaffRole } from '@/lib/auth/roles';
 
@@ -17,6 +18,8 @@ import { isStaffRole } from '@/lib/auth/roles';
  */
 export default function LoginPage() {
   const router = useRouter();
+  const t = useTranslations('auth.login');
+  const tc = useTranslations('auth.common');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -41,10 +44,10 @@ export default function LoginPage() {
         }
         router.refresh(); // Refresh to update auth state
       } else {
-        setError(result.error || 'Đăng nhập thất bại');
+        setError(result.error || t('error'));
       }
     } catch {
-      setError('Đã xảy ra lỗi. Vui lòng thử lại.');
+      setError(tc('genericError'));
     } finally {
       setLoading(false);
     }
@@ -53,17 +56,17 @@ export default function LoginPage() {
   return (
     <div className="auth-shell">
       <div className="auth-card">
-        <span className="eyebrow">Career Hub / Học viên</span>
-        <h1>Đăng nhập</h1>
+        <span className="eyebrow">{tc('eyebrowStudent')}</span>
+        <h1>{t('title')}</h1>
         <p className="lede">
-          Đăng nhập để lưu job yêu thích và quản lý danh sách ứng tuyển của bạn.
+          {t('lede')}
         </p>
 
         {error && <div className="flash flash-error">{error}</div>}
 
         <form onSubmit={handleSubmit}>
           <label>
-            Email
+            {tc('emailLabel')}
             <input
               type="email"
               value={email}
@@ -77,7 +80,7 @@ export default function LoginPage() {
           </label>
 
           <label>
-            Mật khẩu
+            {t('passwordLabel')}
             <input
               type="password"
               value={password}
@@ -89,19 +92,19 @@ export default function LoginPage() {
           </label>
 
           <button className="btn btn-primary" type="submit" disabled={loading}>
-            {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
+            {loading ? t('submitLoading') : t('submit')}
           </button>
         </form>
 
         <p className="auth-foot">
-          <Link href="/forgot-password">Quên mật khẩu?</Link>
+          <Link href="/forgot-password">{t('forgotPassword')}</Link>
         </p>
         <p className="auth-foot">
-          Chưa có tài khoản? <Link href="/register">Đăng ký ngay</Link>
+          {t('noAccount')} <Link href="/register">{t('registerNow')}</Link>
         </p>
 
         <div className="demo-hint">
-          Tài khoản team SS do admin tạo sẵn phía backend — dùng chung form đăng nhập này.
+          {t('demoHint')}
         </div>
       </div>
     </div>

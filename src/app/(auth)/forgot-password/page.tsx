@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { forgotPassword } from '@/app/actions/auth';
 
 /**
@@ -17,6 +18,8 @@ import { forgotPassword } from '@/app/actions/auth';
  * CSS — đổi lại auth-shell/eyebrow/lede/label bọc input/auth-foot.
  */
 export default function ForgotPasswordPage() {
+  const t = useTranslations('auth.forgotPassword');
+  const tc = useTranslations('auth.common');
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
@@ -31,14 +34,13 @@ export default function ForgotPasswordPage() {
       const result = await forgotPassword(email.trim().toLowerCase());
       if (result.success) {
         setMessage(
-          result.message ||
-            'Nếu email này có tài khoản, một email đặt lại mật khẩu đã được gửi tới đó.'
+          result.message || t('successMessage')
         );
       } else {
-        setError(result.error || 'Không thể gửi email đặt lại mật khẩu');
+        setError(result.error || t('error'));
       }
     } catch {
-      setError('Đã xảy ra lỗi. Vui lòng thử lại.');
+      setError(tc('genericError'));
     } finally {
       setLoading(false);
     }
@@ -47,10 +49,10 @@ export default function ForgotPasswordPage() {
   return (
     <div className="auth-shell">
       <div className="auth-card">
-        <span className="eyebrow">Career Hub / Tài khoản</span>
-        <h1>Quên mật khẩu</h1>
+        <span className="eyebrow">{tc('eyebrowAccount')}</span>
+        <h1>{t('title')}</h1>
         <p className="lede">
-          Nhập email đã đăng ký, chúng tôi sẽ gửi link đặt lại mật khẩu (hết hạn sau 1 giờ).
+          {t('lede')}
         </p>
 
         {error && <div className="flash flash-error">{error}</div>}
@@ -59,7 +61,7 @@ export default function ForgotPasswordPage() {
         {!message && (
           <form onSubmit={handleSubmit}>
             <label>
-              Email
+              {tc('emailLabel')}
               <input
                 type="email"
                 value={email}
@@ -73,13 +75,13 @@ export default function ForgotPasswordPage() {
             </label>
 
             <button className="btn btn-primary" type="submit" disabled={loading}>
-              {loading ? 'Đang gửi...' : 'Gửi link đặt lại mật khẩu'}
+              {loading ? t('submitLoading') : t('submit')}
             </button>
           </form>
         )}
 
         <p className="auth-foot">
-          <Link href="/login">Quay lại đăng nhập</Link>
+          <Link href="/login">{tc('backToLogin')}</Link>
         </p>
       </div>
     </div>

@@ -34,5 +34,102 @@
     "label": "Language",
     "vi": "Tiếng Việt",
     "en": "English"
+  },
+  "auth": {
+    "common": {
+      "eyebrowStudent": "Career Hub / Student",
+      "eyebrowAccount": "Career Hub / Account",
+      "emailLabel": "Email",
+      "genericError": "Something went wrong. Please try again.",
+      "passwordMinLength": "Password must be at least 8 characters.",
+      "passwordMismatch": "Password confirmation doesn't match.",
+      "backToLogin": "Back to sign in",
+      "backToLoginPage": "Back to sign-in page"
+    },
+    "login": {
+      "title": "Sign in",
+      "lede": "Sign in to save jobs you like and manage your applications.",
+      "passwordLabel": "Password",
+      "submitLoading": "Signing in...",
+      "submit": "Sign in",
+      "forgotPassword": "Forgot your password?",
+      "noAccount": "Don't have an account?",
+      "registerNow": "Sign up now",
+      "demoHint": "SS team accounts are created by an admin on the backend — they use this same sign-in form.",
+      "error": "Sign in failed"
+    },
+    "register": {
+      "title": "Create an account",
+      "lede": "Create an account to save jobs you like and track opportunities that fit you.",
+      "fullNameLabel": "Full name *",
+      "emailLabel": "Email *",
+      "passwordLabel": "Password * (at least 8 characters)",
+      "confirmPasswordLabel": "Confirm password *",
+      "phoneLabel": "Phone number",
+      "trackLabel": "Career track",
+      "submitLoading": "Signing up...",
+      "submit": "Create account",
+      "hasAccount": "Already have an account?",
+      "loginNow": "Sign in",
+      "demoHint": "After signing up, check your email and click the verification link before you can sign in.",
+      "error": "Sign up failed",
+      "successTitle": "Check your email",
+      "successMessage": "Sign-up successful — check your email to verify your account before signing in."
+    },
+    "forgotPassword": {
+      "title": "Forgot password",
+      "lede": "Enter your registered email and we'll send a password reset link (expires in 1 hour).",
+      "submitLoading": "Sending...",
+      "submit": "Send reset link",
+      "error": "Couldn't send the password reset email",
+      "successMessage": "If an account exists for this email, a password reset link has been sent to it."
+    },
+    "resetPassword": {
+      "invalidTitle": "Invalid link",
+      "invalidLede": "Missing token in the link — please use the exact link from your email, or request a new one.",
+      "requestNewLink": "Request a new reset link",
+      "title": "Reset password",
+      "lede": "Enter a new password for your account.",
+      "newPasswordLabel": "New password",
+      "newPasswordPlaceholder": "At least 8 characters",
+      "confirmPasswordLabel": "Confirm new password",
+      "submitLoading": "Resetting...",
+      "submit": "Reset password",
+      "error": "Couldn't reset password — the link may have expired or already been used.",
+      "successTitle": "Success",
+      "successMessage": "Password reset successful — please sign in again with your new password.",
+      "loading": "Loading..."
+    },
+    "changePassword": {
+      "title": "Change password",
+      "lede": "Your account is using a temporary password — please set a new password before continuing to use the system.",
+      "oldPasswordLabel": "Current password (leave blank if it's a temporary password)",
+      "newPasswordLabel": "New password",
+      "newPasswordPlaceholder": "At least 8 characters",
+      "confirmPasswordLabel": "Confirm new password",
+      "confirmPasswordPlaceholder": "Re-enter new password",
+      "submitLoading": "Changing password...",
+      "submit": "Change password",
+      "error": "Couldn't change password"
+    },
+    "verifyEmail": {
+      "success": {
+        "title": "Verification successful",
+        "message": "Your account has been activated — you can now sign in to save jobs and apply."
+      },
+      "expired": {
+        "title": "Link expired",
+        "message": "Verification links are only valid for 24 hours. Please sign in to request a new verification email."
+      },
+      "invalid": {
+        "title": "Invalid link",
+        "message": "This link is incorrect or has already been used. Please check your email again or sign up again."
+      },
+      "default": {
+        "title": "Verify email",
+        "message": "No verification status was provided — please use the exact link from your email."
+      },
+      "alreadyVerified": "Already verified?"
+    }
   }
 }

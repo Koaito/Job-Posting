@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { register } from '@/app/actions/auth';
 
 /**
@@ -26,6 +27,8 @@ import { register } from '@/app/actions/auth';
  * chức năng so với bản gốc — cần bổ sung sau nếu muốn khớp 100%).
  */
 export default function RegisterPage() {
+  const t = useTranslations('auth.register');
+  const tc = useTranslations('auth.common');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -41,11 +44,11 @@ export default function RegisterPage() {
     setError('');
 
     if (password.length < 8) {
-      setError('Mật khẩu phải có ít nhất 8 ký tự.');
+      setError(tc('passwordMinLength'));
       return;
     }
     if (password !== confirmPassword) {
-      setError('Xác nhận mật khẩu không khớp.');
+      setError(tc('passwordMismatch'));
       return;
     }
 
@@ -61,14 +64,13 @@ export default function RegisterPage() {
 
       if (result.success) {
         setMessage(
-          result.message ||
-            'Đăng ký thành công — kiểm tra email để xác thực tài khoản trước khi đăng nhập.'
+          result.message || t('successMessage')
         );
       } else {
-        setError(result.error || 'Đăng ký thất bại');
+        setError(result.error || t('error'));
       }
     } catch {
-      setError('Đã xảy ra lỗi. Vui lòng thử lại.');
+      setError(tc('genericError'));
     } finally {
       setLoading(false);
     }
@@ -78,11 +80,11 @@ export default function RegisterPage() {
     return (
       <div className="auth-shell">
         <div className="auth-card">
-          <span className="eyebrow">Career Hub / Học viên</span>
-          <h1>Kiểm tra email của bạn</h1>
+          <span className="eyebrow">{tc('eyebrowStudent')}</span>
+          <h1>{t('successTitle')}</h1>
           <div className="flash flash-success">{message}</div>
           <p className="auth-foot">
-            <Link href="/login">Về trang đăng nhập</Link>
+            <Link href="/login">{tc('backToLoginPage')}</Link>
           </p>
         </div>
       </div>
@@ -92,17 +94,17 @@ export default function RegisterPage() {
   return (
     <div className="auth-shell">
       <div className="auth-card">
-        <span className="eyebrow">Career Hub / Học viên</span>
-        <h1>Đăng ký tài khoản</h1>
+        <span className="eyebrow">{tc('eyebrowStudent')}</span>
+        <h1>{t('title')}</h1>
         <p className="lede">
-          Tạo tài khoản để lưu job yêu thích và theo dõi cơ hội việc làm phù hợp với bạn.
+          {t('lede')}
         </p>
 
         {error && <div className="flash flash-error">{error}</div>}
 
         <form onSubmit={handleSubmit}>
           <label>
-            Họ và tên *
+            {t('fullNameLabel')}
             <input
               type="text"
               value={fullName}
@@ -114,7 +116,7 @@ export default function RegisterPage() {
           </label>
 
           <label>
-            Email *
+            {t('emailLabel')}
             <input
               type="email"
               value={email}
@@ -128,7 +130,7 @@ export default function RegisterPage() {
 
           <div className="two-col">
             <label>
-              Mật khẩu * (tối thiểu 8 ký tự)
+              {t('passwordLabel')}
               <input
                 type="password"
                 value={password}
@@ -141,7 +143,7 @@ export default function RegisterPage() {
             </label>
 
             <label>
-              Nhập lại mật khẩu *
+              {t('confirmPasswordLabel')}
               <input
                 type="password"
                 value={confirmPassword}
@@ -156,7 +158,7 @@ export default function RegisterPage() {
 
           <div className="two-col">
             <label>
-              Số điện thoại
+              {t('phoneLabel')}
               <input
                 type="tel"
                 value={phone}
@@ -167,7 +169,7 @@ export default function RegisterPage() {
             </label>
 
             <label>
-              Định hướng ngành
+              {t('trackLabel')}
               <input
                 type="text"
                 value={track}
@@ -178,15 +180,15 @@ export default function RegisterPage() {
           </div>
 
           <button className="btn btn-primary" type="submit" disabled={loading}>
-            {loading ? 'Đang đăng ký...' : 'Tạo tài khoản'}
+            {loading ? t('submitLoading') : t('submit')}
           </button>
         </form>
 
         <p className="auth-foot">
-          Đã có tài khoản? <Link href="/login">Đăng nhập</Link>
+          {t('hasAccount')} <Link href="/login">{t('loginNow')}</Link>
         </p>
         <div className="demo-hint">
-          Sau khi đăng ký, kiểm tra email để bấm link xác thực trước khi đăng nhập được.
+          {t('demoHint')}
         </div>
       </div>
     </div>

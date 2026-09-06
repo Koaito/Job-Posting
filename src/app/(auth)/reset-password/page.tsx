@@ -3,6 +3,7 @@
 import { Suspense, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { resetPassword } from '@/app/actions/auth';
 
 /**
@@ -27,6 +28,8 @@ import { resetPassword } from '@/app/actions/auth';
 function ResetPasswordForm() {
   const searchParams = useSearchParams();
   const token = searchParams.get('token') || '';
+  const t = useTranslations('auth.resetPassword');
+  const tc = useTranslations('auth.common');
 
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -37,13 +40,13 @@ function ResetPasswordForm() {
   if (!token) {
     return (
       <div className="auth-card">
-        <span className="eyebrow">Career Hub / Tài khoản</span>
-        <h1>Link không hợp lệ</h1>
+        <span className="eyebrow">{tc('eyebrowAccount')}</span>
+        <h1>{t('invalidTitle')}</h1>
         <p className="lede">
-          Thiếu token trong đường dẫn — vui lòng dùng đúng link trong email, hoặc xin link mới.
+          {t('invalidLede')}
         </p>
         <p className="auth-foot">
-          <Link href="/forgot-password">Xin link đặt lại mật khẩu mới</Link>
+          <Link href="/forgot-password">{t('requestNewLink')}</Link>
         </p>
       </div>
     );
@@ -54,11 +57,11 @@ function ResetPasswordForm() {
     setError('');
 
     if (newPassword.length < 8) {
-      setError('Mật khẩu mới phải có ít nhất 8 ký tự.');
+      setError(tc('passwordMinLength'));
       return;
     }
     if (newPassword !== confirmPassword) {
-      setError('Xác nhận mật khẩu không khớp.');
+      setError(tc('passwordMismatch'));
       return;
     }
 
@@ -67,13 +70,13 @@ function ResetPasswordForm() {
       const result = await resetPassword(token, newPassword);
       if (result.success) {
         setMessage(
-          result.message || 'Đặt lại mật khẩu thành công — vui lòng đăng nhập lại bằng mật khẩu mới.'
+          result.message || t('successMessage')
         );
       } else {
-        setError(result.error || 'Đặt lại mật khẩu thất bại — link có thể đã hết hạn hoặc đã được dùng.');
+        setError(result.error || t('error'));
       }
     } catch {
-      setError('Đã xảy ra lỗi. Vui lòng thử lại.');
+      setError(tc('genericError'));
     } finally {
       setLoading(false);
     }
@@ -82,11 +85,11 @@ function ResetPasswordForm() {
   if (message) {
     return (
       <div className="auth-card">
-        <span className="eyebrow">Career Hub / Tài khoản</span>
-        <h1>Thành công</h1>
+        <span className="eyebrow">{tc('eyebrowAccount')}</span>
+        <h1>{t('successTitle')}</h1>
         <div className="flash flash-success">{message}</div>
         <p className="auth-foot">
-          <Link href="/login">Về trang đăng nhập</Link>
+          <Link href="/login">{tc('backToLoginPage')}</Link>
         </p>
       </div>
     );
@@ -94,20 +97,20 @@ function ResetPasswordForm() {
 
   return (
     <div className="auth-card">
-      <span className="eyebrow">Career Hub / Tài khoản</span>
-      <h1>Đặt lại mật khẩu</h1>
-      <p className="lede">Nhập mật khẩu mới cho tài khoản của bạn.</p>
+      <span className="eyebrow">{tc('eyebrowAccount')}</span>
+      <h1>{t('title')}</h1>
+      <p className="lede">{t('lede')}</p>
 
       {error && <div className="flash flash-error">{error}</div>}
 
       <form onSubmit={handleSubmit}>
         <label>
-          Mật khẩu mới
+          {t('newPasswordLabel')}
           <input
             type="password"
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
-            placeholder="Tối thiểu 8 ký tự"
+            placeholder={t('newPasswordPlaceholder')}
             required
             minLength={8}
             disabled={loading}
@@ -117,7 +120,7 @@ function ResetPasswordForm() {
         </label>
 
         <label>
-          Nhập lại mật khẩu mới
+          {t('confirmPasswordLabel')}
           <input
             type="password"
             value={confirmPassword}
@@ -130,7 +133,7 @@ function ResetPasswordForm() {
         </label>
 
         <button className="btn btn-primary" type="submit" disabled={loading}>
-          {loading ? 'Đang đặt lại...' : 'Đặt lại mật khẩu'}
+          {loading ? t('submitLoading') : t('submit')}
         </button>
       </form>
     </div>
@@ -138,9 +141,10 @@ function ResetPasswordForm() {
 }
 
 export default function ResetPasswordPage() {
+  const t = useTranslations('auth.resetPassword');
   return (
     <div className="auth-shell">
-      <Suspense fallback={<div className="auth-card">Đang tải...</div>}>
+      <Suspense fallback={<div className="auth-card">{t('loading')}</div>}>
         <ResetPasswordForm />
       </Suspense>
     </div>
