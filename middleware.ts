@@ -46,6 +46,25 @@ export function middleware(request: NextRequest) {
                           pathname.startsWith('/messages') ||
                           pathname.startsWith('/activity') ||
                           pathname.startsWith('/profile') ||
+                          // BUG FIX (audit 09/2026 "rà toàn bộ codebase #1"):
+                          // 3 route sau bị BỎ SÓT khỏi danh sách này từ lúc
+                          // tạo trang (Phase 3.6/6.3/6.5b) — khách CHƯA đăng
+                          // nhập vào thẳng URL không bị đá về /login, chỉ
+                          // thấy trang trắng/rỗng (getMyApplications()/
+                          // getMySavedJobs() nuốt lỗi 401 thành mảng rỗng,
+                          // xem actions/me.ts) thay vì được yêu cầu đăng
+                          // nhập — sai UX dù không rò rỉ dữ liệu thật. Đây
+                          // đúng là rủi ro cố hữu của cách check theo
+                          // allowlist tập trung (so với Flask dùng
+                          // @login_required gắn trực tiếp từng route,
+                          // không thể "quên" 1 route mà không bị lộ ngay
+                          // lúc review): mỗi lần thêm route mới ở
+                          // app/(dashboard)/ phải nhớ tự thêm vào đây, không
+                          // có gì tự động nhắc — xem "Đánh giá kiến trúc"
+                          // trong plan_nextjs.md để biết thêm.
+                          pathname.startsWith('/data-management') ||
+                          pathname.startsWith('/my-applications') ||
+                          pathname.startsWith('/saved-jobs') ||
                           // BUG FIX (audit 09/2026 #3): /change-password cần
                           // access_token (đọc từ cookie thô, KHÔNG gọi API ở
                           // middleware) như mọi trang khác — nhưng CỐ TÌNH

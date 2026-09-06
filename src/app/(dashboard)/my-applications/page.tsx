@@ -1,4 +1,6 @@
 import { getMyApplications } from '@/app/actions/me';
+import { getCurrentUser } from '@/app/actions/auth';
+import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import WithdrawApplicationButton from '@/components/features/WithdrawApplicationButton';
 import { jobStatusChipClass, jobStatusLabel } from '@/lib/jobs/badges';
@@ -10,9 +12,27 @@ import { jobStatusChipClass, jobStatusLabel } from '@/lib/jobs/badges';
  *
  * Mới 09/2026 (Phase 3.6) — trước đây route này hoàn toàn không tồn tại
  * ở Next.js, học viên chưa xem được danh sách đơn đã ứng tuyển.
+ *
+ * BUG FIX (audit 09/2026 "rà toàn bộ codebase #1"): trang này (và
+ * /saved-jobs) trước đây KHÔNG tự check đăng nhập — đồng thời cũng bị
+ * bỏ sót khỏi middleware.ts (đã sửa riêng ở đó). Khách chưa đăng nhập
+ * vào thẳng URL sẽ gọi getMyApplications() -> backend trả 401 ->
+ * action nuốt lỗi thành mảng rỗng (xem actions/me.ts, cố ý giữ nguyên
+ * hành vi đó cho các nơi gọi khác đã tự check quyền trước, vd
+ * jobs/[id]/page.tsx) -> khách thấy y hệt "Bạn chưa ứng tuyển job nào"
+ * như user thật, không được yêu cầu đăng nhập. Thêm check
+ * getCurrentUser() + redirect('/login') ở đây, khớp đúng pattern mọi
+ * trang khác trong (dashboard)/ đã dùng (vd profile/page.tsx) — không
+ * sửa actions/me.ts vì hành vi "trả [] khi lỗi" vẫn đúng cho các nơi
+ * gọi khác.
  */
 
 export default async function MyApplicationsPage() {
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect('/login');
+  }
+
   const applications = await getMyApplications();
 
   return (

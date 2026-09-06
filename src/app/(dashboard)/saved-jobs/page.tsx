@@ -1,4 +1,6 @@
 import { getMySavedJobs } from '@/app/actions/me';
+import { getCurrentUser } from '@/app/actions/auth';
+import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import UnsaveJobButton from '@/components/features/UnsaveJobButton';
 import { jobStatusChipClass, jobStatusLabel } from '@/lib/jobs/badges';
@@ -11,9 +13,17 @@ import { jobStatusChipClass, jobStatusLabel } from '@/lib/jobs/badges';
  * Mới 09/2026 (Phase 3.6) — trước đây route này hoàn toàn không tồn tại
  * ở Next.js. Job đã CLOSED vẫn hiển thị bình thường ở đây (lưu để xem
  * lại vẫn hợp lý dù không ứng tuyển được nữa).
+ *
+ * BUG FIX (audit 09/2026 "rà toàn bộ codebase #1"): xem giải thích đầy
+ * đủ ở docstring my-applications/page.tsx — cùng 1 bug, cùng 1 cách sửa.
  */
 
 export default async function SavedJobsPage() {
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect('/login');
+  }
+
   const savedJobs = await getMySavedJobs();
 
   return (

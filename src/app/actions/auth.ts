@@ -2,7 +2,6 @@
 
 import { cache } from 'react';
 import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
 import { getApiKey, refreshAccessToken, setAuthCookies, formatErrorDetail } from '@/lib/api/client';
 import type { User, UserCreatePayload, UserCreated, JobApplication, SavedJob } from '@/types/auth';
 

@@ -6,10 +6,38 @@ import Link from 'next/link';
  * Jobs List Page
  * Corresponds to Flask: templates/index.html (jobs list)
  * Route: /jobs
+ *
+ * BUG FIX (audit 09/2026 "rà toàn bộ codebase #3"): trước đây chỉ có
+ * filter "search" (keyword) + "status" — Flask gốc (templates/index.html)
+ * có ĐỦ 5 filter: q (keyword), industry, level, location (province),
+ * status. `JobFilters` (types/jobs.ts) + `getJobs()` (actions/jobs.ts)
+ * ĐÃ hỗ trợ sẵn industry/level/province từ trước — chỉ chưa có UI
+ * dropdown tương ứng ở đây, thuần thiếu sót (comment "TODO: Implement
+ * later" bên dưới đã lỗi thời — filter cơ bản đã làm từ lâu nhưng
+ * comment không được xoá, dễ gây hiểu nhầm là chưa làm gì). Thêm đủ 3
+ * dropdown còn thiếu, dùng lại ĐÚNG bộ giá trị enum mà JobForm.tsx đã
+ * dùng (matching_industry/level_code/province_name) để không tạo ra 2
+ * nguồn "danh sách hợp lệ" lệch nhau giữa form tạo job và form lọc job.
  */
+
+// Trùng khớp có chủ ý với JobForm.tsx (matching_industry/level_code/
+// province_name) — backend hiện chưa có endpoint /enums thật (xem TODO
+// trong JobForm.tsx), nên cả 2 nơi đều tạm hard-code cùng 1 bộ giá trị.
+const INDUSTRY_OPTIONS = [
+  'CNTT - Phần mềm',
+  'Marketing - PR',
+  'Kinh doanh - Bán hàng',
+  'Thiết kế - Mỹ thuật',
+  'Khác',
+];
+const LEVEL_OPTIONS = ['Intern', 'Fresher', 'Junior', 'Middle', 'Senior', 'Lead', 'Manager'];
+const PROVINCE_OPTIONS = ['Hà Nội', 'Hồ Chí Minh', 'Đà Nẵng'];
 
 interface SearchParams {
   search?: string;
+  industry?: string;
+  level?: string;
+  province?: string;
   status?: string;
   page?: string;
 }
@@ -22,8 +50,8 @@ export default async function JobsPage({
   // filter/phân trang bị bỏ qua trong im lặng.
   searchParams: Promise<SearchParams>;
 }) {
-  const resolvedSearchParams = await searchParams;
-  const page = parseInt(resolvedSearchParams.page || '1');
+  const sp = await searchParams;
+  const page = parseInt(sp.page || '1');
   const limit = 50;
   const offset = (page - 1) * limit;
 
@@ -32,13 +60,34 @@ export default async function JobsPage({
   // param "keyword" — map lại đúng tên khi gọi getJobs(), nếu không lọc
   // bị bỏ qua trong im lặng dù form không báo lỗi gì.
   const { items: jobs, total } = await getJobs({
-    keyword: resolvedSearchParams.search,
-    status: resolvedSearchParams.status,
+    keyword: sp.search,
+    industry: sp.industry,
+    level: sp.level,
+    province: sp.province,
+    status: sp.status,
     limit,
     offset,
   });
 
   const totalPages = Math.ceil(total / limit);
+  const hasFilters = !!(sp.search || sp.industry || sp.level || sp.province || sp.status);
+
+  // Dùng lại đúng 1 chỗ để build query string cho cả nút "Lọc" (ẩn,
+  // form tự submit GET) lẫn link phân trang — trước đây phân trang chỉ
+  // giữ lại search/status, thêm filter mới mà không sửa link phân
+  // trang sẽ làm mất filter khi bấm "Trang sau" (bug tương tự đã từng
+  // gặp ở /activity, xem qs() bên đó).
+  const qs = (overrides: Partial<SearchParams>) => {
+    const merged = { ...sp, ...overrides };
+    const params = new URLSearchParams();
+    if (merged.search) params.append('search', merged.search);
+    if (merged.industry) params.append('industry', merged.industry);
+    if (merged.level) params.append('level', merged.level);
+    if (merged.province) params.append('province', merged.province);
+    if (merged.status) params.append('status', merged.status);
+    if (merged.page) params.append('page', merged.page);
+    return `/jobs?${params}`;
+  };
 
   return (
     // CHUYỂN 09/2026 (audit CSS): bỏ div "page-container" bọc ngoài —
@@ -59,23 +108,38 @@ export default async function JobsPage({
         </Link>
       </div>
 
-      {/* Filters - TODO: Implement later */}
       <form className="filter-bar" method="get" action="/jobs">
         <input
           type="search"
           name="search"
           placeholder="Tìm theo tên job..."
-          defaultValue={resolvedSearchParams.search}
+          defaultValue={sp.search}
         />
-        <select name="status" defaultValue={resolvedSearchParams.status || ''}>
+        <select name="industry" defaultValue={sp.industry || ''}>
+          <option value="">Mọi ngành</option>
+          {INDUSTRY_OPTIONS.map((i) => (
+            <option key={i} value={i}>{i}</option>
+          ))}
+        </select>
+        <select name="level" defaultValue={sp.level || ''}>
+          <option value="">Mọi level</option>
+          {LEVEL_OPTIONS.map((l) => (
+            <option key={l} value={l}>{l}</option>
+          ))}
+        </select>
+        <select name="province" defaultValue={sp.province || ''}>
+          <option value="">Mọi tỉnh/thành</option>
+          {PROVINCE_OPTIONS.map((p) => (
+            <option key={p} value={p}>{p}</option>
+          ))}
+        </select>
+        <select name="status" defaultValue={sp.status || ''}>
           <option value="">Tất cả trạng thái</option>
           <option value="OPEN">Đang tuyển</option>
           <option value="CLOSED">Đã đóng</option>
         </select>
         <button type="submit" className="btn btn-ghost">Lọc</button>
-        {(resolvedSearchParams.search || resolvedSearchParams.status) && (
-          <Link href="/jobs" className="btn btn-text">Xóa bộ lọc</Link>
-        )}
+        {hasFilters && <Link href="/jobs" className="btn btn-text">Xóa bộ lọc</Link>}
       </form>
 
       {jobs.length > 0 ? (
@@ -158,10 +222,7 @@ export default async function JobsPage({
           {totalPages > 1 && (
             <div className="pagination">
               {page > 1 && (
-                <Link
-                  href={`/jobs?page=${page - 1}${resolvedSearchParams.search ? `&search=${resolvedSearchParams.search}` : ''}${resolvedSearchParams.status ? `&status=${resolvedSearchParams.status}` : ''}`}
-                  className="page-btn"
-                >
+                <Link href={qs({ page: String(page - 1) })} className="page-btn">
                   ← Trang trước
                 </Link>
               )}
@@ -171,10 +232,7 @@ export default async function JobsPage({
               </span>
 
               {page < totalPages && (
-                <Link
-                  href={`/jobs?page=${page + 1}${resolvedSearchParams.search ? `&search=${resolvedSearchParams.search}` : ''}${resolvedSearchParams.status ? `&status=${resolvedSearchParams.status}` : ''}`}
-                  className="page-btn"
-                >
+                <Link href={qs({ page: String(page + 1) })} className="page-btn">
                   Trang sau →
                 </Link>
               )}
@@ -184,7 +242,7 @@ export default async function JobsPage({
       ) : (
         <div className="empty-state">
           <p>Không tìm thấy job nào.</p>
-          {(resolvedSearchParams.search || resolvedSearchParams.status) ? (
+          {hasFilters ? (
             <Link href="/jobs" className="btn btn-text">Xóa bộ lọc</Link>
           ) : (
             <Link href="/jobs/new" className="btn btn-primary">Thêm Job Đầu Tiên</Link>
