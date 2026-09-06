@@ -3,9 +3,11 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { logout } from '@/app/actions/auth';
 import { getUnreadCount } from '@/app/actions/messages';
 import { isStaffRole, ROLE_LABELS } from '@/lib/auth/roles';
+import { LanguageToggle } from '@/components/ui/i18n/LanguageToggle';
 
 // Poll ~25-30s (xem public/app.js gốc) — badge chỉ cần gần đúng, không
 // cần realtime như khung chat (poll 5s riêng trong MessageThread.tsx).
@@ -30,6 +32,7 @@ interface SidebarProps {
 export function Sidebar({ user }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const t = useTranslations('sidebar');
   const isStaff = isStaffRole(user?.role);
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -92,8 +95,8 @@ export function Sidebar({ user }: SidebarProps) {
       <div className="brand">
         <span className="brand-mark">MX</span>
         <div className="brand-text">
-          <strong>MindX Jobs</strong>
-          <span>Student Success</span>
+          <strong>{t('brandName')}</strong>
+          <span>{t('brandSub')}</span>
         </div>
       </div>
 
@@ -101,12 +104,12 @@ export function Sidebar({ user }: SidebarProps) {
         type="button"
         className="sidebar-toggle"
         onClick={toggleSidebar}
-        title="Thu gọn / mở rộng sidebar"
+        title={t('toggleTitle')}
         aria-expanded={!collapsed}
         suppressHydrationWarning
       >
         <span className="sidebar-toggle-ic" suppressHydrationWarning>{collapsed ? '»' : '«'}</span>
-        <span className="nav-text" suppressHydrationWarning>{collapsed ? 'Mở rộng' : 'Thu gọn'}</span>
+        <span className="nav-text" suppressHydrationWarning>{collapsed ? t('toggleExpand') : t('toggleCollapse')}</span>
       </button>
 
       <nav className="nav">
@@ -116,29 +119,29 @@ export function Sidebar({ user }: SidebarProps) {
           // guest, nên KHÔNG tự chế link giả trỏ vào chỗ 404/redirect
           // ngược lại /login. Chỉ để 1 dòng ghi chú, giống lý do bỏ nhóm
           // "Thêm mới" (add_hub) trong kế hoạch — không tự chế route ảo.
-          <p className="nav-note muted">Đăng nhập để xem đầy đủ chức năng.</p>
+          <p className="nav-note muted">{t('guestNote')}</p>
         )}
 
         {user && (
           <>
-            <span className="nav-label">Tổng quan</span>
+            <span className="nav-label">{t('sectionOverview')}</span>
             <Link href="/dashboard" className={activeClass('/dashboard')}>
               <span className="nav-ic">📊</span>
-              <span className="nav-text">Dashboard</span>
+              <span className="nav-text">{t('navDashboard')}</span>
             </Link>
 
-            <span className="nav-label">Việc làm</span>
+            <span className="nav-label">{t('sectionJobs')}</span>
             <Link href="/jobs" className={activeClass('/jobs')}>
               <span className="nav-ic">💼</span>
-              <span className="nav-text">Công việc</span>
+              <span className="nav-text">{t('navJobs')}</span>
             </Link>
             <Link href="/companies" className={activeClass('/companies')}>
               <span className="nav-ic">🏢</span>
-              <span className="nav-text">Công ty</span>
+              <span className="nav-text">{t('navCompanies')}</span>
             </Link>
             <Link href="/contacts" className={activeClass('/contacts')}>
               <span className="nav-ic">👥</span>
-              <span className="nav-text">Liên hệ</span>
+              <span className="nav-text">{t('navContacts')}</span>
             </Link>
 
             {/* Thêm 09/2026 (Phase 3.6) — chỉ học viên (role 'user') thấy
@@ -147,14 +150,14 @@ export function Sidebar({ user }: SidebarProps) {
                 trang riêng cho họ. */}
             {!isStaff && (
               <>
-                <span className="nav-label">Học viên</span>
+                <span className="nav-label">{t('sectionStudent')}</span>
                 <Link href="/my-applications" className={activeClass('/my-applications')}>
                   <span className="nav-ic">📄</span>
-                  <span className="nav-text">Đơn ứng tuyển của tôi</span>
+                  <span className="nav-text">{t('navMyApplications')}</span>
                 </Link>
                 <Link href="/saved-jobs" className={activeClass('/saved-jobs')}>
                   <span className="nav-ic">⭐</span>
-                  <span className="nav-text">Job đã lưu</span>
+                  <span className="nav-text">{t('navSavedJobs')}</span>
                 </Link>
               </>
             )}
@@ -167,38 +170,38 @@ export function Sidebar({ user }: SidebarProps) {
                 bên Flask gốc (templates/base.html). */}
             {isStaff && (
               <>
-                <span className="nav-label">Quản trị</span>
+                <span className="nav-label">{t('sectionAdmin')}</span>
                 <Link href="/students" className={activeClass('/students')}>
                   <span className="nav-ic">🎓</span>
-                  <span className="nav-text">Học viên</span>
+                  <span className="nav-text">{t('navStudents')}</span>
                 </Link>
                 <Link href="/staff" className={activeClass('/staff')}>
                   <span className="nav-ic">👨‍💼</span>
-                  <span className="nav-text">Nhân viên</span>
+                  <span className="nav-text">{t('navStaff')}</span>
                 </Link>
                 <Link href="/staff-activity" className={activeClass('/staff-activity')}>
                   <span className="nav-ic">▤</span>
-                  <span className="nav-text">Hoạt động team SS</span>
+                  <span className="nav-text">{t('navStaffActivity')}</span>
                 </Link>
                 <Link href="/crawl" className={activeClass('/crawl')}>
                   <span className="nav-ic">🕷️</span>
-                  <span className="nav-text">Crawler</span>
+                  <span className="nav-text">{t('navCrawl')}</span>
                 </Link>
                 <Link href="/data-management" className={activeClass('/data-management')}>
                   <span className="nav-ic">🗂️</span>
-                  <span className="nav-text">Import/Export</span>
+                  <span className="nav-text">{t('navDataManagement')}</span>
                 </Link>
                 <Link href="/activity" className={activeClass('/activity')}>
                   <span className="nav-ic">📋</span>
-                  <span className="nav-text">Hoạt động</span>
+                  <span className="nav-text">{t('navActivity')}</span>
                 </Link>
               </>
             )}
 
-            <span className="nav-label">Khác</span>
+            <span className="nav-label">{t('sectionOther')}</span>
             <Link href="/messages" className={activeClass('/messages')}>
               <span className="nav-ic">💬</span>
-              <span className="nav-text">Tin nhắn</span>
+              <span className="nav-text">{t('navMessages')}</span>
               <span className="nav-badge" hidden={unreadCount === 0}>
                 {unreadCount <= 99 ? unreadCount : '99+'}
               </span>
@@ -208,32 +211,33 @@ export function Sidebar({ user }: SidebarProps) {
       </nav>
 
       <div className="sidebar-foot">
+        <LanguageToggle />
         {user ? (
           <>
-            <Link className="auth-box" href="/profile" title="Trang cá nhân">
+            <Link className="auth-box" href="/profile" title={t('profileTitle')}>
               <div className="auth-avatar">{user.full_name?.[0]?.toUpperCase() ?? '?'}</div>
               <div className="auth-info">
                 <strong>{user.full_name}</strong>
                 <span>{isStaff ? ROLE_LABELS[user.role] ?? user.email : user.email}</span>
               </div>
             </Link>
-            <Link className="btn btn-ghost btn-block" href="/profile" title="Trang cá nhân">
-              <span className="btn-text-label">Trang cá nhân</span>
+            <Link className="btn btn-ghost btn-block" href="/profile" title={t('profileTitle')}>
+              <span className="btn-text-label">{t('profileTitle')}</span>
             </Link>
             <button type="button" onClick={handleLogout} className="btn btn-ghost btn-block">
-              <span className="btn-text-label">Đăng xuất</span>
+              <span className="btn-text-label">{t('logout')}</span>
             </button>
           </>
         ) : (
           <>
             <div className="auth-box auth-box-guest">
-              <p>Học viên MindX? Đăng nhập để lưu job và ứng tuyển.</p>
+              <p>{t('guestCta')}</p>
             </div>
-            <Link className="btn btn-primary btn-block" href="/login" title="Đăng nhập">
-              <span className="btn-text-label">Đăng nhập</span>
+            <Link className="btn btn-primary btn-block" href="/login" title={t('login')}>
+              <span className="btn-text-label">{t('login')}</span>
             </Link>
-            <Link className="btn btn-ghost btn-block" href="/register" title="Đăng ký">
-              <span className="btn-text-label">Đăng ký</span>
+            <Link className="btn btn-ghost btn-block" href="/register" title={t('register')}>
+              <span className="btn-text-label">{t('register')}</span>
             </Link>
           </>
         )}

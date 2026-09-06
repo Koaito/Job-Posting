@@ -260,3 +260,34 @@ html.sidebar-collapsed .sidebar-foot .btn-block { text-align: center; padding-le
 .btn-block { display: block; width: 100%; text-align: center; margin-bottom: 8px; }
 .btn-block:last-child { margin-bottom: 0; }
 
+
+/* LanguageToggle.tsx (Giai đoạn 2 i18n, 09/2026) — đặt ngay trên
+   sidebar-foot, style tối giản 2 nút text, giống mức độ chi tiết của
+   .btn-ghost hiện có, không cần thêm màu mới. */
+.lang-toggle {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.lang-toggle-btn {
+  flex: 1;
+  padding: 6px 4px;
+  font-size: 11px;
+  border: 1px solid #2E3F3A;
+  border-radius: 6px;
+  background: transparent;
+  color: #9FB0AA;
+  cursor: pointer;
+}
+
+.lang-toggle-btn.active {
+  background: #1F2D28;
+  color: #EAF2EF;
+  border-color: #3C5148;
+}
+
+.lang-toggle[data-pending] .lang-toggle-btn {
+  opacity: 0.6;
+  pointer-events: none;
+}

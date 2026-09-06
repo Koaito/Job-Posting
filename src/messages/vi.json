@@ -1,0 +1,38 @@
+{
+  "sidebar": {
+    "brandName": "MindX Jobs",
+    "brandSub": "Student Success",
+    "toggleCollapse": "Thu gọn",
+    "toggleExpand": "Mở rộng",
+    "toggleTitle": "Thu gọn / mở rộng sidebar",
+    "guestNote": "Đăng nhập để xem đầy đủ chức năng.",
+    "sectionOverview": "Tổng quan",
+    "navDashboard": "Dashboard",
+    "sectionJobs": "Việc làm",
+    "navJobs": "Công việc",
+    "navCompanies": "Công ty",
+    "navContacts": "Liên hệ",
+    "sectionStudent": "Học viên",
+    "navMyApplications": "Đơn ứng tuyển của tôi",
+    "navSavedJobs": "Job đã lưu",
+    "sectionAdmin": "Quản trị",
+    "navStudents": "Học viên",
+    "navStaff": "Nhân viên",
+    "navStaffActivity": "Hoạt động team SS",
+    "navCrawl": "Crawler",
+    "navDataManagement": "Import/Export",
+    "navActivity": "Hoạt động",
+    "sectionOther": "Khác",
+    "navMessages": "Tin nhắn",
+    "profileTitle": "Trang cá nhân",
+    "logout": "Đăng xuất",
+    "guestCta": "Học viên MindX? Đăng nhập để lưu job và ứng tuyển.",
+    "login": "Đăng nhập",
+    "register": "Đăng ký"
+  },
+  "languageToggle": {
+    "label": "Ngôn ngữ",
+    "vi": "Tiếng Việt",
+    "en": "English"
+  }
+}

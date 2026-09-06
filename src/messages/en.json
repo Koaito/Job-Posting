@@ -1,0 +1,38 @@
+{
+  "sidebar": {
+    "brandName": "MindX Jobs",
+    "brandSub": "Student Success",
+    "toggleCollapse": "Collapse",
+    "toggleExpand": "Expand",
+    "toggleTitle": "Collapse / expand sidebar",
+    "guestNote": "Sign in to see all features.",
+    "sectionOverview": "Overview",
+    "navDashboard": "Dashboard",
+    "sectionJobs": "Jobs",
+    "navJobs": "Jobs",
+    "navCompanies": "Companies",
+    "navContacts": "Contacts",
+    "sectionStudent": "Student",
+    "navMyApplications": "My Applications",
+    "navSavedJobs": "Saved Jobs",
+    "sectionAdmin": "Admin",
+    "navStudents": "Students",
+    "navStaff": "Staff",
+    "navStaffActivity": "SS Team Activity",
+    "navCrawl": "Crawler",
+    "navDataManagement": "Import/Export",
+    "navActivity": "Activity",
+    "sectionOther": "Other",
+    "navMessages": "Messages",
+    "profileTitle": "Profile",
+    "logout": "Log out",
+    "guestCta": "MindX student? Sign in to save jobs and apply.",
+    "login": "Sign in",
+    "register": "Sign up"
+  },
+  "languageToggle": {
+    "label": "Language",
+    "vi": "Tiếng Việt",
+    "en": "English"
+  }
+}

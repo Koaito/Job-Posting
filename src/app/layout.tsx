@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale } from "next-intl/server";
 import { Sidebar } from "@/components/ui/layout/Sidebar";
 import { getCurrentUser } from "@/app/actions/auth";
 import "./globals.css";
@@ -21,9 +23,16 @@ export default async function RootLayout({
   // cũng là lý do login/register trước đây KHÔNG có sidebar — layout
   // của (auth)/ chưa từng gọi hàm này.
   const user = await getCurrentUser();
+  // i18n (Giai đoạn 2, 09/2026): locale đọc từ cookie qua
+  // src/i18n/request.ts (đã đăng ký ở next.config.ts qua plugin) —
+  // getLocale() ở đây chỉ lấy lại giá trị đó để truyền cho
+  // NextIntlClientProvider (client components dùng useTranslations()
+  // cần Provider này, server components có thể dùng getTranslations()
+  // trực tiếp không cần Provider).
+  const locale = await getLocale();
 
   return (
-    <html lang="vi">
+    <html lang={locale}>
       <head>
         <script
           // Chạy TRƯỚC khi React hydrate — đọc lựa chọn thu gọn sidebar
@@ -67,10 +76,12 @@ export default async function RootLayout({
         <link rel="stylesheet" href="/css/18-messages.css" />
       </head>
       <body>
-        <div className="shell">
-          <Sidebar user={user} />
-          <main className="content">{children}</main>
-        </div>
+        <NextIntlClientProvider>
+          <div className="shell">
+            <Sidebar user={user} />
+            <main className="content">{children}</main>
+          </div>
+        </NextIntlClientProvider>
       </body>
     </html>
   );
