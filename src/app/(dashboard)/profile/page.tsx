@@ -3,6 +3,7 @@ import { getCurrentUser } from '@/app/actions/auth';
 import { roleLabel, isStaffRole } from '@/lib/auth/roles';
 import ProfileSubnav from '@/components/features/ProfileSubnav';
 import ProfileOverviewForm from '@/components/features/ProfileOverviewForm';
+import ThemeToggle from '@/components/features/ThemeToggle';
 
 /**
  * Trang cá nhân — Thông tin chung. Khớp profile.index() (GET) bên
@@ -26,6 +27,14 @@ import ProfileOverviewForm from '@/components/features/ProfileOverviewForm';
  * Tự check + redirect ở đây thay vì tin layout đã chặn — vừa hết lỗi
  * build, vừa không còn 1 non-null assertion nào có thể crash runtime
  * nếu logic layout đổi sau này.
+ *
+ * THÊM 09/2026 — mục "Giao diện" (theme sáng/tối, `ThemeToggle.tsx`):
+ * phần đầu của "Preferences (theme, language)" nêu ở mục 6.5
+ * plan_nextjs.md. Flask gốc KHÔNG có tính năng này — xem docstring
+ * `ThemeToggle.tsx`. Chỉ mới làm "theme", CHƯA làm "language" (chi phí
+ * lớn hơn nhiều, để dành xem xét sau). Đặt ngay dưới form đổi thông
+ * tin trong CÙNG `.profile-card` overview — không tách trang/tab
+ * sub-nav riêng vì chỉ có đúng 1 tuỳ chọn, chưa đáng thêm 1 route mới.
  */
 export default async function ProfilePage() {
   const user = await getCurrentUser();
@@ -71,6 +80,10 @@ export default async function ProfilePage() {
         </dl>
 
         <ProfileOverviewForm user={user} />
+
+        <h2 style={{ marginTop: '32px' }}>Giao diện</h2>
+        <p className="lede">Chọn giao diện sáng/tối cho riêng trình duyệt này.</p>
+        <ThemeToggle />
       </div>
     </div>
   );

@@ -28,14 +28,23 @@ export default async function RootLayout({
       <head>
         <script
           // Chạy TRƯỚC khi React hydrate — đọc lựa chọn thu gọn sidebar
-          // đã lưu (localStorage) và gắn class ngay trên <html>, tránh
-          // nháy (FOUC): sidebar rộng rồi mới co lại 1 nhịp sau khi JS
-          // chạy. Giống hệt inline script trong templates/base.html bên
-          // Flask gốc — Sidebar.tsx (client component) chỉ cần đọc lại
-          // đúng class này để đồng bộ nút, không tự gắn class lần đầu.
+          // + theme (sáng/tối) đã lưu (localStorage) và gắn ngay trên
+          // <html>, tránh nháy (FOUC): sidebar rộng/theme sáng rồi mới
+          // đổi lại 1 nhịp sau khi JS chạy. Giống hệt inline script
+          // trong templates/base.html bên Flask gốc cho phần sidebar —
+          // theme là tính năng MỚI, Flask không có (xem
+          // ThemeToggle.tsx). Sidebar.tsx/ThemeToggle.tsx (client
+          // component) chỉ cần đọc lại đúng class/attribute này để
+          // đồng bộ nút, không tự gắn lần đầu.
+          //
+          // data-theme chỉ set khi user CHỦ ĐỘNG chọn "light"/"dark" —
+          // để trống (mặc định "system") thì CSS tự theo
+          // prefers-color-scheme của hệ điều hành (xem 00-tokens.css),
+          // không set cứng "light" ở đây để không đè lên lựa chọn hệ
+          // thống của người chưa từng bấm nút.
           dangerouslySetInnerHTML={{
             __html:
-              '(function(){try{if(localStorage.getItem("sidebarCollapsed")==="1"){document.documentElement.classList.add("sidebar-collapsed");}}catch(e){}})();',
+              '(function(){try{if(localStorage.getItem("sidebarCollapsed")==="1"){document.documentElement.classList.add("sidebar-collapsed");}var t=localStorage.getItem("theme");if(t==="light"||t==="dark"){document.documentElement.setAttribute("data-theme",t);}}catch(e){}})();',
           }}
         />
         <link rel="stylesheet" href="/css/00-tokens.css" />

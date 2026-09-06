@@ -106,6 +106,59 @@
   --form-grid-gap-col: 18px;
 }
 
+/* ============================================================
+   THEME (sáng/tối) — MỚI 09/2026, tính năng không có bên Flask gốc
+   (đối chiếu blueprints/ + templates/ Flask: không route/field nào
+   tên theme/dark-mode) — bổ sung riêng cho Next.js, không phải port.
+
+   Cách hoạt động: mọi màu ở :root phía trên đã là CSS custom property
+   (--bg, --surface, --ink...) và toàn bộ 18 file CSS còn lại đều
+   THAM CHIẾU qua var(...), gần như không viết hex trực tiếp cho các
+   màu nền/chữ chính — vì vậy chỉ cần định nghĩa LẠI đúng 10 biến màu
+   dưới đây theo `[data-theme="dark"]` là đổi được giao diện toàn site,
+   không phải sửa từng file/từng component.
+
+   3 trạng thái lưu ở localStorage key "theme" (xem ThemeToggle.tsx):
+   "light" | "dark" | "system" (mặc định, coi như không có giá trị).
+   - "light"/"dark": set thẳng attribute data-theme trên <html>
+     (script anti-FOUC ở layout.tsx set TRƯỚC paint để tránh nháy).
+   - "system": KHÔNG set attribute — rơi xuống khối @media
+     (prefers-color-scheme: dark) bên dưới, tự theo OS.
+
+   PHẠM VI: chỉ đổi 10 biến màu nền/chữ chính. ~130 màu hex viết tay
+   rải rác ở 18 file CSS (chủ yếu badge/status-chip màu riêng biệt
+   như #B23A22, #2E8B57...) GIỮ NGUYÊN không đổi theo theme — các màu
+   này đều là màu đậm/bão hoà, đọc được trên cả nền sáng lẫn tối, chấp
+   nhận được cho bản đầu. Polish từng chỗ (nếu cần) để dành đợt sau,
+   không chặn việc bật theme tối hoạt động đúng.
+   ============================================================ */
+html[data-theme="dark"] {
+  --bg: #101512;
+  --surface: #1B2420;
+  --ink: #EAF2EF;
+  --ink-soft: #AEBDB6;
+  --muted: #6D7B75;
+  --border: #2B3733;
+  --accent-soft: #3D2019;
+  --teal-soft: #12332E;
+  --amber-soft: #3A2C0F;
+  --blue-soft: #1B2740;
+}
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]):not([data-theme="dark"]) {
+    --bg: #101512;
+    --surface: #1B2420;
+    --ink: #EAF2EF;
+    --ink-soft: #AEBDB6;
+    --muted: #6D7B75;
+    --border: #2B3733;
+    --accent-soft: #3D2019;
+    --teal-soft: #12332E;
+    --amber-soft: #3A2C0F;
+    --blue-soft: #1B2740;
+  }
+}
+
 /* Set by the anti-FOUC script in base.html (before first paint) when the
    user's last choice, read from localStorage, was "collapsed" — keeps
    the sidebar from flashing wide then snapping narrow on reload. */
