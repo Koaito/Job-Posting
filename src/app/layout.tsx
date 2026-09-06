@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { QueryProvider } from "@/lib/providers/QueryProvider";
 import { Sidebar } from "@/components/ui/layout/Sidebar";
 import { getCurrentUser } from "@/app/actions/auth";
 import "./globals.css";
@@ -68,12 +67,10 @@ export default async function RootLayout({
         <link rel="stylesheet" href="/css/18-messages.css" />
       </head>
       <body>
-        <QueryProvider>
-          <div className="shell">
-            <Sidebar user={user} />
-            <main className="content">{children}</main>
-          </div>
-        </QueryProvider>
+        <div className="shell">
+          <Sidebar user={user} />
+          <main className="content">{children}</main>
+        </div>
       </body>
     </html>
   );
