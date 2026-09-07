@@ -5,6 +5,9 @@
  */
 
 import { cookies } from 'next/headers';
+import { LOCALE_COOKIE_NAME, DEFAULT_LOCALE, isValidLocale, type Locale } from '@/i18n/config';
+import errorsVi from '@/messages/errors.vi.json';
+import errorsEn from '@/messages/errors.en.json';
 
 /**
  * BUG FIX (audit 09/2026 #8): "process.env.CRAWLER_API_KEY!" (non-null
@@ -140,7 +143,45 @@ const API_BASE = process.env.FASTAPI_URL;
  * chưa từng gặp) mới rơi về `JSON.stringify()` như cũ — thà hiện JSON
  * thô còn hơn nuốt lỗi thành thông báo chung chung không debug được.
  */
-export function formatErrorDetail(detail: unknown): string {
+/**
+ * Đọc cookie "locale" (dùng chung tên với LOCALE_COOKIE_NAME ở
+ * src/i18n/config.ts) — KHÔNG import getRequestConfig()/next-intl ở đây
+ * vì đây là code chạy trong Server Actions thuần (không phải trong 1
+ * request render của next-intl), gọi trực tiếp `cookies()` cho gọn,
+ * cùng 1 nguồn cookie với src/i18n/request.ts nên luôn đồng bộ với
+ * lựa chọn của LanguageToggle.tsx.
+ */
+async function getErrorLocale(): Promise<Locale> {
+  const cookieStore = await cookies();
+  const raw = cookieStore.get(LOCALE_COOKIE_NAME)?.value;
+  return isValidLocale(raw) ? raw : DEFAULT_LOCALE;
+}
+
+const ERROR_TRANSLATIONS: Record<Locale, Record<string, string>> = {
+  vi: errorsVi as Record<string, string>,
+  en: errorsEn as Record<string, string>,
+};
+
+/**
+ * Tra `error_code` trong bảng dịch theo `locale` (Giai đoạn 3, 09/2026).
+ *
+ * Nguyên tắc (đúng theo plan_language_polish.md A.1/A.3.2):
+ * - `locale === "vi"`: LUÔN dùng thẳng `fallbackMessage` (message gốc từ
+ *   backend) — đây vốn đã là tiếng Việt chuẩn, không cần tra bảng
+ *   `errors.vi.json` (file đó chỉ giữ để dự phòng override sau này, xem
+ *   comment trong file).
+ * - `locale === "en"`: tra `error_code` trong `errors.en.json`. Chỉ 1
+ *   nhóm ưu tiên (auth/token/account) được dịch — các `error_code` khác
+ *   CHƯA có trong bảng sẽ tự fallback về `fallbackMessage` (tiếng Việt
+ *   gốc), KHÔNG hiện lỗi trắng/"undefined". Đây là hành vi CHỦ Ý theo
+ *   plan (Giai đoạn 3.2: "không dịch hết cùng lúc").
+ */
+function resolveErrorMessage(errorCode: string, fallbackMessage: string, locale: Locale): string {
+  if (locale === 'vi') return fallbackMessage;
+  return ERROR_TRANSLATIONS[locale]?.[errorCode] ?? fallbackMessage;
+}
+
+export async function formatErrorDetail(detail: unknown): Promise<string> {
   if (typeof detail === 'string') return detail;
   if (Array.isArray(detail)) {
     return detail
@@ -159,7 +200,14 @@ export function formatErrorDetail(detail: unknown): string {
   }
   if (detail && typeof detail === 'object') {
     const message = (detail as { message?: unknown }).message;
-    if (typeof message === 'string') return message;
+    const errorCode = (detail as { error_code?: unknown }).error_code;
+    if (typeof message === 'string') {
+      if (typeof errorCode === 'string') {
+        const locale = await getErrorLocale();
+        return resolveErrorMessage(errorCode, message, locale);
+      }
+      return message;
+    }
     return JSON.stringify(detail);
   }
   return 'Có lỗi xảy ra';
@@ -408,7 +456,7 @@ export async function apiFetch<T = unknown>(
     const detail = (errorBody as { detail?: unknown } | null)?.detail;
     return {
       success: false,
-      error: detail != null ? formatErrorDetail(detail) : fallbackError,
+      error: detail != null ? await formatErrorDetail(detail) : fallbackError,
       status: response.status,
     };
   }

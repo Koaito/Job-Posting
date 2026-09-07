@@ -131,7 +131,7 @@ export async function saveJob(
       const error = await response.json().catch(() => ({ detail: response.statusText }));
       return {
         success: false,
-        error: error.detail != null ? formatErrorDetail(error.detail) : 'Không thể lưu job này',
+        error: error.detail != null ? await formatErrorDetail(error.detail) : 'Không thể lưu job này',
       };
     }
     const savedJob = await response.json();

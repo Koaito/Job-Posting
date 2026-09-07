@@ -13,6 +13,15 @@
 
 import { formatErrorDetail } from '@/lib/api/client';
 
+// formatErrorDetail() giờ là async (Giai đoạn 3, 09/2026): cần đọc cookie
+// "locale" để quyết định có tra bảng dịch error_code hay không (xem
+// resolveErrorMessage() trong client.ts). Mock next/headers giống pattern
+// dùng chung ở các test action khác (vd src/__tests__/actions/me.test.ts).
+const mockCookieGet = jest.fn();
+jest.mock('next/headers', () => ({
+  cookies: () => Promise.resolve({ get: mockCookieGet }),
+}));
+
 describe('getApiKey()', () => {
   const ORIGINAL_ENV = process.env.CRAWLER_API_KEY;
 
@@ -61,52 +70,89 @@ describe('getApiKey()', () => {
  * message dạng string (shape lạ, chưa từng gặp thật).
  */
 describe('formatErrorDetail()', () => {
-  it('trả nguyên văn khi detail là string', () => {
-    expect(formatErrorDetail('Email hoặc mật khẩu không đúng.')).toBe(
+  beforeEach(() => {
+    // Mặc định không có cookie "locale" -> DEFAULT_LOCALE ("vi"), giống
+    // hành vi trước khi có Giai đoạn 3 cho mọi test không tự set khác đi.
+    mockCookieGet.mockReset();
+    mockCookieGet.mockReturnValue(undefined);
+  });
+
+  it('trả nguyên văn khi detail là string', async () => {
+    expect(await formatErrorDetail('Email hoặc mật khẩu không đúng.')).toBe(
       'Email hoặc mật khẩu không đúng.'
     );
   });
 
-  it('nối các message trong mảng lỗi Pydantic kèm tên field (loc)', () => {
+  it('nối các message trong mảng lỗi Pydantic kèm tên field (loc)', async () => {
     const detail = [
       { loc: ['body', 'email'], msg: 'field required', type: 'missing' },
       { loc: ['body', 'password'], msg: 'string too short', type: 'string_too_short' },
     ];
-    expect(formatErrorDetail(detail)).toBe('email: field required; password: string too short');
+    expect(await formatErrorDetail(detail)).toBe('email: field required; password: string too short');
   });
 
-  it('bỏ "body" khỏi loc, chỉ giữ tên field thật', () => {
+  it('bỏ "body" khỏi loc, chỉ giữ tên field thật', async () => {
     const detail = [{ loc: ['body', 'phone'], msg: 'invalid format', type: 'value_error' }];
-    expect(formatErrorDetail(detail)).toBe('phone: invalid format');
+    expect(await formatErrorDetail(detail)).toBe('phone: invalid format');
   });
 
-  it('mảng lỗi không có "loc" vẫn hiện được msg', () => {
+  it('mảng lỗi không có "loc" vẫn hiện được msg', async () => {
     const detail = [{ msg: 'không hợp lệ', type: 'value_error' }];
-    expect(formatErrorDetail(detail)).toBe('không hợp lệ');
+    expect(await formatErrorDetail(detail)).toBe('không hợp lệ');
   });
 
-  it('BUG FIX: object {error_code, message} đọc đúng message, KHÔNG hiện JSON thô', () => {
+  it('BUG FIX: object {error_code, message} đọc đúng message, KHÔNG hiện JSON thô', async () => {
     const detail = { error_code: 'token_expired', message: 'Phiên đăng nhập đã hết hạn.' };
     // Hành vi CŨ (trước fix): formatErrorDetail(detail) === JSON.stringify(detail)
     // -> user thấy '{"error_code":"token_expired","message":"..."}' trên UI.
-    expect(formatErrorDetail(detail)).toBe('Phiên đăng nhập đã hết hạn.');
-    expect(formatErrorDetail(detail)).not.toContain('error_code');
-    expect(formatErrorDetail(detail)).not.toContain('{');
+    expect(await formatErrorDetail(detail)).toBe('Phiên đăng nhập đã hết hạn.');
+    expect(await formatErrorDetail(detail)).not.toContain('error_code');
+    expect(await formatErrorDetail(detail)).not.toContain('{');
   });
 
-  it('BUG FIX: mọi error_code khác (session_replaced, session_revoked...) đều đọc message đúng', () => {
+  it('BUG FIX: mọi error_code khác (session_replaced, session_revoked...) đều đọc message đúng', async () => {
     expect(
-      formatErrorDetail({ error_code: 'session_replaced', message: 'Tài khoản vừa đăng nhập ở nơi khác.' })
+      await formatErrorDetail({ error_code: 'session_replaced', message: 'Tài khoản vừa đăng nhập ở nơi khác.' })
     ).toBe('Tài khoản vừa đăng nhập ở nơi khác.');
   });
 
-  it('object không có field "message" dạng string vẫn JSON.stringify (fallback an toàn, giữ nguyên hành vi cũ)', () => {
+  it('object không có field "message" dạng string vẫn JSON.stringify (fallback an toàn, giữ nguyên hành vi cũ)', async () => {
     const detail = { error_code: 'weird_shape', extra: 123 };
-    expect(formatErrorDetail(detail)).toBe(JSON.stringify(detail));
+    expect(await formatErrorDetail(detail)).toBe(JSON.stringify(detail));
   });
 
-  it('trả thông báo mặc định khi detail là null/undefined', () => {
-    expect(formatErrorDetail(null)).toBe('Có lỗi xảy ra');
-    expect(formatErrorDetail(undefined)).toBe('Có lỗi xảy ra');
+  it('trả thông báo mặc định khi detail là null/undefined', async () => {
+    expect(await formatErrorDetail(null)).toBe('Có lỗi xảy ra');
+    expect(await formatErrorDetail(undefined)).toBe('Có lỗi xảy ra');
+  });
+
+  /**
+   * Giai đoạn 3 (i18n, 09/2026): tầng dịch error_code. Test dưới đây
+   * khoá đúng 3 hành vi cốt lõi theo plan_language_polish.md A.1/A.3.2.
+   */
+  describe('Giai đoạn 3 — dịch theo error_code khi locale=en', () => {
+    it('locale=vi (mặc định) LUÔN dùng message gốc từ backend, không tra bảng dịch', async () => {
+      mockCookieGet.mockImplementation((name: string) =>
+        name === 'locale' ? { value: 'vi' } : undefined
+      );
+      const detail = { error_code: 'auth_wrong_credentials', message: 'Email hoặc mật khẩu không đúng.' };
+      expect(await formatErrorDetail(detail)).toBe('Email hoặc mật khẩu không đúng.');
+    });
+
+    it('locale=en + error_code nằm trong nhóm ưu tiên -> trả bản dịch tiếng Anh', async () => {
+      mockCookieGet.mockImplementation((name: string) =>
+        name === 'locale' ? { value: 'en' } : undefined
+      );
+      const detail = { error_code: 'auth_wrong_credentials', message: 'Email hoặc mật khẩu không đúng.' };
+      expect(await formatErrorDetail(detail)).toBe('Incorrect email or password.');
+    });
+
+    it('locale=en + error_code CHƯA có trong bảng dịch -> fallback về message tiếng Việt gốc, không vỡ UI', async () => {
+      mockCookieGet.mockImplementation((name: string) =>
+        name === 'locale' ? { value: 'en' } : undefined
+      );
+      const detail = { error_code: 'contact_still_active', message: 'Liên hệ vẫn đang hoạt động, không thể xoá.' };
+      expect(await formatErrorDetail(detail)).toBe('Liên hệ vẫn đang hoạt động, không thể xoá.');
+    });
   });
 });

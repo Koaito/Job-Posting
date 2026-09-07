@@ -405,7 +405,7 @@ export async function updateProfile(data: {
       const error = await response.json().catch(() => ({ detail: response.statusText }));
       return {
         success: false,
-        error: error.detail != null ? formatErrorDetail(error.detail) : 'Không thể cập nhật hồ sơ',
+        error: error.detail != null ? await formatErrorDetail(error.detail) : 'Không thể cập nhật hồ sơ',
       };
     }
 
@@ -566,7 +566,7 @@ export async function createUser(
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: response.statusText }));
-      return { success: false, error: error.detail != null ? formatErrorDetail(error.detail) : 'Không thể tạo tài khoản' };
+      return { success: false, error: error.detail != null ? await formatErrorDetail(error.detail) : 'Không thể tạo tài khoản' };
     }
     const user = await response.json();
     return { success: true, user };
@@ -599,7 +599,7 @@ export async function updateUserRole(
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: response.statusText }));
-      return { success: false, error: error.detail != null ? formatErrorDetail(error.detail) : 'Không thể đổi vai trò' };
+      return { success: false, error: error.detail != null ? await formatErrorDetail(error.detail) : 'Không thể đổi vai trò' };
     }
     const user = await response.json();
     return { success: true, user };
@@ -632,7 +632,7 @@ export async function updateUserActiveStatus(
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: response.statusText }));
-      return { success: false, error: error.detail != null ? formatErrorDetail(error.detail) : 'Không thể đổi trạng thái tài khoản' };
+      return { success: false, error: error.detail != null ? await formatErrorDetail(error.detail) : 'Không thể đổi trạng thái tài khoản' };
     }
     const user = await response.json();
     return { success: true, user };
@@ -714,7 +714,7 @@ export async function register(data: {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: response.statusText }));
-      return { success: false, error: error.detail != null ? formatErrorDetail(error.detail) : 'Đăng ký thất bại' };
+      return { success: false, error: error.detail != null ? await formatErrorDetail(error.detail) : 'Đăng ký thất bại' };
     }
     const body = await response.json();
     return { success: true, message: body.message };
@@ -741,7 +741,7 @@ export async function forgotPassword(email: string): Promise<{ success: boolean;
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: response.statusText }));
-      return { success: false, error: error.detail != null ? formatErrorDetail(error.detail) : 'Không thể gửi email đặt lại mật khẩu' };
+      return { success: false, error: error.detail != null ? await formatErrorDetail(error.detail) : 'Không thể gửi email đặt lại mật khẩu' };
     }
     const body = await response.json();
     return { success: true, message: body.message };
@@ -770,7 +770,7 @@ export async function resetPassword(
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: response.statusText }));
-      return { success: false, error: error.detail != null ? formatErrorDetail(error.detail) : 'Đặt lại mật khẩu thất bại' };
+      return { success: false, error: error.detail != null ? await formatErrorDetail(error.detail) : 'Đặt lại mật khẩu thất bại' };
     }
     const body = await response.json();
     return { success: true, message: body.message };

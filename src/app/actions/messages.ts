@@ -207,7 +207,7 @@ export async function sendMessage(
     if (response.status === 404) fallback = 'Không tìm thấy người nhận.';
     return {
       success: false,
-      error: error.detail != null ? formatErrorDetail(error.detail) : fallback,
+      error: error.detail != null ? await formatErrorDetail(error.detail) : fallback,
     };
   } catch (error) {
     console.error('Error sending message:', error);
