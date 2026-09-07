@@ -1,5 +1,5 @@
 {
-  "_comment": "Giai đoạn 3 (i18n) — bảng dịch error_code sang tiếng Anh. CHỈ dịch nhóm ưu tiên (auth/token/account) theo plan_language_polish.md A.2 Giai đoạn 3.2 — error_code KHÔNG có ở đây sẽ tự fallback về message tiếng Việt gốc từ backend (xem resolveErrorMessage() trong src/lib/api/client.ts), không bao giờ vỡ UI. Không đưa vào đây các error_code có nội dung động (số lần thử, tên field...) vì message thật đã được backend chèn giá trị runtime vào — dịch tĩnh sẽ làm mất thông tin đó; nhóm này để dịch sau khi có cơ chế template biến số.",
+  "_comment": "Giai đoạn 3 (i18n) — bảng dịch error_code sang tiếng Anh. Đợt 1: nhóm auth/token/account (ưu tiên cao nhất). Đợt 2: nhóm not_found/required tĩnh của job/company/contact (ưu tiên thứ 2 — CRUD người dùng thao tác thường xuyên). error_code KHÔNG có ở đây sẽ tự fallback về message tiếng Việt gốc từ backend (xem resolveErrorMessage() trong src/lib/api/client.ts), không bao giờ vỡ UI. Không đưa vào đây các error_code có nội dung động (UUID/giá trị nhập sai, số lần thử, danh sách hợp lệ...) vì message thật đã được backend chèn giá trị runtime vào (f-string) — dịch tĩnh sẽ làm mất thông tin đó; nhóm này để dịch sau khi có cơ chế template biến số.",
   "missing_auth_header": "Missing the 'Authorization: Bearer <access_token>' header.",
   "token_expired": "Access token is invalid or has expired — use the refresh token via POST /auth/refresh to get a new one.",
   "session_revoked": "This session is no longer valid — please log in again.",
@@ -23,5 +23,16 @@
   "user_account_not_found": "Account not found.",
   "user_role_1_user_ss_team": "Role must be one of: user, ss_team, admin.",
   "user_forbidden": "You can't change your own role — ask another admin to do this.",
-  "user_forbidden_2": "You can't deactivate/activate your own account — ask another admin to do this."
+  "user_forbidden_2": "You can't deactivate/activate your own account — ask another admin to do this.",
+
+  "job_job_not_found": "Job not found",
+  "company_company_not_found": "Company not found",
+  "contact_assigned_user_not_found": "Assigned SS-team account not found.",
+  "contact_assigned_ss_user_tai_khoan": "assigned_ss_user must be an account with role 'ss_team' or 'admin' — a contact cannot be assigned to a 'user' (student) account.",
+  "contact_company_not_found": "Company not found",
+  "contact_company_not_found_2": "No contact found under this company",
+  "contact_required": "Editing an HR contact requires a 'note' explaining the reason for the change (field 'note' in the body) — other SS-team members need to know why this contact's info changed.",
+  "contact_contact_not_found": "Contact not found",
+  "contact_required_2": "Assigning/changing/unassigning the HR contact owner requires a 'note' explaining the reason — other SS-team members need to know why.",
+  "contact_still_active": "This contact is still active — soft-delete it (DELETE /companies/{company_id}/contacts/{contact_id}) before hard-deleting."
 }

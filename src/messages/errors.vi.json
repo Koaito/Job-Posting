@@ -23,5 +23,16 @@
   "user_account_not_found": "Không tìm thấy tài khoản.",
   "user_role_1_user_ss_team": "role phải là 1 trong: user, ss_team, admin.",
   "user_forbidden": "Không thể tự đổi role của chính mình — nhờ admin khác thực hiện thao tác này.",
-  "user_forbidden_2": "Không thể tự vô hiệu hoá/kích hoạt chính mình — nhờ admin khác thực hiện thao tác này."
+  "user_forbidden_2": "Không thể tự vô hiệu hoá/kích hoạt chính mình — nhờ admin khác thực hiện thao tác này.",
+
+  "job_job_not_found": "Không tìm thấy job",
+  "company_company_not_found": "Không tìm thấy công ty",
+  "contact_assigned_user_not_found": "Không tìm thấy tài khoản assigned_ss_user.",
+  "contact_assigned_ss_user_tai_khoan": "assigned_ss_user phải là tài khoản có role 'ss_team' hoặc 'admin' — không thể giao contact cho tài khoản role 'user' (học viên).",
+  "contact_company_not_found": "Không tìm thấy công ty",
+  "contact_company_not_found_2": "Không tìm thấy contact thuộc công ty này",
+  "contact_required": "Sửa HR contact bắt buộc phải có 'note' giải thích lý do sửa (field 'note' trong body) — các ss_team khác cần biết vì sao thông tin contact này thay đổi.",
+  "contact_contact_not_found": "Không tìm thấy contact",
+  "contact_required_2": "Gán/đổi/bỏ gán người phụ trách HR contact bắt buộc phải có 'note' giải thích lý do — các ss_team khác cần biết vì sao.",
+  "contact_still_active": "Contact vẫn đang active — cần xoá mềm (DELETE /companies/{company_id}/contacts/{contact_id}) trước khi xoá cứng."
 }

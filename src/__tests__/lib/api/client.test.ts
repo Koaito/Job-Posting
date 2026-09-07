@@ -151,8 +151,31 @@ describe('formatErrorDetail()', () => {
       mockCookieGet.mockImplementation((name: string) =>
         name === 'locale' ? { value: 'en' } : undefined
       );
-      const detail = { error_code: 'contact_still_active', message: 'Liên hệ vẫn đang hoạt động, không thể xoá.' };
-      expect(await formatErrorDetail(detail)).toBe('Liên hệ vẫn đang hoạt động, không thể xoá.');
+      const detail = { error_code: 'crawl_still_active', message: 'Crawl vẫn đang chạy, không thể xoá.' };
+      expect(await formatErrorDetail(detail)).toBe('Crawl vẫn đang chạy, không thể xoá.');
+    });
+
+    it('locale=en + error_code nhóm not_found tĩnh (đợt 2, job/company/contact) -> trả bản dịch', async () => {
+      mockCookieGet.mockImplementation((name: string) =>
+        name === 'locale' ? { value: 'en' } : undefined
+      );
+      expect(
+        await formatErrorDetail({ error_code: 'job_job_not_found', message: 'Không tìm thấy job' })
+      ).toBe('Job not found');
+      expect(
+        await formatErrorDetail({ error_code: 'company_company_not_found', message: 'Không tìm thấy công ty' })
+      ).toBe('Company not found');
+    });
+
+    it('locale=en + error_code invalid_uuid (có UUID động trong message) -> CHƯA dịch, fallback về vi gốc', async () => {
+      mockCookieGet.mockImplementation((name: string) =>
+        name === 'locale' ? { value: 'en' } : undefined
+      );
+      const detail = {
+        error_code: 'job_job_id_invalid_uuid',
+        message: "job_id 'xyz' không đúng định dạng UUID.",
+      };
+      expect(await formatErrorDetail(detail)).toBe("job_id 'xyz' không đúng định dạng UUID.");
     });
   });
 });
