@@ -219,12 +219,12 @@ describe('formatErrorDetail()', () => {
         expect(await formatErrorDetail(detail)).toBe("run_id 'xyz' không đúng định dạng UUID.");
       });
 
-      it('locale=en + error_code động 1-giá-trị nhóm không phải UUID (message_ban_qua_nhieu_yeu_cau) -> dịch đúng, thay {value}', async () => {
+      it('locale=en + error_code động 1-giá-trị nhóm không phải UUID (message_too_many_pending_requests) -> dịch đúng, thay {value}', async () => {
         mockCookieGet.mockImplementation((name: string) =>
           name === 'locale' ? { value: 'en' } : undefined
         );
         const detail = {
-          error_code: 'message_ban_qua_nhieu_yeu_cau',
+          error_code: 'message_too_many_pending_requests',
           message:
             'Bạn đang có quá nhiều yêu cầu nhắn tin đang chờ xử lý (tối đa 3 cùng lúc). Vui lòng đợi SS phản hồi trước khi gửi yêu cầu mới.',
           params: { value: 3 },
