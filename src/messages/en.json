@@ -209,5 +209,60 @@
     "editNoteLabel": "Edit note (for the activity log)",
     "editNotePlaceholder": "Optional...",
     "submitCreate": "Create Company"
+  },
+  "dashboard": {
+    "title": "Job market & company database overview",
+    "subtitle": "Figures updated based on current data in the system.",
+    "kpi": {
+      "totalJobs": "Jobs in database",
+      "totalCompanies": "Companies in database",
+      "jobsOpen": "Jobs still open",
+      "totalStudents": "Registered students",
+      "totalApplications": "Applications",
+      "totalSavedJobs": "Saved jobs"
+    },
+    "welcome": "Welcome back, {name}! 👋",
+    "welcomeFallbackName": "there",
+    "phase2Done": "✅ Phase 2 complete: Dashboard stats showing 6 KPIs (matches Flask dashboard)",
+    "phase3Done": "✅ Phase 3 complete: Jobs CRUD (list, create, edit, delete)",
+    "recentActivity": "Recent Activity",
+    "viewAll": "View all →",
+    "systemActor": "System (automated crawl)",
+    "noActivity": "No activity yet."
+  },
+  "contactStatus": {
+    "UNCONTACTED": "Not contacted",
+    "EMAIL_SENT": "Email sent",
+    "RESPONDED": "Responded",
+    "IN_PARTNERSHIP": "In partnership"
+  },
+  "contacts": {
+    "title": "Contacts",
+    "staffOnly": "This page is for staff only (ss_team/admin).",
+    "eyebrow": "Career Hub / Companies",
+    "tabList": "Contact list",
+    "tabManage": "Manage email templates",
+    "manageTitle": "Manage email templates",
+    "listTitle": "HR Contacts",
+    "listSubtitle": "All HR contacts collected, across every company.",
+    "searchPlaceholder": "Search by contact name...",
+    "allStatuses": "All statuses",
+    "includeInactive": "Include deleted contacts",
+    "filterBtn": "Filter",
+    "clearFilter": "Clear filter",
+    "resultCount": "{total} matching contact(s)",
+    "resultCountShowing": "{total} matching contact(s) — showing {from}–{to}",
+    "colName": "Name",
+    "colCompany": "Company",
+    "colJobTitle": "Job title",
+    "colEmailPhone": "Email / Phone",
+    "colStatus": "Status",
+    "deletedSuffix": " (deleted)",
+    "viewAtCompany": "View at company",
+    "prevPage": "← Previous",
+    "nextPage": "Next →",
+    "pageStatus": "Page {page} / {totalPages}",
+    "emptyFiltered": "No contacts match the current filter.",
+    "clearFilters": "Clear filters"
   }
 }

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { getTranslations } from 'next-intl/server';
 import { getContacts } from '@/app/actions/contacts';
 import { getEmailTemplates, getPlaceholderHelp } from '@/app/actions/email-templates';
 import { getCurrentUser } from '@/app/actions/auth';
@@ -33,16 +34,7 @@ interface SearchParams {
   page?: string;
 }
 
-const CONTACT_STATUS_OPTIONS = [
-  { value: 'UNCONTACTED', label: 'Chưa liên hệ' },
-  { value: 'EMAIL_SENT', label: 'Đã gửi email' },
-  { value: 'RESPONDED', label: 'Đã phản hồi' },
-  { value: 'IN_PARTNERSHIP', label: 'Đang hợp tác' },
-];
-
-function statusLabel(status: string): string {
-  return CONTACT_STATUS_OPTIONS.find((o) => o.value === status)?.label || status;
-}
+const CONTACT_STATUS_VALUES = ['UNCONTACTED', 'EMAIL_SENT', 'RESPONDED', 'IN_PARTNERSHIP'] as const;
 
 export default async function ContactsPage({
   searchParams,
@@ -52,6 +44,16 @@ export default async function ContactsPage({
   const sp = await searchParams;
   const currentUser = await getCurrentUser();
   const isStaff = isStaffRole(currentUser?.role);
+  const t = await getTranslations('contacts');
+  const tStatus = await getTranslations('contactStatus');
+  const statusLabel = (status: string): string => {
+    // tStatus() throws nếu key không tồn tại trong messages/*.json — chỉ
+    // gọi khi chắc chắn status nằm trong CONTACT_STATUS_VALUES, fallback
+    // về giá trị thô nếu backend trả status lạ chưa từng gặp.
+    return (CONTACT_STATUS_VALUES as readonly string[]).includes(status)
+      ? tStatus(status as (typeof CONTACT_STATUS_VALUES)[number])
+      : status;
+  };
 
   if (!isStaff) {
     return (
@@ -59,10 +61,10 @@ export default async function ContactsPage({
       // (root layout.tsx) đã lo container rồi.
       <>
         <div className="page-head">
-          <h1>Liên hệ</h1>
+          <h1>{t('title')}</h1>
         </div>
         <div className="empty-state">
-          <p>Trang này chỉ dành cho nhân viên (ss_team/admin).</p>
+          <p>{t('staffOnly')}</p>
         </div>
       </>
     );
@@ -73,10 +75,10 @@ export default async function ContactsPage({
   const tabNav = (
     <nav className="tab-nav" style={{ marginBottom: '22px' }}>
       <Link href="/contacts?tab=danh-sach" className={tab !== 'quan-ly' ? 'active' : ''}>
-        Danh sách contact
+        {t('tabList')}
       </Link>
       <Link href="/contacts?tab=quan-ly" className={tab === 'quan-ly' ? 'active' : ''}>
-        Quản lý mẫu email
+        {t('tabManage')}
       </Link>
     </nav>
   );
@@ -87,8 +89,8 @@ export default async function ContactsPage({
       <>
         <div className="page-head">
           <div>
-            <span className="eyebrow">Career Hub / Doanh nghiệp</span>
-            <h1>Quản lý mẫu email</h1>
+            <span className="eyebrow">{t('eyebrow')}</span>
+            <h1>{t('manageTitle')}</h1>
           </div>
         </div>
         {tabNav}
@@ -132,9 +134,9 @@ export default async function ContactsPage({
     <>
       <div className="page-head">
         <div>
-          <span className="eyebrow">Career Hub / Doanh nghiệp</span>
-          <h1>Liên hệ HR</h1>
-          <p className="lede">Toàn bộ liên hệ HR đã thu thập, gộp mọi công ty.</p>
+          <span className="eyebrow">{t('eyebrow')}</span>
+          <h1>{t('listTitle')}</h1>
+          <p className="lede">{t('listSubtitle')}</p>
         </div>
       </div>
 
@@ -145,27 +147,29 @@ export default async function ContactsPage({
           <input
             type="search"
             name="search"
-            placeholder="Tìm theo tên liên hệ..."
+            placeholder={t('searchPlaceholder')}
             defaultValue={sp.search}
             style={{ flex: '1 1 300px', minWidth: '200px' }}
           />
           <select name="contact_status" defaultValue={sp.contact_status || ''}>
-            <option value="">Mọi trạng thái</option>
-            {CONTACT_STATUS_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
+            <option value="">{t('allStatuses')}</option>
+            {CONTACT_STATUS_VALUES.map((value) => (
+              <option key={value} value={value}>{tStatus(value)}</option>
             ))}
           </select>
           <label style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <input type="checkbox" name="include_inactive" value="true" defaultChecked={sp.include_inactive === 'true'} />
-            Kèm liên hệ đã xoá
+            {t('includeInactive')}
           </label>
-          <button type="submit" className="btn">Lọc</button>
-          {hasFilters && <Link href="/contacts" className="btn">Xóa lọc</Link>}
+          <button type="submit" className="btn">{t('filterBtn')}</button>
+          {hasFilters && <Link href="/contacts" className="btn">{t('clearFilter')}</Link>}
         </form>
       </div>
 
       <p className="result-count">
-        {total} liên hệ phù hợp{contacts.length > 0 ? ` — hiển thị ${offset + 1}–${offset + contacts.length}` : ''}
+        {contacts.length > 0
+          ? t('resultCountShowing', { total, from: offset + 1, to: offset + contacts.length })
+          : t('resultCount', { total })}
       </p>
 
       {contacts.length > 0 ? (
@@ -174,11 +178,11 @@ export default async function ContactsPage({
             <table className="contact-table">
               <thead>
                 <tr>
-                  <th>Tên</th>
-                  <th>Công ty</th>
-                  <th>Chức vụ</th>
-                  <th>Email / SĐT</th>
-                  <th>Trạng thái</th>
+                  <th>{t('colName')}</th>
+                  <th>{t('colCompany')}</th>
+                  <th>{t('colJobTitle')}</th>
+                  <th>{t('colEmailPhone')}</th>
+                  <th>{t('colStatus')}</th>
                   <th></th>
                 </tr>
               </thead>
@@ -187,7 +191,7 @@ export default async function ContactsPage({
                   <tr key={c.contact_id} style={!c.is_active ? { opacity: 0.6 } : undefined}>
                     <td>
                       <strong>{c.contact_name}</strong>
-                      {!c.is_active && <span className="muted"> (đã xoá)</span>}
+                      {!c.is_active && <span className="muted">{t('deletedSuffix')}</span>}
                     </td>
                     <td>
                       <Link href={`/companies/${c.company_id}`}>{c.company_name}</Link>
@@ -210,7 +214,7 @@ export default async function ContactsPage({
                     </td>
                     <td className="actions-cell">
                       <Link className="btn btn-text" href={`/companies/${c.company_id}`}>
-                        Xem tại công ty
+                        {t('viewAtCompany')}
                       </Link>
                     </td>
                   </tr>
@@ -222,19 +226,19 @@ export default async function ContactsPage({
           {totalPages > 1 && (
             <div className="pagination">
               {page > 1 && (
-                <Link href={qs(page - 1)} className="page-btn">← Trang trước</Link>
+                <Link href={qs(page - 1)} className="page-btn">{t('prevPage')}</Link>
               )}
-              <span className="page-status">Trang {page} / {totalPages}</span>
+              <span className="page-status">{t('pageStatus', { page, totalPages })}</span>
               {page < totalPages && (
-                <Link href={qs(page + 1)} className="page-btn">Trang sau →</Link>
+                <Link href={qs(page + 1)} className="page-btn">{t('nextPage')}</Link>
               )}
             </div>
           )}
         </>
       ) : (
         <div className="empty-state">
-          <p>Chưa có liên hệ nào khớp bộ lọc.</p>
-          {hasFilters && <Link href="/contacts" className="btn">Xóa bộ lọc</Link>}
+          <p>{t('emptyFiltered')}</p>
+          {hasFilters && <Link href="/contacts" className="btn">{t('clearFilters')}</Link>}
         </div>
       )}
     </>

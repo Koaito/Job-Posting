@@ -209,5 +209,60 @@
     "editNoteLabel": "Ghi chú sửa đổi (cho lịch sử thao tác)",
     "editNotePlaceholder": "Không bắt buộc...",
     "submitCreate": "Tạo công ty"
+  },
+  "dashboard": {
+    "title": "Tổng quan thị trường job & database doanh nghiệp",
+    "subtitle": "Số liệu cập nhật theo dữ liệu hiện có trong hệ thống.",
+    "kpi": {
+      "totalJobs": "Job trong database",
+      "totalCompanies": "Công ty trong database",
+      "jobsOpen": "Job đang còn tuyển",
+      "totalStudents": "Học viên đã đăng ký",
+      "totalApplications": "Lượt ứng tuyển",
+      "totalSavedJobs": "Job đã lưu"
+    },
+    "welcome": "Chào mừng trở lại, {name}! 👋",
+    "welcomeFallbackName": "bạn",
+    "phase2Done": "✅ Phase 2 hoàn thành: Dashboard stats đang hiển thị 6 KPIs (khớp Flask dashboard)",
+    "phase3Done": "✅ Phase 3 hoàn thành: Jobs CRUD (list, create, edit, delete)",
+    "recentActivity": "Hoạt động gần đây",
+    "viewAll": "Xem tất cả →",
+    "systemActor": "Hệ thống (crawl tự động)",
+    "noActivity": "Chưa có hoạt động nào."
+  },
+  "contactStatus": {
+    "UNCONTACTED": "Chưa liên hệ",
+    "EMAIL_SENT": "Đã gửi email",
+    "RESPONDED": "Đã phản hồi",
+    "IN_PARTNERSHIP": "Đang hợp tác"
+  },
+  "contacts": {
+    "title": "Liên hệ",
+    "staffOnly": "Trang này chỉ dành cho nhân viên (ss_team/admin).",
+    "eyebrow": "Career Hub / Doanh nghiệp",
+    "tabList": "Danh sách contact",
+    "tabManage": "Quản lý mẫu email",
+    "manageTitle": "Quản lý mẫu email",
+    "listTitle": "Liên hệ HR",
+    "listSubtitle": "Toàn bộ liên hệ HR đã thu thập, gộp mọi công ty.",
+    "searchPlaceholder": "Tìm theo tên liên hệ...",
+    "allStatuses": "Mọi trạng thái",
+    "includeInactive": "Kèm liên hệ đã xoá",
+    "filterBtn": "Lọc",
+    "clearFilter": "Xóa lọc",
+    "resultCount": "{total} liên hệ phù hợp",
+    "resultCountShowing": "{total} liên hệ phù hợp — hiển thị {from}–{to}",
+    "colName": "Tên",
+    "colCompany": "Công ty",
+    "colJobTitle": "Chức vụ",
+    "colEmailPhone": "Email / SĐT",
+    "colStatus": "Trạng thái",
+    "deletedSuffix": " (đã xoá)",
+    "viewAtCompany": "Xem tại công ty",
+    "prevPage": "← Trang trước",
+    "nextPage": "Trang sau →",
+    "pageStatus": "Trang {page} / {totalPages}",
+    "emptyFiltered": "Chưa có liên hệ nào khớp bộ lọc.",
+    "clearFilters": "Xóa bộ lọc"
   }
 }

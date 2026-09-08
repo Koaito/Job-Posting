@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { getTranslations, getLocale } from 'next-intl/server';
 import { getDashboardStats, getRecentActivity } from '@/app/actions/dashboard';
 import { getCurrentUser } from '@/app/actions/auth';
 import { isStaffRole } from '@/lib/auth/roles';
@@ -21,56 +22,63 @@ export default async function DashboardPage() {
   // user cho Sidebar + redirect nếu chưa đăng nhập — gọi lại ở đây để
   // lấy full_name hiển thị ở welcome message, chấp nhận gọi API 2 lần
   // (không phải bug, chỉ là chưa tối ưu — có thể truyền qua context sau).
-  const [user, stats] = await Promise.all([
+  const [user, stats, t, locale] = await Promise.all([
     getCurrentUser(),
     getDashboardStats(),
+    getTranslations('dashboard'),
+    getLocale(),
   ]);
   const isStaff = isStaffRole(user?.role);
   // /audit-logs (nguồn của getRecentActivity) yêu cầu ss_team trở lên
   // — chỉ gọi khi chắc chắn có quyền, tránh gọi API vô ích rồi bị 403.
   const recentActivity = isStaff ? await getRecentActivity(8) : [];
+  // Locale cho new Date().toLocaleString() — 'vi-VN' hard-code trước đây
+  // luôn hiện định dạng ngày tiếng Việt kể cả khi UI đã ở locale=en.
+  // next-intl dùng mã "en"/"vi" (xem i18n/config.ts), Intl API cần BCP-47
+  // đầy đủ hơn (en-US/vi-VN) để định dạng đúng — map thủ công ở đây.
+  const dateLocale = locale === 'en' ? 'en-US' : 'vi-VN';
 
   return (
     // CHUYỂN 09/2026 (audit CSS): bỏ div "page-container" bọc ngoài —
     // class ảo, main.content (root layout.tsx) đã lo container rồi.
     <>
       <div className="page-head">
-        <h1>Tổng quan thị trường job & database doanh nghiệp</h1>
-        <p className="lede">Số liệu cập nhật theo dữ liệu hiện có trong hệ thống.</p>
+        <h1>{t('title')}</h1>
+        <p className="lede">{t('subtitle')}</p>
       </div>
 
       {/* KPI Cards - Matches Flask dashboard exactly (6 cards) */}
       <div className="kpi-row">
         <div className="kpi-card">
           <span className="kpi-num">{stats.total_jobs.toLocaleString()}</span>
-          <span className="kpi-label">Job trong database</span>
+          <span className="kpi-label">{t('kpi.totalJobs')}</span>
         </div>
 
         <div className="kpi-card">
           <span className="kpi-num">{stats.total_companies.toLocaleString()}</span>
-          <span className="kpi-label">Công ty trong database</span>
+          <span className="kpi-label">{t('kpi.totalCompanies')}</span>
         </div>
 
         <div className="kpi-card">
           <span className="kpi-num">{stats.jobs_open.toLocaleString()}</span>
-          <span className="kpi-label">Job đang còn tuyển</span>
+          <span className="kpi-label">{t('kpi.jobsOpen')}</span>
         </div>
 
         <div className="kpi-card">
           <span className="kpi-num">
             {stats.total_students !== null ? stats.total_students.toLocaleString() : '—'}
           </span>
-          <span className="kpi-label">Học viên đã đăng ký</span>
+          <span className="kpi-label">{t('kpi.totalStudents')}</span>
         </div>
 
         <div className="kpi-card">
           <span className="kpi-num">{stats.total_applications.toLocaleString()}</span>
-          <span className="kpi-label">Lượt ứng tuyển</span>
+          <span className="kpi-label">{t('kpi.totalApplications')}</span>
         </div>
 
         <div className="kpi-card">
           <span className="kpi-num">{stats.total_saved_jobs.toLocaleString()}</span>
-          <span className="kpi-label">Job đã lưu</span>
+          <span className="kpi-label">{t('kpi.totalSavedJobs')}</span>
         </div>
       </div>
 
@@ -80,7 +88,7 @@ export default async function DashboardPage() {
           có sẵn, dùng chung với khối "Hoạt động gần đây" ngay dưới) để
           nhất quán, thay vì để trơ không style. */}
       <div className="card" style={{ marginTop: '32px' }}>
-        <h2>Chào mừng trở lại, {user?.full_name || 'bạn'}! 👋</h2>
+        <h2>{t('welcome', { name: user?.full_name || t('welcomeFallbackName') })}</h2>
         <p>
           {/* BUG FIX: text cũ báo "Phase 3: Jobs CRUD đang chờ phát triển"
               dù thực tế đã code xong (dù trước đây đang lỗi) — cập nhật
@@ -92,8 +100,8 @@ export default async function DashboardPage() {
               lấy được màu gì cả. Không có class chung nào khác thay thế
               đúng ngữ nghĩa "chữ mờ" cho đoạn văn thường — để plain,
               tránh gán bừa 1 class không đúng ý nghĩa chỉ để có style. */}
-          ✅ Phase 2 hoàn thành: Dashboard stats đang hiển thị 6 KPIs (khớp Flask dashboard)<br />
-          ✅ Phase 3 hoàn thành: Jobs CRUD (list, create, edit, delete)
+          {t('phase2Done')}<br />
+          {t('phase3Done')}
         </p>
       </div>
 
@@ -104,11 +112,11 @@ export default async function DashboardPage() {
       {isStaff && (
         <div className="card" style={{ marginTop: '24px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3 style={{ margin: 0 }}>Hoạt động gần đây</h3>
+            <h3 style={{ margin: 0 }}>{t('recentActivity')}</h3>
             {/* BUG FIX (audit CSS 09/2026): class "link" không tồn tại
                 — dùng "btn btn-text" (class thật, đúng kiểu link-hành-
                 động nhỏ đã dùng ở mọi nơi khác trong app). */}
-            <Link href="/activity" className="btn btn-text">Xem tất cả →</Link>
+            <Link href="/activity" className="btn btn-text">{t('viewAll')}</Link>
           </div>
           {recentActivity.length > 0 ? (
             <ul style={{ listStyle: 'none', padding: 0, margin: '12px 0 0 0' }}>
@@ -117,16 +125,16 @@ export default async function DashboardPage() {
                   key={log.log_id}
                   style={{ padding: '8px 0', borderTop: '1px solid var(--border-color, #eee)', fontSize: '14px' }}
                 >
-                  <span className="muted">{new Date(log.created_at).toLocaleString('vi-VN')}</span>
+                  <span className="muted">{new Date(log.created_at).toLocaleString(dateLocale)}</span>
                   {' — '}
-                  {log.actor_name || <span className="muted">Hệ thống (crawl tự động)</span>}
+                  {log.actor_name || <span className="muted">{t('systemActor')}</span>}
                   {' · '}
                   {log.entity_label || log.entity_type}
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="empty-placeholder" style={{ margin: '12px 0 0 0' }}>Chưa có hoạt động nào.</p>
+            <p className="empty-placeholder" style={{ margin: '12px 0 0 0' }}>{t('noActivity')}</p>
           )}
         </div>
       )}
