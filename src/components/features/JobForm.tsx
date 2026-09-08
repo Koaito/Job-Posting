@@ -2,12 +2,21 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { createJob, updateJob } from '@/app/actions/jobs';
 
 /**
  * Reusable Job Form Component
  * Used for both create and edit modes
  * Matches Flask: templates/_job_form.html
+ *
+ * i18n (Giai đoạn 2, đợt "JobForm/CompanyForm", 09/2026): dịch label/
+ * heading/nút bấm hiển thị qua `useTranslations`. KHÔNG đổi bất kỳ
+ * `value` nào của `<option>`/enum — backend (schemas/jobs.py) chờ đúng
+ * các chuỗi tiếng Việt/mã cố định hiện có (vd `province_name="Hà Nội"`,
+ * `salary_type="NEGOTIABLE"`) nên chỉ dịch phần TEXT hiển thị, giữ
+ * nguyên `value` gửi lên server — tương tự nguyên tắc đã áp dụng ở tầng
+ * dịch `error_code` (Giai đoạn 3): không đổi dữ liệu, chỉ đổi hiển thị.
  */
 
 interface JobFormProps {
@@ -17,6 +26,9 @@ interface JobFormProps {
 
 export default function JobForm({ mode, initialData }: JobFormProps) {
   const router = useRouter();
+  const t = useTranslations('jobForm');
+  const tp = useTranslations('provinces');
+  const tc = useTranslations('common');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -79,10 +91,10 @@ export default function JobForm({ mode, initialData }: JobFormProps) {
       if (result.success && result.job) {
         router.push(`/jobs/${result.job.job_id}`);
       } else {
-        setError(result.error || 'Có lỗi xảy ra');
+        setError(result.error || tc('genericError'));
       }
-    } catch (err) {
-      setError('Không thể kết nối với server');
+    } catch {
+      setError(tc('networkError'));
     } finally {
       setIsSubmitting(false);
     }
@@ -90,7 +102,7 @@ export default function JobForm({ mode, initialData }: JobFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="card form-card">
-      <h3>{mode === 'create' ? 'Thông tin Job mới' : 'Sửa thông tin Job'}</h3>
+      <h3>{mode === 'create' ? t('titleCreate') : t('titleEdit')}</h3>
 
       {error && (
         // BUG FIX (đợt dọn nợ 09/2026): "alert alert-error" không tồn
@@ -115,14 +127,14 @@ export default function JobForm({ mode, initialData }: JobFormProps) {
           class riêng gì cho dấu sao. */}
       <div className="form-grid">
         <label className="span-2" htmlFor="job_title">
-          Tên Job *
+          {t('jobTitleLabel')}
           <input
             type="text"
             id="job_title"
             name="job_title"
             required
             defaultValue={initialData?.job_title}
-            placeholder="VD: Frontend Developer"
+            placeholder={t('jobTitlePlaceholder')}
           />
         </label>
 
@@ -130,45 +142,49 @@ export default function JobForm({ mode, initialData }: JobFormProps) {
             _company_combobox.html — chưa làm ở Next.js, giữ input text
             đơn giản, chỉ sửa cấu trúc/class cho đúng thật). */}
         <label className="span-2" htmlFor="company_id">
-          Company ID *
+          {t('companyIdLabel')}
           <input
             type="text"
             id="company_id"
             name="company_id"
             required
             defaultValue={initialData?.company_id}
-            placeholder="UUID của công ty"
+            placeholder={t('companyIdPlaceholder')}
           />
           <span style={{ fontSize: '12px', color: 'var(--muted)', fontWeight: 400 }}>
-            TODO: Thay bằng autocomplete selector
+            {t('companyIdHint')}
           </span>
         </label>
 
         <label className="span-2" htmlFor="matching_industry">
-          Ngành
+          {t('industryLabel')}
           <select
             id="matching_industry"
             name="matching_industry"
             defaultValue={initialData?.matching_industry || ''}
           >
-            <option value="">-- Chọn ngành --</option>
-            <option value="CNTT - Phần mềm">CNTT - Phần mềm</option>
-            <option value="Marketing - PR">Marketing - PR</option>
-            <option value="Kinh doanh - Bán hàng">Kinh doanh - Bán hàng</option>
-            <option value="Thiết kế - Mỹ thuật">Thiết kế - Mỹ thuật</option>
-            <option value="Khác">Khác</option>
+            <option value="">{t('selectIndustryOption')}</option>
+            {/* value giữ nguyên tiếng Việt — khớp đúng chuỗi backend
+                lưu/lọc theo matching_industry, chỉ TEXT hiển thị được dịch */}
+            <option value="CNTT - Phần mềm">{t('industryIt')}</option>
+            <option value="Marketing - PR">{t('industryMarketing')}</option>
+            <option value="Kinh doanh - Bán hàng">{t('industrySales')}</option>
+            <option value="Thiết kế - Mỹ thuật">{t('industryDesign')}</option>
+            <option value="Khác">{t('industryOther')}</option>
           </select>
         </label>
 
-        {/* Level - TODO: Load from backend /enums */}
+        {/* Level - TODO: Load from backend /enums. Value là tiếng Anh
+            sẵn (Intern/Fresher/...), khớp đúng backend — không cần dịch
+            text lẫn value cho nhóm này. */}
         <label className="span-1" htmlFor="level_code">
-          Level
+          {t('levelLabel')}
           <select
             id="level_code"
             name="level_code"
             defaultValue={initialData?.level_code || ''}
           >
-            <option value="">-- Chọn level --</option>
+            <option value="">{t('selectLevelOption')}</option>
             {/* BUG FIX: backend JobCreate/JobUpdate chỉ nhận level_code
                 dạng chuỗi (Intern|Fresher|Junior|Middle|Senior|Lead|Manager),
                 KHÔNG phải id số — value phải khớp đúng chuỗi backend mong đợi */}
@@ -182,59 +198,63 @@ export default function JobForm({ mode, initialData }: JobFormProps) {
           </select>
         </label>
 
-        {/* Province - TODO: Load from backend */}
+        {/* Province - TODO: Load from backend. Namespace "provinces"
+            dùng chung với CompanyForm.tsx (xem comment ở đó) — value
+            giữ nguyên tiếng Việt có dấu, khớp province_name backend lưu
+            trực tiếp, chỉ dịch TEXT hiển thị. */}
         <label className="span-1" htmlFor="province_name">
-          Địa điểm
+          {t('locationLabel')}
           <select
             id="province_name"
             name="province_name"
             defaultValue={initialData?.province_name || ''}
           >
-            <option value="">-- Chọn tỉnh/thành --</option>
+            <option value="">{tp('selectPlaceholder')}</option>
             {/* BUG FIX: backend nhận province_name dạng chuỗi tên tỉnh,
                 KHÔNG phải province_id số */}
-            <option value="Hà Nội">Hà Nội</option>
-            <option value="Hồ Chí Minh">Hồ Chí Minh</option>
-            <option value="Đà Nẵng">Đà Nẵng</option>
+            <option value="Hà Nội">{tp('hanoi')}</option>
+            <option value="Hồ Chí Minh">{tp('hcm')}</option>
+            <option value="Đà Nẵng">{tp('danang')}</option>
           </select>
         </label>
 
         {/* Work Type — khớp _job_form.html gốc (work_types), trước đây
             bị bỏ sót hoàn toàn khỏi form React. Value là mã enum
-            backend chờ (work_type_enum), nhãn hiển thị tiếng Việt
-            khớp WORK_TYPE_MAP bên Flask (crawler_client/jobs.py). */}
+            backend chờ (work_type_enum), nhãn hiển thị dịch theo
+            locale, khớp WORK_TYPE_MAP bên Flask (crawler_client/jobs.py)
+            cho bản tiếng Việt. */}
         <label className="span-1" htmlFor="work_type">
-          Hình thức làm việc
+          {t('workTypeLabel')}
           <select
             id="work_type"
             name="work_type"
             defaultValue={initialData?.work_type || ''}
           >
-            <option value="">-- Chọn hình thức --</option>
-            <option value="FULL_TIME">Toàn thời gian</option>
-            <option value="PART_TIME">Bán thời gian</option>
-            <option value="INTERNSHIP">Thực tập</option>
-            <option value="OTHER">Khác</option>
+            <option value="">{t('selectWorkTypeOption')}</option>
+            <option value="FULL_TIME">{t('workTypeFullTime')}</option>
+            <option value="PART_TIME">{t('workTypePartTime')}</option>
+            <option value="INTERNSHIP">{t('workTypeInternship')}</option>
+            <option value="OTHER">{t('workTypeOther')}</option>
           </select>
         </label>
 
         <label className="span-1" htmlFor="salary_type">
-          Loại lương
+          {t('salaryTypeLabel')}
           <select
             id="salary_type"
             name="salary_type"
             defaultValue={initialData?.salary_type || 'NEGOTIABLE'}
           >
-            <option value="RANGE">Khoảng</option>
-            <option value="EXACT">Cố định</option>
-            <option value="UPTO">Lên tới</option>
-            <option value="STARTING_FROM">Từ</option>
-            <option value="NEGOTIABLE">Thỏa thuận</option>
+            <option value="RANGE">{t('salaryTypeRange')}</option>
+            <option value="EXACT">{t('salaryTypeExact')}</option>
+            <option value="UPTO">{t('salaryTypeUpto')}</option>
+            <option value="STARTING_FROM">{t('salaryTypeStartingFrom')}</option>
+            <option value="NEGOTIABLE">{t('salaryTypeNegotiable')}</option>
             {/* BUG FIX (đợt dọn nợ 09/2026): SALARY_TYPE_MAP bên Flask
                 gốc có 6 giá trị, form React trước đây chỉ có 5 — thiếu
                 UNPAID (job không lương, vd thực tập không hỗ trợ) nên
                 job loại này không tạo/sửa được đúng qua web. */}
-            <option value="UNPAID">Không lương</option>
+            <option value="UNPAID">{t('salaryTypeUnpaid')}</option>
           </select>
         </label>
 
@@ -243,19 +263,19 @@ export default function JobForm({ mode, initialData }: JobFormProps) {
             web bị backend mặc định hiểu nhầm thành lương/tháng (sai
             lệch 12 lần, xem migration_add_salary_period.sql). */}
         <label className="span-1" htmlFor="salary_period">
-          Chu kỳ lương
+          {t('salaryPeriodLabel')}
           <select
             id="salary_period"
             name="salary_period"
             defaultValue={initialData?.salary_period || 'MONTH'}
           >
-            <option value="MONTH">Tháng</option>
-            <option value="YEAR">Năm</option>
+            <option value="MONTH">{t('salaryPeriodMonth')}</option>
+            <option value="YEAR">{t('salaryPeriodYear')}</option>
           </select>
         </label>
 
         <label className="span-1" htmlFor="salary_min">
-          Lương tối thiểu (VNĐ)
+          {t('salaryMinLabel')}
           <input
             type="number"
             id="salary_min"
@@ -266,7 +286,7 @@ export default function JobForm({ mode, initialData }: JobFormProps) {
         </label>
 
         <label className="span-1" htmlFor="salary_max">
-          Lương tối đa (VNĐ)
+          {t('salaryMaxLabel')}
           <input
             type="number"
             id="salary_max"
@@ -277,7 +297,7 @@ export default function JobForm({ mode, initialData }: JobFormProps) {
         </label>
 
         <label className="span-1" htmlFor="currency">
-          Tiền tệ
+          {t('currencyLabel')}
           <select
             id="currency"
             name="currency"
@@ -289,7 +309,7 @@ export default function JobForm({ mode, initialData }: JobFormProps) {
         </label>
 
         <label className="span-1" htmlFor="deadline">
-          Hạn nộp
+          {t('deadlineLabel')}
           <input
             type="date"
             id="deadline"
@@ -300,27 +320,27 @@ export default function JobForm({ mode, initialData }: JobFormProps) {
 
         {mode === 'edit' && (
           <label className="span-1" htmlFor="job_status">
-            Trạng thái
+            {t('statusLabel')}
             <select
               id="job_status"
               name="job_status"
               defaultValue={initialData?.job_status || 'OPEN'}
             >
-              <option value="OPEN">Đang tuyển</option>
-              <option value="CLOSED">Đã đóng</option>
+              <option value="OPEN">{t('statusOpen')}</option>
+              <option value="CLOSED">{t('statusClosed')}</option>
             </select>
           </label>
         )}
 
         {mode === 'edit' && (
           <label className="span-4" htmlFor="ss_team_notes">
-            Ghi chú nội bộ
+            {t('internalNotesLabel')}
             <textarea
               id="ss_team_notes"
               name="ss_team_notes"
               rows={4}
               defaultValue={initialData?.ss_team_notes}
-              placeholder="Ghi chú cho team SS..."
+              placeholder={t('internalNotesPlaceholder')}
             />
           </label>
         )}
@@ -332,7 +352,7 @@ export default function JobForm({ mode, initialData }: JobFormProps) {
           className="btn btn-primary"
           disabled={isSubmitting}
         >
-          {isSubmitting ? 'Đang lưu...' : (mode === 'create' ? 'Tạo Job' : 'Cập nhật')}
+          {isSubmitting ? tc('saving') : (mode === 'create' ? t('submitCreate') : tc('update'))}
         </button>
         <button
           type="button"
@@ -340,7 +360,7 @@ export default function JobForm({ mode, initialData }: JobFormProps) {
           onClick={() => router.back()}
           disabled={isSubmitting}
         >
-          Hủy
+          {tc('cancel')}
         </button>
       </div>
     </form>

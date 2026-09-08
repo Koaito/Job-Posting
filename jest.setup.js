@@ -1,5 +1,32 @@
 // Learn more: https://github.com/testing-library/jest-dom
 import '@testing-library/jest-dom'
+import viMessages from './src/messages/vi.json'
+
+// MOCK next-intl (thêm khi bắt đầu dịch component, Giai đoạn 2 "JobForm/
+// CompanyForm", 09/2026): next-intl build ra ESM thuần trong
+// node_modules (export{...}from...), Jest mặc định KHÔNG transform
+// node_modules — component nào import `useTranslations` từ 'next-intl'
+// (Sidebar/LanguageToggle/trang auth/JobForm/CompanyForm...) mà có test
+// gọi render() sẽ vỡ với "SyntaxError: Unexpected token 'export'" ngay
+// từ bước load module, che khuất hoàn toàn logic thật đang test. Mock
+// thẳng ở đây (áp dụng cho MỌI test file, không cần khai lại từng nơi)
+// — useTranslations(namespace) trả về hàm tra thẳng vào
+// src/messages/vi.json theo đúng namespace (hỗ trợ namespace lồng nhau
+// kiểu "auth.common"), fallback về chính `key` nếu thiếu — để test hiện
+// có (assert thẳng chuỗi tiếng Việt như "Tên Job", "Hủy"...) tiếp tục
+// đúng mà KHÔNG cần viết lại. Luôn dùng vi.json (không đọc cookie
+// locale) vì test không mô phỏng SSR cookie — đủ cho mục đích test unit
+// UI, việc dịch en thật đã có test riêng ở tầng error_code
+// (client.test.ts) và sẽ có test riêng cho UI nếu cần re-test theo locale.
+jest.mock('next-intl', () => ({
+  useTranslations: (namespace) => {
+    const ns = namespace
+      .split('.')
+      .reduce((acc, key) => (acc && typeof acc === 'object' ? acc[key] : undefined), viMessages)
+    return (key) => (ns && typeof ns === 'object' && key in ns ? ns[key] : key)
+  },
+  useLocale: () => 'vi',
+}))
 
 // Mock environment variables
 process.env.FASTAPI_URL = 'http://localhost:8000'

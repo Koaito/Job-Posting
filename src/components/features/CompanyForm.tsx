@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { createCompany, updateCompany } from '@/app/actions/companies';
 import { PARTNERSHIP_POTENTIAL_OPTIONS } from '@/lib/companies/potential';
 import type { CompanyDetail } from '@/types/companies';
@@ -24,9 +25,24 @@ import type { CompanyDetail } from '@/types/companies';
  * tỉnh sẽ không khớp chéo được giữa 2 trang. Việc mở rộng đủ 63
  * tỉnh/thành nên làm 1 lần cho cả 2 form, không phải việc riêng của
  * module Companies.
+ *
+ * i18n (Giai đoạn 2, đợt "JobForm/CompanyForm", 09/2026): dùng chung
+ * namespace "provinces" với JobForm.tsx (đúng tinh thần đoạn comment
+ * trên — 2 form phải hiển thị nhất quán) và namespace "common" cho nút
+ * Hủy/Cập nhật/lỗi chung. Chỉ dịch TEXT hiển thị, giữ nguyên mọi
+ * `value` gửi lên backend (xem comment tương tự ở JobForm.tsx).
+ *
+ * CHƯA dịch (để đợt sau, cố ý): nhãn PARTNERSHIP_POTENTIAL_OPTIONS
+ * (lib/companies/potential.ts) — hàm partnershipPotentialClass() ở đó
+ * tự suy ra tên class CSS TRỰC TIẾP từ label tiếng Việt (`.potential-Cao`,
+ * xem docstring trong file đó), nên đổi label hiển thị theo locale mà
+ * không tách riêng "label để hiển thị" khỏi "label để suy ra class" sẽ
+ * làm vỡ style badge tiềm năng ở nơi khác đang dùng chung hàm này (vd
+ * company card/list). Cần sửa `potential.ts` trước (decouple 2 việc
+ * đó), không nên vá tạm trong lúc dịch JobForm/CompanyForm.
  */
 
-const PROVINCE_OPTIONS = ['Hà Nội', 'Hồ Chí Minh', 'Đà Nẵng'];
+const PROVINCE_OPTIONS = ['Hà Nội', 'Hồ Chí Minh', 'Đà Nẵng'] as const;
 
 interface CompanyFormProps {
   mode: 'create' | 'edit';
@@ -35,8 +51,19 @@ interface CompanyFormProps {
 
 export default function CompanyForm({ mode, initialData }: CompanyFormProps) {
   const router = useRouter();
+  const t = useTranslations('companyForm');
+  const tp = useTranslations('provinces');
+  const tc = useTranslations('common');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // value giữ nguyên tiếng Việt có dấu (khớp province_name backend lưu),
+  // chỉ tra label hiển thị theo locale qua namespace "provinces".
+  const PROVINCE_LABEL_KEY: Record<(typeof PROVINCE_OPTIONS)[number], 'hanoi' | 'hcm' | 'danang'> = {
+    'Hà Nội': 'hanoi',
+    'Hồ Chí Minh': 'hcm',
+    'Đà Nẵng': 'danang',
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -73,10 +100,10 @@ export default function CompanyForm({ mode, initialData }: CompanyFormProps) {
       if (result.success && result.company) {
         router.push(`/companies/${result.company.company_id}`);
       } else {
-        setError(result.error || 'Có lỗi xảy ra');
+        setError(result.error || tc('genericError'));
       }
     } catch {
-      setError('Không thể kết nối với server');
+      setError(tc('networkError'));
     } finally {
       setIsSubmitting(false);
     }
@@ -84,7 +111,7 @@ export default function CompanyForm({ mode, initialData }: CompanyFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="card form-card">
-      <h3>{mode === 'create' ? 'Thông tin công ty mới' : 'Sửa hồ sơ công ty'}</h3>
+      <h3>{mode === 'create' ? t('titleCreate') : t('titleEdit')}</h3>
 
       {error && <div className="flash flash-error">{error}</div>}
 
@@ -96,24 +123,24 @@ export default function CompanyForm({ mode, initialData }: CompanyFormProps) {
           label. */}
       <div className="form-grid">
         <label className="span-4" htmlFor="company_name">
-          Tên công ty *
+          {t('nameLabel')}
           <input
             type="text"
             id="company_name"
             name="company_name"
             required
             defaultValue={initialData?.company_name}
-            placeholder="VD: Công ty TNHH ABC"
+            placeholder={t('namePlaceholder')}
           />
         </label>
 
         <label className="span-1" htmlFor="tax_id">
-          Mã số thuế
+          {t('taxIdLabel')}
           <input type="text" id="tax_id" name="tax_id" defaultValue={initialData?.tax_id || ''} />
         </label>
 
         <label className="span-1" htmlFor="website">
-          Website
+          {t('websiteLabel')}
           <input
             type="url"
             id="website"
@@ -124,39 +151,41 @@ export default function CompanyForm({ mode, initialData }: CompanyFormProps) {
         </label>
 
         <label className="span-1" htmlFor="industry">
-          Lĩnh vực
+          {t('industryLabel')}
           <input
             type="text"
             id="industry"
             name="industry"
             defaultValue={initialData?.industry || ''}
-            placeholder="VD: CNTT - Phần mềm"
+            placeholder={t('industryPlaceholder')}
           />
         </label>
 
         <label className="span-1" htmlFor="company_size">
-          Quy mô
+          {t('sizeLabel')}
           <input
             type="text"
             id="company_size"
             name="company_size"
             defaultValue={initialData?.company_size || ''}
-            placeholder="VD: 50-200 nhân sự"
+            placeholder={t('sizePlaceholder')}
           />
         </label>
 
         <label className="span-2" htmlFor="province_name">
-          Tỉnh/thành
+          {t('provinceLabel')}
           <select id="province_name" name="province_name" defaultValue={initialData?.province_name || ''}>
-            <option value="">-- Chọn tỉnh/thành --</option>
+            <option value="">{tp('selectPlaceholder')}</option>
             {PROVINCE_OPTIONS.map((p) => (
-              <option key={p} value={p}>{p}</option>
+              <option key={p} value={p}>{tp(PROVINCE_LABEL_KEY[p])}</option>
             ))}
           </select>
         </label>
 
+        {/* PARTNERSHIP_POTENTIAL_OPTIONS: CHƯA dịch, xem comment đầu
+            file — label ở đây vẫn tiếng Việt cố định cho cả 2 locale. */}
         <label className="span-2" htmlFor="partnership_potential">
-          Tiềm năng hợp tác
+          {t('potentialLabel')}
           <select
             id="partnership_potential"
             name="partnership_potential"
@@ -169,12 +198,12 @@ export default function CompanyForm({ mode, initialData }: CompanyFormProps) {
         </label>
 
         <label className="span-4" htmlFor="address">
-          Địa chỉ
+          {t('addressLabel')}
           <input type="text" id="address" name="address" defaultValue={initialData?.address || ''} />
         </label>
 
         <label className="span-2" htmlFor="fanpage_url">
-          Fanpage
+          {t('fanpageLabel')}
           <input
             type="url"
             id="fanpage_url"
@@ -185,7 +214,7 @@ export default function CompanyForm({ mode, initialData }: CompanyFormProps) {
         </label>
 
         <label className="span-2" htmlFor="linkedin_url">
-          LinkedIn
+          {t('linkedinLabel')}
           <input
             type="url"
             id="linkedin_url"
@@ -197,18 +226,18 @@ export default function CompanyForm({ mode, initialData }: CompanyFormProps) {
 
         {mode === 'edit' && (
           <label className="span-4" htmlFor="note">
-            Ghi chú sửa đổi (cho lịch sử thao tác)
-            <textarea id="note" name="note" rows={2} placeholder="Không bắt buộc..." />
+            {t('editNoteLabel')}
+            <textarea id="note" name="note" rows={2} placeholder={t('editNotePlaceholder')} />
           </label>
         )}
       </div>
 
       <div className="form-actions">
         <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
-          {isSubmitting ? 'Đang lưu...' : mode === 'create' ? 'Tạo công ty' : 'Cập nhật'}
+          {isSubmitting ? tc('saving') : mode === 'create' ? t('submitCreate') : tc('update')}
         </button>
         <button type="button" className="btn btn-ghost" onClick={() => router.back()} disabled={isSubmitting}>
-          Hủy
+          {tc('cancel')}
         </button>
       </div>
     </form>
