@@ -176,9 +176,37 @@ const ERROR_TRANSLATIONS: Record<Locale, Record<string, string>> = {
  *   gốc), KHÔNG hiện lỗi trắng/"undefined". Đây là hành vi CHỦ Ý theo
  *   plan (Giai đoạn 3.2: "không dịch hết cùng lúc").
  */
-function resolveErrorMessage(errorCode: string, fallbackMessage: string, locale: Locale): string {
+/**
+ * Cơ chế template biến số (09/2026, đợt 1/2 — Giai đoạn 3).
+ *
+ * Một số error_code có giá trị runtime chèn vào message (VD job_id,
+ * company_id...) — dịch tĩnh sẽ làm mất thông tin đó. Backend (đợt 1)
+ * gửi kèm field `params: { value: <giá trị gốc> }` cạnh `error_code`/
+ * `message` cho nhóm CHỈ có đúng 1 giá trị động; bản dịch trong
+ * `errors.en.json` cho nhóm này dùng cú pháp `"{value}"` — hàm này thay
+ * `{value}` (hoặc bất kỳ `{key}` nào khác xuất hiện sau này ở đợt 2 cho
+ * nhóm nhiều biến) bằng giá trị thật từ `params`.
+ *
+ * Placeholder không có trong `params` được giữ nguyên (không throw) —
+ * an toàn nếu sau này có template gõ sai tên biến, tránh vỡ UI.
+ */
+function applyErrorParams(template: string, params?: Record<string, unknown>): string {
+  if (!params) return template;
+  return template.replace(/\{(\w+)\}/g, (match, key: string) =>
+    key in params ? String(params[key]) : match
+  );
+}
+
+function resolveErrorMessage(
+  errorCode: string,
+  fallbackMessage: string,
+  locale: Locale,
+  params?: Record<string, unknown>
+): string {
   if (locale === 'vi') return fallbackMessage;
-  return ERROR_TRANSLATIONS[locale]?.[errorCode] ?? fallbackMessage;
+  const template = ERROR_TRANSLATIONS[locale]?.[errorCode];
+  if (template === undefined) return fallbackMessage;
+  return applyErrorParams(template, params);
 }
 
 export async function formatErrorDetail(detail: unknown): Promise<string> {
@@ -201,10 +229,15 @@ export async function formatErrorDetail(detail: unknown): Promise<string> {
   if (detail && typeof detail === 'object') {
     const message = (detail as { message?: unknown }).message;
     const errorCode = (detail as { error_code?: unknown }).error_code;
+    const rawParams = (detail as { params?: unknown }).params;
+    const params =
+      rawParams && typeof rawParams === 'object' && !Array.isArray(rawParams)
+        ? (rawParams as Record<string, unknown>)
+        : undefined;
     if (typeof message === 'string') {
       if (typeof errorCode === 'string') {
         const locale = await getErrorLocale();
-        return resolveErrorMessage(errorCode, message, locale);
+        return resolveErrorMessage(errorCode, message, locale, params);
       }
       return message;
     }
