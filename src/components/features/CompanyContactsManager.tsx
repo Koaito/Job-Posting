@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { createContact, updateContact, assignContact, deleteContact } from '@/app/actions/contacts';
 import type { CompanyContact } from '@/types/contacts';
 
@@ -16,16 +17,7 @@ import type { CompanyContact } from '@/types/contacts';
  * backend là nguồn sự thật duy nhất về việc có cần note không).
  */
 
-const CONTACT_STATUS_OPTIONS = [
-  { value: 'UNCONTACTED', label: 'Chưa liên hệ' },
-  { value: 'EMAIL_SENT', label: 'Đã gửi email' },
-  { value: 'RESPONDED', label: 'Đã phản hồi' },
-  { value: 'IN_PARTNERSHIP', label: 'Đang hợp tác' },
-];
-
-function statusLabel(status: string): string {
-  return CONTACT_STATUS_OPTIONS.find((o) => o.value === status)?.label || status;
-}
+const CONTACT_STATUS_VALUES = ['UNCONTACTED', 'EMAIL_SENT', 'RESPONDED', 'IN_PARTNERSHIP'] as const;
 
 interface CompanyContactsManagerProps {
   companyId: string;
@@ -34,6 +26,12 @@ interface CompanyContactsManagerProps {
 
 export default function CompanyContactsManager({ companyId, initialContacts }: CompanyContactsManagerProps) {
   const router = useRouter();
+  const t = useTranslations('companyContacts');
+  const tStatus = useTranslations('contactStatus');
+  const statusLabel = (status: string): string =>
+    (CONTACT_STATUS_VALUES as readonly string[]).includes(status)
+      ? tStatus(status as (typeof CONTACT_STATUS_VALUES)[number])
+      : status;
   const [contacts, setContacts] = useState(initialContacts);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState('');
@@ -60,7 +58,7 @@ export default function CompanyContactsManager({ companyId, initialContacts }: C
         setShowCreateForm(false);
         router.refresh();
       } else {
-        setError(result.error || 'Không thể thêm liên hệ');
+        setError(result.error || t('errorAddFailed'));
       }
     });
   };
@@ -78,7 +76,7 @@ export default function CompanyContactsManager({ companyId, initialContacts }: C
         setEditNote('');
       } else {
         setError(
-          (result.error || '') + (result.error?.includes('note') ? '' : ' — nếu lỗi thiếu note, nhập lý do sửa ở ô bên cạnh rồi thử lại.')
+          (result.error || '') + (result.error?.includes('note') ? '' : t('errorUpdateStatusNoteHint'))
         );
       }
     });
@@ -86,7 +84,7 @@ export default function CompanyContactsManager({ companyId, initialContacts }: C
 
   const handleUnassign = (contactId: string) => {
     if (!editNote.trim()) {
-      setError('Vui lòng nhập lý do bỏ gán ở ô note.');
+      setError(t('errorUnassignNoteRequired'));
       return;
     }
     setError('');
@@ -100,14 +98,14 @@ export default function CompanyContactsManager({ companyId, initialContacts }: C
         setEditingId(null);
         setEditNote('');
       } else {
-        setError(result.error || 'Không thể bỏ gán');
+        setError(result.error || t('errorUnassignFailed'));
       }
     });
   };
 
   const handleDelete = (contactId: string) => {
     if (!deleteNote.trim()) {
-      setError('Vui lòng nhập lý do xoá.');
+      setError(t('errorDeleteNoteRequired'));
       return;
     }
     setError('');
@@ -119,7 +117,7 @@ export default function CompanyContactsManager({ companyId, initialContacts }: C
         setDeleteNote('');
         router.refresh();
       } else {
-        setError(result.error || 'Không thể xoá liên hệ');
+        setError(result.error || t('errorDeleteFailed'));
       }
     });
   };
@@ -131,7 +129,7 @@ export default function CompanyContactsManager({ companyId, initialContacts }: C
       <div style={{ marginBottom: '18px' }}>
         {!showCreateForm ? (
           <button type="button" className="btn btn-primary" onClick={() => setShowCreateForm(true)}>
-            + Thêm liên hệ HR
+            {t('addContact')}
           </button>
         ) : (
           <form
@@ -140,34 +138,34 @@ export default function CompanyContactsManager({ companyId, initialContacts }: C
             style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'flex-end' }}
           >
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label htmlFor="contact_name">Tên *</label>
+              <label htmlFor="contact_name">{t('nameLabel')}</label>
               <input id="contact_name" name="contact_name" type="text" required disabled={isPending} />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label htmlFor="job_title">Chức vụ</label>
+              <label htmlFor="job_title">{t('jobTitleLabel')}</label>
               <input id="job_title" name="job_title" type="text" disabled={isPending} />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label htmlFor="work_email">Email</label>
+              <label htmlFor="work_email">{t('emailLabel')}</label>
               <input id="work_email" name="work_email" type="email" disabled={isPending} />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label htmlFor="phone_number">SĐT</label>
+              <label htmlFor="phone_number">{t('phoneLabel')}</label>
               <input id="phone_number" name="phone_number" type="text" disabled={isPending} />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label htmlFor="social_link">Link mạng xã hội</label>
+              <label htmlFor="social_link">{t('socialLinkLabel')}</label>
               <input id="social_link" name="social_link" type="text" disabled={isPending} />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label htmlFor="found_source">Nguồn tìm thấy</label>
+              <label htmlFor="found_source">{t('foundSourceLabel')}</label>
               <input id="found_source" name="found_source" type="text" disabled={isPending} />
             </div>
             <button type="submit" className="btn btn-primary" disabled={isPending}>
-              {isPending ? 'Đang lưu...' : 'Thêm'}
+              {isPending ? t('saving') : t('add')}
             </button>
             <button type="button" className="btn" onClick={() => setShowCreateForm(false)} disabled={isPending}>
-              Huỷ
+              {t('cancel')}
             </button>
           </form>
         )}
@@ -178,11 +176,11 @@ export default function CompanyContactsManager({ companyId, initialContacts }: C
           <table className="contact-table">
             <thead>
               <tr>
-                <th>Tên</th>
-                <th>Chức vụ</th>
-                <th>Email / SĐT</th>
-                <th>Trạng thái</th>
-                <th>Thao tác</th>
+                <th>{t('colName')}</th>
+                <th>{t('colJobTitle')}</th>
+                <th>{t('colEmailPhone')}</th>
+                <th>{t('colStatus')}</th>
+                <th>{t('colActions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -193,7 +191,7 @@ export default function CompanyContactsManager({ companyId, initialContacts }: C
                     {c.social_link && (
                       <div>
                         <a href={c.social_link} target="_blank" rel="noopener noreferrer" className="btn btn-text">
-                          Link ↗
+                          {t('linkOpen')}
                         </a>
                       </div>
                     )}
@@ -211,14 +209,14 @@ export default function CompanyContactsManager({ companyId, initialContacts }: C
                           disabled={isPending}
                           onChange={(e) => handleUpdateStatus(c.contact_id, e.target.value)}
                         >
-                          {CONTACT_STATUS_OPTIONS.map((o) => (
-                            <option key={o.value} value={o.value}>{o.label}</option>
+                          {CONTACT_STATUS_VALUES.map((value) => (
+                            <option key={value} value={value}>{tStatus(value)}</option>
                           ))}
                         </select>
                         <textarea
                           value={editNote}
                           onChange={(e) => setEditNote(e.target.value)}
-                          placeholder="Lý do sửa (bắt buộc nếu đổi giá trị)..."
+                          placeholder={t('editNotePlaceholder')}
                           rows={2}
                           disabled={isPending}
                         />
@@ -229,14 +227,14 @@ export default function CompanyContactsManager({ companyId, initialContacts }: C
                             disabled={isPending}
                             onClick={() => handleUnassign(c.contact_id)}
                           >
-                            Bỏ gán phụ trách
+                            {t('unassign')}
                           </button>
                           <button
                             type="button"
                             className="btn btn-text"
                             onClick={() => { setEditingId(null); setEditNote(''); }}
                           >
-                            Đóng
+                            {t('close')}
                           </button>
                         </div>
                       </div>
@@ -250,7 +248,7 @@ export default function CompanyContactsManager({ companyId, initialContacts }: C
                         <textarea
                           value={deleteNote}
                           onChange={(e) => setDeleteNote(e.target.value)}
-                          placeholder="Lý do xoá — bắt buộc..."
+                          placeholder={t('deleteNotePlaceholder')}
                           rows={2}
                           disabled={isPending}
                         />
@@ -261,14 +259,14 @@ export default function CompanyContactsManager({ companyId, initialContacts }: C
                             disabled={isPending}
                             onClick={() => handleDelete(c.contact_id)}
                           >
-                            Xác nhận xoá
+                            {t('confirmDelete')}
                           </button>
                           <button
                             type="button"
                             className="btn"
                             onClick={() => { setDeletingId(null); setDeleteNote(''); }}
                           >
-                            Huỷ
+                            {t('cancel')}
                           </button>
                         </div>
                       </div>
@@ -279,14 +277,14 @@ export default function CompanyContactsManager({ companyId, initialContacts }: C
                           className="btn btn-text"
                           onClick={() => { setEditingId(c.contact_id); setEditNote(''); }}
                         >
-                          Sửa
+                          {t('edit')}
                         </button>
                         <button
                           type="button"
                           className="btn btn-text"
                           onClick={() => { setDeletingId(c.contact_id); setDeleteNote(''); }}
                         >
-                          Xoá
+                          {t('delete')}
                         </button>
                       </>
                     )}
@@ -297,7 +295,7 @@ export default function CompanyContactsManager({ companyId, initialContacts }: C
           </table>
         </div>
       ) : (
-        <div className="empty-state">Chưa có liên hệ HR nào cho công ty này.</div>
+        <div className="empty-state">{t('emptyState')}</div>
       )}
     </div>
   );

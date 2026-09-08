@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { createEmailTemplate, updateEmailTemplate, deleteEmailTemplate } from '@/app/actions/email-templates';
 import ConfirmActionButton from '@/components/features/ConfirmActionButton';
 import type { EmailTemplate, ContactStatusForTemplate, PlaceholderHelp } from '@/types/email-templates';
@@ -20,16 +21,7 @@ import type { EmailTemplate, ContactStatusForTemplate, PlaceholderHelp } from '@
  * không", để backend là nguồn sự thật duy nhất).
  */
 
-const STATUS_OPTIONS: { value: ContactStatusForTemplate; label: string }[] = [
-  { value: 'UNCONTACTED', label: 'Chưa liên hệ' },
-  { value: 'EMAIL_SENT', label: 'Đã gửi email' },
-  { value: 'RESPONDED', label: 'Đã phản hồi' },
-  { value: 'IN_PARTNERSHIP', label: 'Đang hợp tác' },
-];
-
-function statusLabel(status: string): string {
-  return STATUS_OPTIONS.find((o) => o.value === status)?.label || status;
-}
+const STATUS_VALUES: ContactStatusForTemplate[] = ['UNCONTACTED', 'EMAIL_SENT', 'RESPONDED', 'IN_PARTNERSHIP'];
 
 interface EmailTemplateManagerProps {
   initialTemplates: EmailTemplate[];
@@ -40,6 +32,12 @@ type FormMode = { kind: 'create' } | { kind: 'edit'; template: EmailTemplate } |
 
 export default function EmailTemplateManager({ initialTemplates, placeholderHelp }: EmailTemplateManagerProps) {
   const router = useRouter();
+  const t = useTranslations('emailTemplates');
+  const tStatus = useTranslations('contactStatus');
+  const statusLabel = (status: string): string =>
+    (STATUS_VALUES as readonly string[]).includes(status)
+      ? tStatus(status as ContactStatusForTemplate)
+      : status;
   const [templates, setTemplates] = useState(initialTemplates);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState('');
@@ -49,8 +47,7 @@ export default function EmailTemplateManager({ initialTemplates, placeholderHelp
 
   const handleSubmit = (formData: FormData) => {
     setError('');
-    const recommended_for = STATUS_OPTIONS
-      .map((o) => o.value)
+    const recommended_for = STATUS_VALUES
       .filter((v) => formData.get(`status_${v}`) === 'on');
     const displayOrderRaw = String(formData.get('display_order') || '0');
     const note = String(formData.get('note') || '').trim();
@@ -66,11 +63,11 @@ export default function EmailTemplateManager({ initialTemplates, placeholderHelp
           note: note || undefined,
         });
         if (result.success && result.template) {
-          setTemplates((prev) => prev.map((t) => (t.template_id === result.template!.template_id ? result.template! : t)));
+          setTemplates((prev) => prev.map((tpl) => (tpl.template_id === result.template!.template_id ? result.template! : tpl)));
           closeForm();
           router.refresh();
         } else {
-          setError((result.error || 'Không thể cập nhật mẫu email') + (note ? '' : ' — nếu lỗi thiếu note, nhập lý do sửa rồi thử lại.'));
+          setError((result.error || t('errorUpdateFailed')) + (note ? '' : t('errorUpdateNoteHint')));
         }
       } else {
         const result = await createEmailTemplate({
@@ -86,7 +83,7 @@ export default function EmailTemplateManager({ initialTemplates, placeholderHelp
           closeForm();
           router.refresh();
         } else {
-          setError(result.error || 'Không thể thêm mẫu email');
+          setError(result.error || t('errorCreateFailed'));
         }
       }
     });
@@ -95,7 +92,7 @@ export default function EmailTemplateManager({ initialTemplates, placeholderHelp
   const handleDelete = async (templateId: string, note?: string) => {
     const result = await deleteEmailTemplate(templateId, note || '');
     if (result.success) {
-      setTemplates((prev) => prev.filter((t) => t.template_id !== templateId));
+      setTemplates((prev) => prev.filter((tpl) => tpl.template_id !== templateId));
       router.refresh();
     }
     return result;
@@ -107,19 +104,19 @@ export default function EmailTemplateManager({ initialTemplates, placeholderHelp
     <div>
       <div className="et-manager-head">
         <div>
-          <h4 style={{ margin: '0 0 4px' }}>Mẫu email liên hệ</h4>
-          <p className="lede">Soạn sẵn nội dung email để dùng khi liên hệ HR — dùng {'{{...}}'} cho phần tự động điền.</p>
+          <h4 style={{ margin: '0 0 4px' }}>{t('heading')}</h4>
+          <p className="lede">{t('subheading', { placeholder: '{{...}}' })}</p>
         </div>
         {!formMode && (
           <button type="button" className="btn btn-primary" onClick={() => setFormMode({ kind: 'create' })}>
-            + Thêm mẫu mới
+            {t('addNew')}
           </button>
         )}
       </div>
 
       {Object.keys(placeholderHelp.placeholders).length > 0 && (
         <details className="et-placeholder-help">
-          <summary>Xem danh sách placeholder có thể dùng</summary>
+          <summary>{t('showPlaceholders')}</summary>
           <dl>
             {Object.entries(placeholderHelp.placeholders).map(([key, note]) => (
               <div key={key}>
@@ -135,18 +132,18 @@ export default function EmailTemplateManager({ initialTemplates, placeholderHelp
 
       {formMode && (
         <form action={handleSubmit} className="form-card et-manager-form">
-          <h3>{formMode.kind === 'create' ? 'Thêm mẫu mới' : `Sửa mẫu — ${editing?.title}`}</h3>
+          <h3>{formMode.kind === 'create' ? t('formTitleCreate') : t('formTitleEdit', { title: editing?.title ?? '' })}</h3>
           <div className="form-grid">
             <label className="span-2">
-              Tiêu đề *
+              {t('titleLabel')}
               <input name="title" type="text" defaultValue={editing?.title} required disabled={isPending} />
             </label>
             <label className="span-2">
-              Mô tả ngắn
+              {t('descriptionLabel')}
               <input name="description" type="text" defaultValue={editing?.description || ''} disabled={isPending} maxLength={500} />
             </label>
             <label className="span-4">
-              Nội dung mẫu *
+              {t('bodyLabel')}
               <textarea
                 name="body"
                 className="et-manager-body-textarea"
@@ -156,35 +153,35 @@ export default function EmailTemplateManager({ initialTemplates, placeholderHelp
               />
             </label>
             <div className="span-4 et-manager-status-field">
-              <span className="et-manager-field-label">Gợi ý dùng cho trạng thái</span>
+              <span className="et-manager-field-label">{t('recommendedForLabel')}</span>
               <div className="et-manager-status-checks">
-                {STATUS_OPTIONS.map((o) => (
-                  <label key={o.value} className="et-manager-status-check">
+                {STATUS_VALUES.map((value) => (
+                  <label key={value} className="et-manager-status-check">
                     <input
                       type="checkbox"
-                      name={`status_${o.value}`}
-                      defaultChecked={editing?.recommended_for.includes(o.value)}
+                      name={`status_${value}`}
+                      defaultChecked={editing?.recommended_for.includes(value)}
                       disabled={isPending}
                     />
-                    {o.label}
+                    {tStatus(value)}
                   </label>
                 ))}
               </div>
             </div>
             <label className="span-2">
-              Thứ tự hiển thị
+              {t('displayOrderLabel')}
               <input name="display_order" type="number" defaultValue={editing?.display_order ?? 0} disabled={isPending} />
             </label>
             <label className="span-4">
-              {formMode.kind === 'edit' ? 'Lý do sửa (bắt buộc nếu có thay đổi)' : 'Ghi chú (tuỳ chọn)'}
+              {formMode.kind === 'edit' ? t('noteLabelEdit') : t('noteLabelCreate')}
               <textarea name="note" rows={2} disabled={isPending} />
             </label>
             <div className="form-actions span-4">
               <button type="submit" className="btn btn-primary" disabled={isPending}>
-                {isPending ? 'Đang lưu...' : formMode.kind === 'create' ? 'Thêm mẫu' : 'Lưu thay đổi'}
+                {isPending ? t('saving') : formMode.kind === 'create' ? t('submitCreate') : t('submitEdit')}
               </button>
               <button type="button" className="btn" onClick={closeForm} disabled={isPending}>
-                Huỷ
+                {t('cancel')}
               </button>
             </div>
           </div>
@@ -193,50 +190,50 @@ export default function EmailTemplateManager({ initialTemplates, placeholderHelp
 
       {templates.length > 0 ? (
         <div className="et-manager-grid">
-          {templates.map((t) => (
-            <div key={t.template_id} className="et-manager-card">
+          {templates.map((tpl) => (
+            <div key={tpl.template_id} className="et-manager-card">
               <div className="et-manager-card-head">
-                <strong>{t.title}</strong>
-                <span className="muted" style={{ fontSize: '12px' }}>Thứ tự {t.display_order}</span>
+                <strong>{tpl.title}</strong>
+                <span className="muted" style={{ fontSize: '12px' }}>{t('displayOrderPrefix', { order: tpl.display_order })}</span>
               </div>
-              {t.description && <p className="muted" style={{ margin: 0, fontSize: '13px' }}>{t.description}</p>}
-              {t.recommended_for.length > 0 && (
+              {tpl.description && <p className="muted" style={{ margin: 0, fontSize: '13px' }}>{tpl.description}</p>}
+              {tpl.recommended_for.length > 0 && (
                 <div className="et-manager-tags">
-                  {t.recommended_for.map((s) => (
+                  {tpl.recommended_for.map((s) => (
                     <span key={s} className="badge badge-info">{statusLabel(s)}</span>
                   ))}
                 </div>
               )}
-              <p className="et-manager-body-preview">{t.body.length > 220 ? `${t.body.slice(0, 220)}…` : t.body}</p>
+              <p className="et-manager-body-preview">{tpl.body.length > 220 ? `${tpl.body.slice(0, 220)}…` : tpl.body}</p>
               <div className="et-manager-card-actions">
                 <button
                   type="button"
                   className="btn"
-                  onClick={() => setFormMode({ kind: 'edit', template: t })}
+                  onClick={() => setFormMode({ kind: 'edit', template: tpl })}
                   disabled={isPending}
                 >
-                  Sửa
+                  {t('edit')}
                 </button>
                 <ConfirmActionButton
-                  triggerLabel="Xoá"
+                  triggerLabel={t('delete')}
                   triggerClassName="btn btn-danger"
-                  confirmMessage={`Xoá hẳn mẫu "${t.title}"? Không thể hoàn tác (xoá hẳn, không phải xoá mềm).`}
+                  confirmMessage={t('confirmDeleteMessage', { title: tpl.title })}
                   showNote
                   requireNote
-                  noteLabel="Lý do xoá"
-                  noteRequiredError="Vui lòng nhập lý do xoá."
-                  confirmButtonLabel="Xoá mẫu"
-                  confirmButtonLoadingLabel="Đang xoá..."
-                  onConfirm={(note) => handleDelete(t.template_id, note)}
+                  noteLabel={t('deleteNoteLabel')}
+                  noteRequiredError={t('deleteNoteRequiredError')}
+                  confirmButtonLabel={t('confirmDeleteButton')}
+                  confirmButtonLoadingLabel={t('confirmDeleteLoading')}
+                  onConfirm={(note) => handleDelete(tpl.template_id, note)}
                   onSuccess={() => {}}
-                  defaultErrorMessage="Không thể xoá mẫu email"
+                  defaultErrorMessage={t('deleteFailedError')}
                 />
               </div>
             </div>
           ))}
         </div>
       ) : (
-        <div className="empty-state"><p>Chưa có mẫu email nào — bấm &quot;Thêm mẫu mới&quot; để bắt đầu.</p></div>
+        <div className="empty-state"><p>{t('emptyState')}</p></div>
       )}
     </div>
   );
