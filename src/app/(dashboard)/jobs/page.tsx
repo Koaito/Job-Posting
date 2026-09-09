@@ -1,6 +1,7 @@
 import { getJobs } from '@/app/actions/jobs';
 import { industryClass, jobStatusChipClass, jobStatusLabel } from '@/lib/jobs/badges';
 import Link from 'next/link';
+import { getTranslations } from 'next-intl/server';
 
 /**
  * Jobs List Page
@@ -50,6 +51,7 @@ export default async function JobsPage({
   // filter/phân trang bị bỏ qua trong im lặng.
   searchParams: Promise<SearchParams>;
 }) {
+  const t = await getTranslations('jobsPage');
   const sp = await searchParams;
   const page = parseInt(sp.page || '1');
   const limit = 50;
@@ -96,15 +98,15 @@ export default async function JobsPage({
     <>
       <div className="page-head">
         <div>
-          <span className="eyebrow">Career Hub / Quản lý</span>
-          <h1>Danh sách Job</h1>
-          <p className="lede">Tổng {total} job trong database</p>
+          <span className="eyebrow">{t('eyebrow')}</span>
+          <h1>{t('title')}</h1>
+          <p className="lede">{t('lede', { total })}</p>
         </div>
         {/* Bỏ div "page-head-actions" bọc ngoài (cũng là class ảo) —
             .page-head vốn đã là flex justify-content: space-between,
             nút chỉ cần là con trực tiếp (xem templates/index.html gốc). */}
         <Link href="/jobs/new" className="btn btn-primary">
-          + Thêm Job Mới
+          {t('addNew')}
         </Link>
       </div>
 
@@ -112,40 +114,40 @@ export default async function JobsPage({
         <input
           type="search"
           name="search"
-          placeholder="Tìm theo tên job..."
+          placeholder={t('searchPlaceholder')}
           defaultValue={sp.search}
         />
         <select name="industry" defaultValue={sp.industry || ''}>
-          <option value="">Mọi ngành</option>
+          <option value="">{t('allIndustries')}</option>
           {INDUSTRY_OPTIONS.map((i) => (
             <option key={i} value={i}>{i}</option>
           ))}
         </select>
         <select name="level" defaultValue={sp.level || ''}>
-          <option value="">Mọi level</option>
+          <option value="">{t('allLevels')}</option>
           {LEVEL_OPTIONS.map((l) => (
             <option key={l} value={l}>{l}</option>
           ))}
         </select>
         <select name="province" defaultValue={sp.province || ''}>
-          <option value="">Mọi tỉnh/thành</option>
+          <option value="">{t('allProvinces')}</option>
           {PROVINCE_OPTIONS.map((p) => (
             <option key={p} value={p}>{p}</option>
           ))}
         </select>
         <select name="status" defaultValue={sp.status || ''}>
-          <option value="">Tất cả trạng thái</option>
-          <option value="OPEN">Đang tuyển</option>
-          <option value="CLOSED">Đã đóng</option>
+          <option value="">{t('allStatuses')}</option>
+          <option value="OPEN">{t('statusOpen')}</option>
+          <option value="CLOSED">{t('statusClosed')}</option>
         </select>
-        <button type="submit" className="btn btn-ghost">Lọc</button>
-        {hasFilters && <Link href="/jobs" className="btn btn-text">Xóa bộ lọc</Link>}
+        <button type="submit" className="btn btn-ghost">{t('filterButton')}</button>
+        {hasFilters && <Link href="/jobs" className="btn btn-text">{t('clearFilters')}</Link>}
       </form>
 
       {jobs.length > 0 ? (
         <>
           <p className="result-count">
-            Hiển thị {offset + 1}–{offset + jobs.length} / {total} job phù hợp
+            {t('resultCount', { from: offset + 1, to: offset + jobs.length, total })}
           </p>
 
           {/* CHUYỂN 09/2026: cấu trúc card viết lại đúng theo CSS thật
@@ -189,14 +191,18 @@ export default async function JobsPage({
                     {(job.salary_min || job.salary_max) && (
                       <span>
                         💰 {job.salary_min?.toLocaleString() || '—'} - {job.salary_max?.toLocaleString() || '—'}{' '}
-                        {job.currency || 'VNĐ'}
+                        {job.currency || t('currencyDefault')}
                       </span>
                     )}
                     {job.deadline && (
-                      <span>📅 Hạn nộp: {new Date(job.deadline).toLocaleDateString('vi-VN')}</span>
+                      // CỐ Ý CHƯA dịch: toLocaleDateString('vi-VN') —
+                      // thuộc phạm vi Polish (còn nhiều chỗ hardcode
+                      // 'vi-VN' tương tự trong repo), không xử lý ở đợt
+                      // Language này.
+                      <span>📅 {t('deadline', { date: new Date(job.deadline).toLocaleDateString('vi-VN') })}</span>
                     )}
                     {job.source_name && job.source_name !== 'MANUAL' && (
-                      <span>Nguồn: {job.source_name}</span>
+                      <span>{t('source', { source: job.source_name })}</span>
                     )}
                   </div>
 
@@ -207,10 +213,10 @@ export default async function JobsPage({
                       thêm tính năng mới trong đợt chỉ sửa tên class này. */}
                   <div className="ticket-actions">
                     <Link href={`/jobs/${job.job_id}`} className="btn btn-text">
-                      Xem chi tiết
+                      {t('viewDetail')}
                     </Link>
                     <Link href={`/jobs/${job.job_id}/edit`} className="btn btn-ghost">
-                      Sửa
+                      {t('edit')}
                     </Link>
                   </div>
                 </div>
@@ -223,17 +229,17 @@ export default async function JobsPage({
             <div className="pagination">
               {page > 1 && (
                 <Link href={qs({ page: String(page - 1) })} className="page-btn">
-                  ← Trang trước
+                  {t('prevPage')}
                 </Link>
               )}
 
               <span className="page-status">
-                Trang {page} / {totalPages}
+                {t('pageStatus', { page, totalPages })}
               </span>
 
               {page < totalPages && (
                 <Link href={qs({ page: String(page + 1) })} className="page-btn">
-                  Trang sau →
+                  {t('nextPage')}
                 </Link>
               )}
             </div>
@@ -241,11 +247,11 @@ export default async function JobsPage({
         </>
       ) : (
         <div className="empty-state">
-          <p>Không tìm thấy job nào.</p>
+          <p>{t('empty')}</p>
           {hasFilters ? (
-            <Link href="/jobs" className="btn btn-text">Xóa bộ lọc</Link>
+            <Link href="/jobs" className="btn btn-text">{t('clearFilters')}</Link>
           ) : (
-            <Link href="/jobs/new" className="btn btn-primary">Thêm Job Đầu Tiên</Link>
+            <Link href="/jobs/new" className="btn btn-primary">{t('addFirst')}</Link>
           )}
         </div>
       )}

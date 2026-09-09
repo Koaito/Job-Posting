@@ -4,6 +4,7 @@
  */
 
 import { notFound } from 'next/navigation';
+import { getTranslations } from 'next-intl/server';
 import { getJobById } from '@/app/actions/jobs';
 import JobForm from '@/components/features/JobForm';
 
@@ -12,6 +13,7 @@ interface PageProps {
 }
 
 export default async function JobEditPage({ params }: PageProps) {
+  const t = await getTranslations('jobsEditPage');
   const { id } = await params;
   const job = await getJobById(id);
 
@@ -25,7 +27,7 @@ export default async function JobEditPage({ params }: PageProps) {
     // thật) — main.content đã lo container, chỉ cần header đúng class.
     <>
       <div className="page-head">
-        <h1>Sửa Job: {job.job_title}</h1>
+        <h1>{t('title', { jobTitle: job.job_title })}</h1>
       </div>
 
       <JobForm mode="edit" initialData={job} />

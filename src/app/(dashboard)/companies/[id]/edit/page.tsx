@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import { getTranslations } from 'next-intl/server';
 import { getCompanyById } from '@/app/actions/companies';
 import CompanyForm from '@/components/features/CompanyForm';
 
@@ -13,6 +14,7 @@ export default async function CompanyEditPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const t = await getTranslations('companiesEditPage');
   const { id } = await params;
   const company = await getCompanyById(id);
 
@@ -27,9 +29,9 @@ export default async function CompanyEditPage({
       <div className="page-head">
         <div>
           <span className="eyebrow">
-            <Link href={`/companies/${company.company_id}`}>← Quay lại</Link>
+            <Link href={`/companies/${company.company_id}`}>{t('back')}</Link>
           </span>
-          <h1>Sửa công ty: {company.company_name}</h1>
+          <h1>{t('title', { companyName: company.company_name })}</h1>
         </div>
       </div>
 

@@ -1,5 +1,6 @@
 import { getCompanies } from '@/app/actions/companies';
 import Link from 'next/link';
+import { getTranslations } from 'next-intl/server';
 import PotentialQuickEdit from '@/components/features/PotentialQuickEdit';
 
 /**
@@ -24,6 +25,7 @@ export default async function CompaniesPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
+  const t = await getTranslations('companiesPage');
   const resolvedSearchParams = await searchParams;
   const page = parseInt(resolvedSearchParams.page || '1');
   const limit = 50;
@@ -49,17 +51,17 @@ export default async function CompaniesPage({
     <>
       <div className="page-head">
         <div>
-          <span className="eyebrow">Career Hub / Doanh nghiệp</span>
-          <h1>Database công ty đối tác</h1>
+          <span className="eyebrow">{t('eyebrow')}</span>
+          <h1>{t('title')}</h1>
           <p className="lede">
-            Hồ sơ công ty đã tiếp cận/crawl được — vào từng công ty để xem job đã đăng.
+            {t('lede')}
           </p>
         </div>
         {/* Bỏ div "page-head-actions" bọc ngoài (cũng là class ảo) —
             .page-head vốn đã là flex justify-content: space-between,
             nút chỉ cần là con trực tiếp (xem templates/companies.html gốc). */}
         <Link href="/companies/new" className="btn btn-primary">
-          + Thêm công ty
+          {t('addNew')}
         </Link>
       </div>
 
@@ -68,23 +70,25 @@ export default async function CompaniesPage({
           <input
             type="search"
             name="keyword"
-            placeholder="Tìm theo tên công ty..."
+            placeholder={t('searchPlaceholder')}
             defaultValue={resolvedSearchParams.keyword}
             style={{ flex: '1 1 300px', minWidth: '200px' }}
           />
           <select name="province" defaultValue={resolvedSearchParams.province || ''}>
-            <option value="">Mọi tỉnh/thành</option>
+            <option value="">{t('allProvinces')}</option>
             {PROVINCE_OPTIONS.map((p) => (
               <option key={p} value={p}>{p}</option>
             ))}
           </select>
-          <button type="submit" className="btn">Lọc</button>
-          {hasFilters && <Link href="/companies" className="btn">Xóa lọc</Link>}
+          <button type="submit" className="btn">{t('filterButton')}</button>
+          {hasFilters && <Link href="/companies" className="btn">{t('clearFilters')}</Link>}
         </form>
       </div>
 
       <p className="result-count">
-        {total} công ty phù hợp{companies.length > 0 ? ` — hiển thị ${offset + 1}–${offset + companies.length}` : ''}
+        {companies.length > 0
+          ? t('resultCountWithRange', { total, from: offset + 1, to: offset + companies.length })
+          : t('resultCount', { total })}
       </p>
 
       {companies.length > 0 ? (
@@ -93,12 +97,12 @@ export default async function CompaniesPage({
             <table className="contact-table">
               <thead>
                 <tr>
-                  <th>Công ty</th>
-                  <th>Lĩnh vực</th>
-                  <th>Tỉnh/thành</th>
-                  <th>Quy mô</th>
-                  <th className="col-potential">Tiềm năng</th>
-                  <th>Website</th>
+                  <th>{t('colCompany')}</th>
+                  <th>{t('colIndustry')}</th>
+                  <th>{t('colProvince')}</th>
+                  <th>{t('colSize')}</th>
+                  <th className="col-potential">{t('colPotential')}</th>
+                  <th>{t('colWebsite')}</th>
                   <th></th>
                 </tr>
               </thead>
@@ -119,15 +123,15 @@ export default async function CompaniesPage({
                     <td>
                       {company.website ? (
                         <a className="btn btn-text" href={company.website} target="_blank" rel="noopener noreferrer">
-                          Website ↗
+                          {t('websiteLink')}
                         </a>
                       ) : (
                         <span className="muted">—</span>
                       )}
                     </td>
                     <td className="actions-cell">
-                      <Link className="btn btn-text" href={`/companies/${company.company_id}`}>Xem</Link>
-                      <Link className="btn btn-text" href={`/companies/${company.company_id}/edit`}>Sửa</Link>
+                      <Link className="btn btn-text" href={`/companies/${company.company_id}`}>{t('view')}</Link>
+                      <Link className="btn btn-text" href={`/companies/${company.company_id}/edit`}>{t('edit')}</Link>
                     </td>
                   </tr>
                 ))}
@@ -138,22 +142,22 @@ export default async function CompaniesPage({
           {totalPages > 1 && (
             <div className="pagination">
               {page > 1 && (
-                <Link href={qs(page - 1)} className="page-btn">← Trang trước</Link>
+                <Link href={qs(page - 1)} className="page-btn">{t('prevPage')}</Link>
               )}
-              <span className="page-status">Trang {page} / {totalPages}</span>
+              <span className="page-status">{t('pageStatus', { page, totalPages })}</span>
               {page < totalPages && (
-                <Link href={qs(page + 1)} className="page-btn">Trang sau →</Link>
+                <Link href={qs(page + 1)} className="page-btn">{t('nextPage')}</Link>
               )}
             </div>
           )}
         </>
       ) : (
         <div className="empty-state">
-          <p>Chưa có công ty nào khớp bộ lọc.</p>
+          <p>{t('empty')}</p>
           {hasFilters ? (
-            <Link href="/companies" className="btn">Xóa bộ lọc</Link>
+            <Link href="/companies" className="btn">{t('clearFilters')}</Link>
           ) : (
-            <Link href="/companies/new" className="btn btn-primary">Thêm công ty đầu tiên</Link>
+            <Link href="/companies/new" className="btn btn-primary">{t('addFirst')}</Link>
           )}
         </div>
       )}

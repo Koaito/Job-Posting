@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { getTranslations } from 'next-intl/server';
 import { getConversations, getPendingRequests } from '@/app/actions/messages';
 import { getCurrentUser } from '@/app/actions/auth';
 import { isStaffRole } from '@/lib/auth/roles';
@@ -14,6 +15,7 @@ import { MessagesInbox } from '@/components/features/MessagesInbox';
  * admin), danh sách hội thoại chung cho mọi role.
  */
 export default async function MessagesPage() {
+  const t = await getTranslations('messagesPage');
   const currentUser = await getCurrentUser();
   const isStaff = isStaffRole(currentUser?.role);
 
@@ -28,16 +30,14 @@ export default async function MessagesPage() {
     <>
       <header className="page-head">
         <div>
-          <span className="eyebrow">Career Hub / Nhắn tin</span>
-          <h1>Tin nhắn</h1>
+          <span className="eyebrow">{t('eyebrow')}</span>
+          <h1>{t('title')}</h1>
           <p className="lede">
-            {isStaff
-              ? 'Hội thoại với học viên và team SS khác. Yêu cầu nhắn tin mới từ học viên sẽ hiện ở mục riêng bên dưới.'
-              : 'Hội thoại với team SS. Gửi yêu cầu nhắn tin mới nếu chưa từng liên hệ với ai đó.'}
+            {isStaff ? t('ledeStaff') : t('ledeStudent')}
           </p>
         </div>
         <Link className="btn btn-primary" href="/messages/new">
-          ✎ Nhắn tin mới
+          {t('newMessage')}
         </Link>
       </header>
 

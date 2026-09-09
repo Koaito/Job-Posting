@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import { getTranslations } from 'next-intl/server';
 import { getCurrentUser } from '@/app/actions/auth';
 import { roleLabel, isStaffRole } from '@/lib/auth/roles';
 import ProfileSubnav from '@/components/features/ProfileSubnav';
@@ -37,6 +38,7 @@ import ThemeToggle from '@/components/features/ThemeToggle';
  * sub-nav riêng vì chỉ có đúng 1 tuỳ chọn, chưa đáng thêm 1 route mới.
  */
 export default async function ProfilePage() {
+  const t = await getTranslations('profilePage');
   const user = await getCurrentUser();
   if (!user) {
     redirect('/login');
@@ -47,8 +49,8 @@ export default async function ProfilePage() {
   return (
     <div className="auth-shell">
       <div className="auth-card profile-card">
-        <h1>Trang cá nhân</h1>
-        <p className="lede">Xem và cập nhật thông tin tài khoản của bạn.</p>
+        <h1>{t('title')}</h1>
+        <p className="lede">{t('lede')}</p>
 
         <ProfileSubnav active="overview" isStudent={isStudent} isStaff={isStaffRole(user.role)} />
 
@@ -58,18 +60,22 @@ export default async function ProfilePage() {
             <dd className="profile-info-value">{user.email}</dd>
           </div>
           <div>
-            <dt className="profile-info-label">Vai trò</dt>
+            {/* CỐ Ý CHƯA dịch: roleLabel() dùng chung ở nhiều file khác
+                chưa dịch — cùng lý do đã ghi ở StaffActivityList.tsx. */}
+            <dt className="profile-info-label">{t('role')}</dt>
             <dd className="profile-info-value">{roleLabel(user.role)}</dd>
           </div>
           <div>
-            <dt className="profile-info-label">Ngày tham gia</dt>
+            <dt className="profile-info-label">{t('joinedAt')}</dt>
             <dd className="profile-info-value">
+              {/* CỐ Ý CHƯA dịch: toLocaleDateString('vi-VN') — thuộc
+                  phạm vi Polish, không xử lý ở đợt Language này. */}
               {new Date(user.created_at).toLocaleDateString('vi-VN')}
             </dd>
           </div>
           {!isStudent && (
             <div>
-              <dt className="profile-info-label">Đăng nhập gần nhất</dt>
+              <dt className="profile-info-label">{t('lastLogin')}</dt>
               <dd className="profile-info-value">
                 {user.last_login_at
                   ? new Date(user.last_login_at).toLocaleDateString('vi-VN')
@@ -81,8 +87,8 @@ export default async function ProfilePage() {
 
         <ProfileOverviewForm user={user} />
 
-        <h2 style={{ marginTop: '32px' }}>Giao diện</h2>
-        <p className="lede">Chọn giao diện sáng/tối cho riêng trình duyệt này.</p>
+        <h2 style={{ marginTop: '32px' }}>{t('interfaceTitle')}</h2>
+        <p className="lede">{t('interfaceLede')}</p>
         <ThemeToggle />
       </div>
     </div>

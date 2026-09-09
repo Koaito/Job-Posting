@@ -4,6 +4,7 @@ import { getMyApplications, getMySavedJobs } from '@/app/actions/me';
 import { jobStatusChipClass, jobStatusLabel } from '@/lib/jobs/badges';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { getTranslations } from 'next-intl/server';
 import DeleteJobButton from '@/components/features/DeleteJobButton';
 import JobApplyActions from '@/components/features/JobApplyActions';
 import JobApplicantsPanel from '@/components/features/JobApplicantsPanel';
@@ -22,6 +23,7 @@ export default async function JobDetailPage({
   // đọc params.id, nếu không getJobById(undefined) sẽ luôn notFound().
   params: Promise<{ id: string }>;
 }) {
+  const t = await getTranslations('jobDetailPage');
   const { id } = await params;
   const job = await getJobById(id);
 
@@ -53,15 +55,15 @@ export default async function JobDetailPage({
       <div className="page-head">
         <div>
           <span className="eyebrow">
-            <Link href="/jobs">← Quay lại danh sách</Link>
+            <Link href="/jobs">{t('backToList')}</Link>
           </span>
           <h1>{job.job_title}</h1>
-          <p className="lede">{job.company_name || 'Công ty chưa xác định'}</p>
+          <p className="lede">{job.company_name || t('companyUnknown')}</p>
         </div>
         {/* Bỏ div "page-head-actions" bọc ngoài (class ảo) — .page-head
             vốn đã là flex space-between, nút chỉ cần là con trực tiếp. */}
         <Link href={`/jobs/${job.job_id}/edit`} className="btn btn-primary">
-          Sửa Job
+          {t('editJob')}
         </Link>
       </div>
 
@@ -69,13 +71,13 @@ export default async function JobDetailPage({
         {/* Main Content */}
         <div className="detail-main">
           <section className="card">
-            <h3>Thông tin chung</h3>
+            <h3>{t('generalInfo')}</h3>
             {/* BUG FIX (audit CSS 09/2026): "detail-list" không tồn tại
                 trong CSS nào — class thật cho khối dt/dd kiểu này là
                 "kv" (public/css/06-detail-page.css, dùng chung với
                 job_detail.html/company_detail.html gốc). */}
             <dl className="kv">
-              <dt>Trạng thái</dt>
+              <dt>{t('status')}</dt>
               <dd>
                 <span className={`status-chip ${jobStatusChipClass(job.job_status)}`}>
                   {jobStatusLabel(job.job_status)}
@@ -84,30 +86,30 @@ export default async function JobDetailPage({
 
               {job.matching_industry && (
                 <>
-                  <dt>Ngành</dt>
+                  <dt>{t('industry')}</dt>
                   <dd>{job.matching_industry}</dd>
                 </>
               )}
 
               {job.level_code && (
                 <>
-                  <dt>Level</dt>
+                  <dt>{t('level')}</dt>
                   <dd>{job.level_code}</dd>
                 </>
               )}
 
               {job.province_name && (
                 <>
-                  <dt>Địa điểm</dt>
+                  <dt>{t('location')}</dt>
                   <dd>{job.province_name}</dd>
                 </>
               )}
 
               {(job.salary_min || job.salary_max) && (
                 <>
-                  <dt>Mức lương</dt>
+                  <dt>{t('salary')}</dt>
                   <dd>
-                    {job.salary_min?.toLocaleString() || '—'} - {job.salary_max?.toLocaleString() || '—'} {job.currency || 'VNĐ'}
+                    {job.salary_min?.toLocaleString() || '—'} - {job.salary_max?.toLocaleString() || '—'} {job.currency || t('currencyDefault')}
                     {job.salary_type && <span className="muted"> ({job.salary_type})</span>}
                   </dd>
                 </>
@@ -115,8 +117,10 @@ export default async function JobDetailPage({
 
               {job.deadline && (
                 <>
-                  <dt>Hạn nộp</dt>
+                  <dt>{t('deadline')}</dt>
                   <dd>
+                    {/* CỐ Ý CHƯA dịch: toLocaleDateString('vi-VN') — thuộc
+                        phạm vi Polish, không xử lý ở đợt Language này. */}
                     {new Date(job.deadline).toLocaleDateString('vi-VN')}
                     {new Date(job.deadline) < new Date() && (
                       // BUG FIX (audit CSS 09/2026): "badge-error" không
@@ -124,7 +128,7 @@ export default async function JobDetailPage({
                       // kèm base "badge" (shape/padding riêng, xem
                       // public/css/12-activity-logs.css), không đứng 1
                       // mình như .status-chip/.badge-info.
-                      <span className="badge badge-danger" style={{ marginLeft: '8px' }}>Đã hết hạn</span>
+                      <span className="badge badge-danger" style={{ marginLeft: '8px' }}>{t('expired')}</span>
                     )}
                   </dd>
                 </>
@@ -143,31 +147,31 @@ export default async function JobDetailPage({
               .card, dùng "empty-placeholder" (class thật) thay vì
               "muted" cho trạng thái trống, khớp job_detail.html gốc. */}
           <section className="card">
-            <h3>Mô tả công việc</h3>
+            <h3>{t('jobDescription')}</h3>
             {job.parsed_content?.job_description ? (
               <p style={{ whiteSpace: 'pre-wrap' }}>{job.parsed_content.job_description}</p>
             ) : (
-              <p className="empty-placeholder">Chưa có mô tả chi tiết cho job này.</p>
+              <p className="empty-placeholder">{t('noDescription')}</p>
             )}
           </section>
 
           {job.parsed_content?.requirements && (
             <section className="card">
-              <h3>Yêu cầu ứng viên</h3>
+              <h3>{t('requirements')}</h3>
               <p style={{ whiteSpace: 'pre-wrap' }}>{job.parsed_content.requirements}</p>
             </section>
           )}
 
           {job.parsed_content?.perks && (
             <section className="card">
-              <h3>Quyền lợi</h3>
+              <h3>{t('perks')}</h3>
               <p style={{ whiteSpace: 'pre-wrap' }}>{job.parsed_content.perks}</p>
             </section>
           )}
 
           {job.parsed_content?.required_skills && job.parsed_content.required_skills.length > 0 && (
             <section className="card">
-              <h3>Kỹ năng yêu cầu</h3>
+              <h3>{t('requiredSkills')}</h3>
               <div className="skill-row">
                 {job.parsed_content.required_skills.map((skill) => (
                   <span key={skill} className="skill-tag">{skill}</span>
@@ -185,20 +189,22 @@ export default async function JobDetailPage({
             gồm cả position: sticky). */}
         <aside className="detail-side">
           <section className="card">
-            <h4>Thông tin hệ thống</h4>
+            <h4>{t('systemInfo')}</h4>
             <dl className="kv">
               <dt>ID</dt>
               <dd>{job.job_id}</dd>
 
-              <dt>Ngày tạo</dt>
+              <dt>{t('createdAt')}</dt>
+              {/* CỐ Ý CHƯA dịch: toLocaleDateString('vi-VN') — thuộc phạm
+                  vi Polish, không xử lý ở đợt Language này. */}
               <dd>{new Date(job.created_at).toLocaleDateString('vi-VN')}</dd>
 
-              <dt>Cập nhật lần cuối</dt>
+              <dt>{t('updatedAt')}</dt>
               <dd>{new Date(job.updated_at).toLocaleDateString('vi-VN')}</dd>
 
               {job.company_id && (
                 <>
-                  <dt>Công ty ID</dt>
+                  <dt>{t('companyId')}</dt>
                   <dd>
                     {/* Bỏ class "link" (ảo) — "kv dd a" đã tự tô màu
                         accent cho mọi link trong danh sách này rồi. */}
@@ -213,10 +219,10 @@ export default async function JobDetailPage({
 
           {isStaff ? (
             <section className="card">
-              <h4>Hành động</h4>
+              <h4>{t('actions')}</h4>
               <div className="action-row">
                 <Link href={`/jobs/${job.job_id}/edit`} className="btn btn-block">
-                  ✏️ Sửa Job
+                  ✏️ {t('editJob')}
                 </Link>
                 <DeleteJobButton jobId={job.job_id} jobTitle={job.job_title} />
               </div>
@@ -225,7 +231,7 @@ export default async function JobDetailPage({
             // Thêm 09/2026 (Phase 3.6) — học viên (role 'user') thấy nút
             // Ứng tuyển/Lưu job thay vì nút Sửa/Xoá dành cho staff.
             <section className="card">
-              <h4>Hành động</h4>
+              <h4>{t('actions')}</h4>
               <JobApplyActions
                 jobId={job.job_id}
                 jobStatus={job.job_status}

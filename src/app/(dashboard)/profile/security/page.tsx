@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import { getTranslations } from 'next-intl/server';
 import { getCurrentUser } from '@/app/actions/auth';
 import { isStaffRole } from '@/lib/auth/roles';
 import ProfileSubnav from '@/components/features/ProfileSubnav';
@@ -26,6 +27,7 @@ import ProfileSecurityForm from '@/components/features/ProfileSecurityForm';
  * chặn, giống hệt cách đã sửa ở trang overview.
  */
 export default async function ProfileSecurityPage() {
+  const t = await getTranslations('profileSecurityPage');
   const user = await getCurrentUser();
   if (!user) {
     redirect('/login');
@@ -34,8 +36,8 @@ export default async function ProfileSecurityPage() {
   return (
     <div className="auth-shell">
       <div className="auth-card profile-card">
-        <h1>Trang cá nhân</h1>
-        <p className="lede">Đổi mật khẩu đăng nhập của bạn.</p>
+        <h1>{t('title')}</h1>
+        <p className="lede">{t('lede')}</p>
 
         <ProfileSubnav
           active="security"
