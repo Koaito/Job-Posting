@@ -200,6 +200,22 @@ interface DynamicErrorHandler {
   translate: (message: string) => string | null;
 }
 
+/**
+ * Nhiều handler bên dưới cần hiện lại 1 danh sách giá trị hợp lệ mà
+ * backend chèn vào message dạng repr Python (vd `sorted(_VALID_...)`
+ * -> `"['CREATE', 'UPDATE']"`, có khi là set -> `"{'a', 'b'}"`). Không
+ * cần parse đúng kiểu Python thật — chỉ cần bỏ dấu ngoặc
+ * vuông/nhọn+nháy rồi nối lại bằng ", " cho dễ đọc ở bản tiếng Anh.
+ */
+function prettifyPythonListRepr(raw: string): string {
+  return raw
+    .replace(/^[[{]|[\]}]$/g, '')
+    .split(',')
+    .map((s) => s.trim().replace(/^['"]|['"]$/g, ''))
+    .filter(Boolean)
+    .join(', ');
+}
+
 const DYNAMIC_ERROR_HANDLERS: DynamicErrorHandler[] = [
   {
     // 21 error_code, vd: job_job_id_invalid_uuid, audit_log_actor_id_invalid_uuid,
@@ -216,7 +232,97 @@ const DYNAMIC_ERROR_HANDLERS: DynamicErrorHandler[] = [
       return `${field}: '${value}' is not a valid UUID.`;
     },
   },
+  /**
+   * Phần 2/2, batch 1 (09/2026): 5 error_code cùng khuôn "X 'value' không
+   * hợp lệ — có sẵn: [danh sách]" (audit_log/contact/crawl/maintenance).
+   */
+  {
+    appliesTo: (errorCode) =>
+      [
+        'audit_log_action_type_invalid',
+        'audit_log_entity_type_invalid',
+        'contact_contact_status_invalid',
+        'crawl_status_invalid',
+        'maintenance_status_invalid',
+      ].includes(errorCode),
+    translate: (message) => {
+      const match = /^(\w+) '(.*)' không hợp lệ — có sẵn: (\[.*\]|\{.*\})$/.exec(message);
+      if (!match) return null;
+      const [, field, value, list] = match;
+      return `${field}: '${value}' is not valid — available: ${prettifyPythonListRepr(list)}`;
+    },
+  },
+  /**
+   * 2 error_code khuôn "X 'value' không tồn tại. Có sẵn: [danh sách]"
+   * (khác `_hợp lệ_` ở trên: đây là "not found" cho 1 định danh không
+   * tồn tại, không phải "invalid value").
+   */
+  {
+    appliesTo: (errorCode) => ['crawl_not_found', 'maintenance_job_not_found'].includes(errorCode),
+    translate: (message) => {
+      const match = /^(\w+) '(.*)' không tồn tại\. Có sẵn: (\[.*\]|\{.*\})$/.exec(message);
+      if (!match) return null;
+      const [, field, value, list] = match;
+      return `${field}: '${value}' not found. Available: ${prettifyPythonListRepr(list)}`;
+    },
+  },
+  /**
+   * crawl_not_found_2: giống họ "not tồn tại" ở trên nhưng có 2 giá trị
+   * (category phụ thuộc source) — riêng 1 handler vì shape câu khác.
+   */
+  {
+    appliesTo: (errorCode) => errorCode === 'crawl_not_found_2',
+    translate: (message) => {
+      const match = /^Category '(.*)' không tồn tại cho source '(.*)'\. Có sẵn: (\[.*\])$/.exec(message);
+      if (!match) return null;
+      const [, category, source, list] = match;
+      return `Category '${category}' not found for source '${source}'. Available: ${prettifyPythonListRepr(list)}`;
+    },
+  },
+  /**
+   * 5 error_code khuôn "field 'value' + 1 câu hậu tố CỐ ĐỊNH riêng của
+   * từng error_code" — mỗi error_code 1 template vì hậu tố khác nhau
+   * hoàn toàn, nhưng đều chỉ có ĐÚNG 1 giá trị động cần bóc nên gộp
+   * chung 1 mảng cấu hình cho gọn thay vì lặp lại y hệt cấu trúc handler
+   * 5 lần.
+   */
+  ...(
+    [
+      {
+        code: 'import_entity_type_buoc_chon_cong',
+        pattern: /^entity_type '(.*)' không có bước chọn công ty — chỉ job\/contact\.$/,
+        template: (v: string) => `entity_type: '${v}' has no company-selection step — only job/contact support it.`,
+      },
+      {
+        code: 'import_entity_type_filter_status',
+        pattern: /^entity_type '(.*)' không có filter status\.$/,
+        template: (v: string) => `entity_type: '${v}' does not support the status filter.`,
+      },
+      {
+        code: 'import_entity_type_invalid',
+        pattern: /^entity_type '(.*)' không hợp lệ — chỉ nhận job\/company\/contact\.$/,
+        template: (v: string) => `entity_type: '${v}' is invalid — only job/company/contact are accepted.`,
+      },
+      {
+        code: 'job_company_not_found',
+        pattern: /^company_id '(.*)' không tồn tại — tạo công ty trước bằng POST \/companies\.$/,
+        template: (v: string) => `company_id: '${v}' does not exist — create the company first via POST /companies.`,
+      },
+      {
+        code: 'profile_job_trang_thai_ung_tuyen',
+        pattern: /^Job đang ở trạng thái '(.*)', không thể ứng tuyển\.$/,
+        template: (v: string) => `This job is in status '${v}' and can't be applied to.`,
+      },
+    ] satisfies { code: string; pattern: RegExp; template: (v: string) => string }[]
+  ).map(({ code, pattern, template }) => ({
+    appliesTo: (errorCode: string) => errorCode === code,
+    translate: (message: string) => {
+      const match = pattern.exec(message);
+      return match ? template(match[1]) : null;
+    },
+  })),
 ];
+
 
 function translateDynamicErrorMessage(errorCode: string, message: string): string | null {
   for (const handler of DYNAMIC_ERROR_HANDLERS) {

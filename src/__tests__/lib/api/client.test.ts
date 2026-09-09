@@ -202,5 +202,65 @@ describe('formatErrorDetail()', () => {
       };
       expect(await formatErrorDetail(detail)).toBe(detail.message);
     });
+
+    it('locale=en + nhóm "X không hợp lệ — có sẵn: [list]" (đợt "template biến số" 2/2, batch 1) -> dịch động + prettify list', async () => {
+      mockCookieGet.mockImplementation((name: string) =>
+        name === 'locale' ? { value: 'en' } : undefined
+      );
+      expect(
+        await formatErrorDetail({
+          error_code: 'audit_log_action_type_invalid',
+          message: "action_type 'FOO' không hợp lệ — có sẵn: ['CREATE', 'UPDATE', 'DELETE']",
+        })
+      ).toBe("action_type: 'FOO' is not valid — available: CREATE, UPDATE, DELETE");
+      expect(
+        await formatErrorDetail({
+          error_code: 'contact_contact_status_invalid',
+          message: "contact_status 'bad' không hợp lệ — có sẵn: ['NEW', 'CONTACTED']",
+        })
+      ).toBe("contact_status: 'bad' is not valid — available: NEW, CONTACTED");
+    });
+
+    it('locale=en + nhóm "X không tồn tại. Có sẵn: [list]" (1 hoặc 2 giá trị) -> dịch động', async () => {
+      mockCookieGet.mockImplementation((name: string) =>
+        name === 'locale' ? { value: 'en' } : undefined
+      );
+      expect(
+        await formatErrorDetail({
+          error_code: 'crawl_not_found',
+          message: "Source 'linkedin' không tồn tại. Có sẵn: ['topcv', 'vietnamworks']",
+        })
+      ).toBe("Source: 'linkedin' not found. Available: topcv, vietnamworks");
+      expect(
+        await formatErrorDetail({
+          error_code: 'crawl_not_found_2',
+          message: "Category 'foo' không tồn tại cho source 'topcv'. Có sẵn: ['data-analyst']",
+        })
+      ).toBe("Category 'foo' not found for source 'topcv'. Available: data-analyst");
+    });
+
+    it('locale=en + nhóm "field \'value\' + hậu tố cố định riêng" (5 error_code, 1 biến mỗi mã) -> dịch động', async () => {
+      mockCookieGet.mockImplementation((name: string) =>
+        name === 'locale' ? { value: 'en' } : undefined
+      );
+      expect(
+        await formatErrorDetail({
+          error_code: 'import_entity_type_invalid',
+          message: "entity_type 'foo' không hợp lệ — chỉ nhận job/company/contact.",
+        })
+      ).toBe("entity_type: 'foo' is invalid — only job/company/contact are accepted.");
+      expect(
+        await formatErrorDetail({
+          error_code: 'job_company_not_found',
+          message: "company_id 'xyz' không tồn tại — tạo công ty trước bằng POST /companies.",
+        })
+      ).toBe("company_id: 'xyz' does not exist — create the company first via POST /companies.");
+      expect(
+        await formatErrorDetail({
+          error_code: 'profile_job_trang_thai_ung_tuyen',
+          message: "Job đang ở trạng thái 'CLOSED', không thể ứng tuyển.",
+        })
+      ).toBe("This job is in status 'CLOSED' and can't be applied to.");
+    });
   });
 });
