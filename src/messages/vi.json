@@ -405,5 +405,39 @@
       "forgotPasswordFailed": "Không thể gửi email đặt lại mật khẩu",
       "resetPasswordFailed": "Đặt lại mật khẩu thất bại"
     }
+  },
+  "confirmButtons": {
+    "deleteJob": {
+      "triggerLabel": "🗑️ Xóa Job",
+      "confirmTitle": "⚠️ Xác nhận xóa",
+      "confirmMessagePrefix": "Bạn có chắc muốn xóa job",
+      "confirmMessageSuffix": "?",
+      "confirmMessageNote": "Job sẽ bị đóng (status = CLOSED).",
+      "confirmButtonLabel": "Xác nhận xóa",
+      "confirmButtonLoadingLabel": "Đang xóa...",
+      "defaultErrorMessage": "Không thể xóa job"
+    },
+    "deleteCompany": {
+      "triggerLabel": "🗑️ Xoá công ty",
+      "confirmTitle": "⚠️ Xác nhận xoá",
+      "confirmMessagePrefix": "Xoá công ty",
+      "confirmMessageSuffix": "? Đây là xoá mềm — JD liên quan vẫn giữ nguyên, có thể xem lại qua Lịch sử thao tác.",
+      "notePlaceholder": "Lý do xoá công ty này — bắt buộc...",
+      "noteRequiredError": "Vui lòng nhập lý do xoá.",
+      "confirmButtonLabel": "Xác nhận xoá",
+      "confirmButtonLoadingLabel": "Đang xoá...",
+      "defaultErrorMessage": "Không thể xoá công ty"
+    },
+    "withdrawApplication": {
+      "triggerLabel": "Rút hồ sơ",
+      "confirmTitle": "⚠️ Xác nhận rút hồ sơ",
+      "confirmMessagePrefix": "Bạn có chắc muốn rút hồ sơ ứng tuyển",
+      "confirmMessageSuffix": "? Bạn có thể ứng tuyển lại sau nếu muốn.",
+      "noteLabel": "Lý do rút hồ sơ (tuỳ chọn)",
+      "confirmButtonLabel": "Xác nhận rút hồ sơ",
+      "confirmButtonLoadingLabel": "Đang rút...",
+      "cancelButtonLabel": "Huỷ",
+      "defaultErrorMessage": "Không thể rút hồ sơ"
+    }
   }
 }

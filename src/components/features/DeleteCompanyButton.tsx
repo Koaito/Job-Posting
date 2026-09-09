@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { deleteCompany } from '@/app/actions/companies';
 import ConfirmActionButton from './ConfirmActionButton';
 
@@ -12,6 +13,11 @@ import ConfirmActionButton from './ConfirmActionButton';
  * Khác DeleteJobButton.tsx (chỉ cần bấm xác nhận): backend
  * CompanyDeleteRequest.note là field bắt buộc (thiếu -> 422) — nút này
  * PHẢI có ô nhập lý do, không thể chỉ confirm() suông.
+ *
+ * i18n (Giai đoạn 2, nhóm 5, 09/2026): dịch label/tiêu đề/nút bấm qua
+ * `useTranslations('confirmButtons')`, namespace `deleteCompany`. Không
+ * đổi hành vi/logic (vẫn showNote/requireNote), chỉ đổi hiển thị theo
+ * locale.
  */
 interface DeleteCompanyButtonProps {
   companyId: string;
@@ -20,25 +26,26 @@ interface DeleteCompanyButtonProps {
 
 export default function DeleteCompanyButton({ companyId, companyName }: DeleteCompanyButtonProps) {
   const router = useRouter();
+  const t = useTranslations('confirmButtons.deleteCompany');
 
   return (
     <ConfirmActionButton
-      triggerLabel="🗑️ Xoá công ty"
-      confirmTitle="⚠️ Xác nhận xoá"
+      triggerLabel={t('triggerLabel')}
+      confirmTitle={t('confirmTitle')}
       confirmMessage={
         <>
-          Xoá công ty <strong>&quot;{companyName}&quot;</strong>? Đây là xoá mềm — JD liên quan vẫn
-          giữ nguyên, có thể xem lại qua Lịch sử thao tác.
+          {t('confirmMessagePrefix')} <strong>&quot;{companyName}&quot;</strong>
+          {t('confirmMessageSuffix')}
         </>
       }
       showNote
       requireNote
       noteLabel=""
-      notePlaceholder="Lý do xoá công ty này — bắt buộc..."
-      noteRequiredError="Vui lòng nhập lý do xoá."
-      confirmButtonLabel="Xác nhận xoá"
-      confirmButtonLoadingLabel="Đang xoá..."
-      defaultErrorMessage="Không thể xoá công ty"
+      notePlaceholder={t('notePlaceholder')}
+      noteRequiredError={t('noteRequiredError')}
+      confirmButtonLabel={t('confirmButtonLabel')}
+      confirmButtonLoadingLabel={t('confirmButtonLoadingLabel')}
+      defaultErrorMessage={t('defaultErrorMessage')}
       onConfirm={(note) => deleteCompany(companyId, { note: note ?? '' })}
       onSuccess={() => router.push('/companies?deleted=1')}
     />

@@ -405,5 +405,39 @@
       "forgotPasswordFailed": "Could not send password reset email",
       "resetPasswordFailed": "Failed to reset password"
     }
+  },
+  "confirmButtons": {
+    "deleteJob": {
+      "triggerLabel": "🗑️ Delete Job",
+      "confirmTitle": "⚠️ Confirm delete",
+      "confirmMessagePrefix": "Are you sure you want to delete job",
+      "confirmMessageSuffix": "?",
+      "confirmMessageNote": "The job will be closed (status = CLOSED).",
+      "confirmButtonLabel": "Confirm delete",
+      "confirmButtonLoadingLabel": "Deleting...",
+      "defaultErrorMessage": "Failed to delete job"
+    },
+    "deleteCompany": {
+      "triggerLabel": "🗑️ Delete company",
+      "confirmTitle": "⚠️ Confirm delete",
+      "confirmMessagePrefix": "Delete company",
+      "confirmMessageSuffix": "? This is a soft delete — related job postings are kept and can still be viewed in the activity history.",
+      "notePlaceholder": "Reason for deleting this company — required...",
+      "noteRequiredError": "Please enter a reason for deletion.",
+      "confirmButtonLabel": "Confirm delete",
+      "confirmButtonLoadingLabel": "Deleting...",
+      "defaultErrorMessage": "Failed to delete company"
+    },
+    "withdrawApplication": {
+      "triggerLabel": "Withdraw application",
+      "confirmTitle": "⚠️ Confirm withdrawal",
+      "confirmMessagePrefix": "Are you sure you want to withdraw your application for",
+      "confirmMessageSuffix": "? You can apply again later if you change your mind.",
+      "noteLabel": "Reason for withdrawing (optional)",
+      "confirmButtonLabel": "Confirm withdrawal",
+      "confirmButtonLoadingLabel": "Withdrawing...",
+      "cancelButtonLabel": "Cancel",
+      "defaultErrorMessage": "Failed to withdraw application"
+    }
   }
 }
