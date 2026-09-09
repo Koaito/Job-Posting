@@ -163,6 +163,72 @@ const ERROR_TRANSLATIONS: Record<Locale, Record<string, string>> = {
 };
 
 /**
+ * Cơ chế template biến số cho error_code ĐỘNG (Giai đoạn 3, đợt "cơ chế
+ * template biến số", 09/2026, phần 1/2).
+ *
+ * Vấn đề: ~50 error_code còn lại (sau 85 mã tĩnh đã dịch ở 3 đợt trước)
+ * có message do backend chèn giá trị runtime qua f-string (UUID nhập
+ * sai, số lượng, danh sách hợp lệ...) — bảng tra tĩnh `errors.en.json`
+ * không dịch được vì không biết trước giá trị runtime là gì.
+ *
+ * Giải pháp: KHÔNG đổi backend (backend vẫn chỉ trả 1 chuỗi `message`
+ * đã ghép sẵn, không tách riêng "template" + "params" — đổi shape đó là
+ * việc lớn hơn nhiều, đụng cả FastAPI lẫn Flask, không cần thiết cho
+ * mục tiêu hiện tại). Thay vào đó: mỗi "handler" ở đây tự dùng RegExp để
+ * BÓC lại giá trị runtime từ chính `message` tiếng Việt đã nhận, rồi ráp
+ * vào template tiếng Anh tương ứng. Nếu message không khớp đúng pattern
+ * kỳ vọng (vd backend đổi câu chữ sau này, hoặc 1 vài raise cá biệt có
+ * thêm câu hướng dẫn phía sau — xem `JOB_COMPANY_ID_INVALID_UUID` ở
+ * `api/routers/jobs.py`, message dài hơn các anh em cùng họ vì có thêm
+ * đoạn "kiểm tra lại đã thay đúng company_id THẬT...") → `translate()`
+ * trả `null`, code gọi tự fallback về message tiếng Việt gốc — AN TOÀN,
+ * không bao giờ hiện `undefined`/lỗi parse ra UI, đúng nguyên tắc xuyên
+ * suốt Giai đoạn 3.
+ *
+ * Phần 1/2 (đợt này): xử lý TOÀN BỘ họ `*_invalid_uuid` (21 error_code,
+ * xem `api/error_codes.py`) bằng ĐÚNG 1 handler chung — cả họ này dùng
+ * chung 1 khuôn câu `f"{field} '{value}' không đúng định dạng UUID."`
+ * (chỉ khác tên field: job_id/company_id/created_by/run_id/...), không
+ * cần khai 21 template riêng lẻ. Phần 2/2 (đợt sau) sẽ xử lý các nhóm
+ * còn lại (status_invalid có danh sách hợp lệ, message có số lượng...),
+ * mỗi nhóm có khuôn câu khác nhau nên cần handler riêng.
+ */
+interface DynamicErrorHandler {
+  /** Handler này có áp dụng cho error_code này không (theo tên/hậu tố). */
+  appliesTo: (errorCode: string) => boolean;
+  /** Bóc giá trị runtime từ message vi + ráp template en. null = không khớp pattern, fallback về message gốc. */
+  translate: (message: string) => string | null;
+}
+
+const DYNAMIC_ERROR_HANDLERS: DynamicErrorHandler[] = [
+  {
+    // 21 error_code, vd: job_job_id_invalid_uuid, audit_log_actor_id_invalid_uuid,
+    // maintenance_run_id_invalid_uuid... — xem đầy đủ trong api/error_codes.py
+    // (grep "_INVALID_UUID"). KHÔNG áp dụng cho JOB_COMPANY_ID_INVALID_UUID dù
+    // tên khớp hậu tố, vì message thật của riêng nó dài hơn (có thêm câu hướng
+    // dẫn) nên sẽ không khớp regex bên dưới và tự fallback — không cần loại trừ
+    // thủ công.
+    appliesTo: (errorCode) => errorCode.endsWith('_invalid_uuid'),
+    translate: (message) => {
+      const match = /^(\w+) '(.*)' không đúng định dạng UUID\.$/.exec(message);
+      if (!match) return null;
+      const [, field, value] = match;
+      return `${field}: '${value}' is not a valid UUID.`;
+    },
+  },
+];
+
+function translateDynamicErrorMessage(errorCode: string, message: string): string | null {
+  for (const handler of DYNAMIC_ERROR_HANDLERS) {
+    if (handler.appliesTo(errorCode)) {
+      const translated = handler.translate(message);
+      if (translated != null) return translated;
+    }
+  }
+  return null;
+}
+
+/**
  * Tra `error_code` trong bảng dịch theo `locale` (Giai đoạn 3, 09/2026).
  *
  * Nguyên tắc (đúng theo plan_language_polish.md A.1/A.3.2):
@@ -170,43 +236,20 @@ const ERROR_TRANSLATIONS: Record<Locale, Record<string, string>> = {
  *   backend) — đây vốn đã là tiếng Việt chuẩn, không cần tra bảng
  *   `errors.vi.json` (file đó chỉ giữ để dự phòng override sau này, xem
  *   comment trong file).
- * - `locale === "en"`: tra `error_code` trong `errors.en.json`. Chỉ 1
- *   nhóm ưu tiên (auth/token/account) được dịch — các `error_code` khác
- *   CHƯA có trong bảng sẽ tự fallback về `fallbackMessage` (tiếng Việt
- *   gốc), KHÔNG hiện lỗi trắng/"undefined". Đây là hành vi CHỦ Ý theo
- *   plan (Giai đoạn 3.2: "không dịch hết cùng lúc").
+ * - `locale === "en"`: tra `error_code` trong `errors.en.json` (nhóm mã
+ *   TĨNH) trước; nếu không có, thử `DYNAMIC_ERROR_HANDLERS` (nhóm mã
+ *   ĐỘNG, xem comment ở trên); nếu cả 2 đều không khớp, fallback về
+ *   `fallbackMessage` (tiếng Việt gốc), KHÔNG hiện lỗi trắng/"undefined".
+ *   Đây là hành vi CHỦ Ý theo plan (Giai đoạn 3.2: "không dịch hết cùng
+ *   lúc").
  */
-/**
- * Cơ chế template biến số (09/2026, đợt 1/2 — Giai đoạn 3).
- *
- * Một số error_code có giá trị runtime chèn vào message (VD job_id,
- * company_id...) — dịch tĩnh sẽ làm mất thông tin đó. Backend (đợt 1)
- * gửi kèm field `params: { value: <giá trị gốc> }` cạnh `error_code`/
- * `message` cho nhóm CHỈ có đúng 1 giá trị động; bản dịch trong
- * `errors.en.json` cho nhóm này dùng cú pháp `"{value}"` — hàm này thay
- * `{value}` (hoặc bất kỳ `{key}` nào khác xuất hiện sau này ở đợt 2 cho
- * nhóm nhiều biến) bằng giá trị thật từ `params`.
- *
- * Placeholder không có trong `params` được giữ nguyên (không throw) —
- * an toàn nếu sau này có template gõ sai tên biến, tránh vỡ UI.
- */
-function applyErrorParams(template: string, params?: Record<string, unknown>): string {
-  if (!params) return template;
-  return template.replace(/\{(\w+)\}/g, (match, key: string) =>
-    key in params ? String(params[key]) : match
-  );
-}
-
-function resolveErrorMessage(
-  errorCode: string,
-  fallbackMessage: string,
-  locale: Locale,
-  params?: Record<string, unknown>
-): string {
+function resolveErrorMessage(errorCode: string, fallbackMessage: string, locale: Locale): string {
   if (locale === 'vi') return fallbackMessage;
-  const template = ERROR_TRANSLATIONS[locale]?.[errorCode];
-  if (template === undefined) return fallbackMessage;
-  return applyErrorParams(template, params);
+  const staticTranslation = ERROR_TRANSLATIONS[locale]?.[errorCode];
+  if (staticTranslation != null) return staticTranslation;
+  const dynamicTranslation = translateDynamicErrorMessage(errorCode, fallbackMessage);
+  if (dynamicTranslation != null) return dynamicTranslation;
+  return fallbackMessage;
 }
 
 export async function formatErrorDetail(detail: unknown): Promise<string> {
@@ -229,15 +272,10 @@ export async function formatErrorDetail(detail: unknown): Promise<string> {
   if (detail && typeof detail === 'object') {
     const message = (detail as { message?: unknown }).message;
     const errorCode = (detail as { error_code?: unknown }).error_code;
-    const rawParams = (detail as { params?: unknown }).params;
-    const params =
-      rawParams && typeof rawParams === 'object' && !Array.isArray(rawParams)
-        ? (rawParams as Record<string, unknown>)
-        : undefined;
     if (typeof message === 'string') {
       if (typeof errorCode === 'string') {
         const locale = await getErrorLocale();
-        return resolveErrorMessage(errorCode, message, locale, params);
+        return resolveErrorMessage(errorCode, message, locale);
       }
       return message;
     }

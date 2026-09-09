@@ -167,84 +167,40 @@ describe('formatErrorDetail()', () => {
       ).toBe('Company not found');
     });
 
-    it('locale=en + error_code động nhưng có TỪ 2 giá trị trở lên (chưa tới lượt, để đợt 2) -> CHƯA dịch, fallback về vi gốc', async () => {
+    it('locale=en + error_code nhóm *_invalid_uuid (đợt "template biến số" 1/2) -> bóc field/value, dịch động', async () => {
       mockCookieGet.mockImplementation((name: string) =>
         name === 'locale' ? { value: 'en' } : undefined
       );
-      // contact_status_invalid có 2 giá trị động (status nhập sai + danh sách hợp
-      // lệ) -> nằm trong phần 2/2 của cơ chế template, chưa xử lý ở đợt này.
-      const detail = {
-        error_code: 'contact_status_invalid',
-        message: "contact_status 'xyz' không hợp lệ — có sẵn: ['moi', 'da_lien_he']",
-      };
-      expect(await formatErrorDetail(detail)).toBe(
-        "contact_status 'xyz' không hợp lệ — có sẵn: ['moi', 'da_lien_he']"
-      );
+      expect(
+        await formatErrorDetail({
+          error_code: 'job_job_id_invalid_uuid',
+          message: "job_id 'xyz' không đúng định dạng UUID.",
+        })
+      ).toBe("job_id: 'xyz' is not a valid UUID.");
+      // Khác error_code, khác field/value trong message -> vẫn dịch đúng
+      // (1 handler chung xử lý được cả họ 21 error_code *_invalid_uuid).
+      expect(
+        await formatErrorDetail({
+          error_code: 'audit_log_actor_id_invalid_uuid',
+          message: "actor_id 'không-phải-uuid' không đúng định dạng UUID.",
+        })
+      ).toBe("actor_id: 'không-phải-uuid' is not a valid UUID.");
     });
 
-    describe('cơ chế template biến số (09/2026, đợt 1/2) — error_code CHỈ 1 giá trị động, dùng params.value', () => {
-      it('locale=en + error_code UUID động (job_job_id_invalid_uuid) + params.value -> dịch, thay {value} bằng giá trị thật', async () => {
-        mockCookieGet.mockImplementation((name: string) =>
-          name === 'locale' ? { value: 'en' } : undefined
-        );
-        const detail = {
-          error_code: 'job_job_id_invalid_uuid',
-          message: "job_id 'xyz' không đúng định dạng UUID.",
-          params: { value: 'xyz' },
-        };
-        expect(await formatErrorDetail(detail)).toBe("job_id 'xyz' is not a valid UUID.");
-      });
-
-      it('locale=vi + error_code có params -> vẫn dùng thẳng message gốc từ backend, KHÔNG đụng vào params', async () => {
-        mockCookieGet.mockImplementation((name: string) =>
-          name === 'locale' ? { value: 'vi' } : undefined
-        );
-        const detail = {
-          error_code: 'job_job_id_invalid_uuid',
-          message: "job_id 'xyz' không đúng định dạng UUID.",
-          params: { value: 'xyz' },
-        };
-        expect(await formatErrorDetail(detail)).toBe("job_id 'xyz' không đúng định dạng UUID.");
-      });
-
-      it('locale=en + error_code có params nhưng error_code CHƯA có bản dịch -> fallback về vi gốc (params bị bỏ qua vô hại)', async () => {
-        mockCookieGet.mockImplementation((name: string) =>
-          name === 'locale' ? { value: 'en' } : undefined
-        );
-        const detail = {
-          error_code: 'crawl_run_id_invalid_uuid_khong_ton_tai_de_test',
-          message: "run_id 'xyz' không đúng định dạng UUID.",
-          params: { value: 'xyz' },
-        };
-        expect(await formatErrorDetail(detail)).toBe("run_id 'xyz' không đúng định dạng UUID.");
-      });
-
-      it('locale=en + error_code động 1-giá-trị nhóm không phải UUID (message_too_many_pending_requests) -> dịch đúng, thay {value}', async () => {
-        mockCookieGet.mockImplementation((name: string) =>
-          name === 'locale' ? { value: 'en' } : undefined
-        );
-        const detail = {
-          error_code: 'message_too_many_pending_requests',
-          message:
-            'Bạn đang có quá nhiều yêu cầu nhắn tin đang chờ xử lý (tối đa 3 cùng lúc). Vui lòng đợi SS phản hồi trước khi gửi yêu cầu mới.',
-          params: { value: 3 },
-        };
-        expect(await formatErrorDetail(detail)).toBe(
-          'You have too many pending messaging requests (max 3 at a time). Please wait for the SS to respond before sending a new one.'
-        );
-      });
-
-      it('params không phải object (vd null/mảng) -> bị bỏ qua an toàn, không throw', async () => {
-        mockCookieGet.mockImplementation((name: string) =>
-          name === 'locale' ? { value: 'en' } : undefined
-        );
-        const detail = {
-          error_code: 'job_job_id_invalid_uuid',
-          message: "job_id 'xyz' không đúng định dạng UUID.",
-          params: ['xyz'],
-        };
-        expect(await formatErrorDetail(detail)).toBe("job_id '{value}' is not a valid UUID.");
-      });
+    it('locale=en + error_code *_invalid_uuid nhưng message KHÔNG khớp pattern kỳ vọng -> fallback an toàn về vi gốc', async () => {
+      mockCookieGet.mockImplementation((name: string) =>
+        name === 'locale' ? { value: 'en' } : undefined
+      );
+      // Mô phỏng đúng trường hợp cá biệt JOB_COMPANY_ID_INVALID_UUID
+      // (api/routers/jobs.py) — message dài hơn các anh em cùng họ vì
+      // có thêm câu hướng dẫn phía sau, không khớp regex neo cuối chuỗi
+      // -> PHẢI fallback về message gốc, không được hiện lỗi/undefined.
+      const detail = {
+        error_code: 'job_company_id_invalid_uuid',
+        message:
+          "company_id 'xyz' không đúng định dạng UUID — kiểm tra lại đã thay đúng company_id THẬT lấy từ response của POST /companies chưa.",
+      };
+      expect(await formatErrorDetail(detail)).toBe(detail.message);
     });
   });
 });
