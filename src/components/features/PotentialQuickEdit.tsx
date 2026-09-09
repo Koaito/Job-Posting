@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { updateCompany } from '@/app/actions/companies';
 import { PARTNERSHIP_POTENTIAL_OPTIONS, partnershipPotentialClass, partnershipPotentialLabel } from '@/lib/companies/potential';
 
@@ -15,6 +16,12 @@ import { PARTNERSHIP_POTENTIAL_OPTIONS, partnershipPotentialClass, partnershipPo
  * gửi từng field lẻ, field nào không gửi giữ nguyên). KHÔNG bắt buộc
  * note (khác DeleteCompanyButton) — đúng hành vi backend, CompanyUpdate
  * .note chỉ optional.
+ *
+ * i18n (Giai đoạn 2, nhóm 5, 09/2026): dịch nút Lưu/lỗi qua
+ * useTranslations('potentialQuickEdit') + dùng chung useTranslations
+ * ('common').saving cho label lúc đang lưu. Nhãn từng option
+ * (partnershipPotentialLabel) CỐ Ý CHƯA dịch — xem ghi chú ở
+ * lib/companies/potential.ts (đụng chung class CSS suy từ label).
  */
 interface PotentialQuickEditProps {
   companyId: string;
@@ -23,6 +30,8 @@ interface PotentialQuickEditProps {
 
 export default function PotentialQuickEdit({ companyId, value }: PotentialQuickEditProps) {
   const router = useRouter();
+  const t = useTranslations('potentialQuickEdit');
+  const tc = useTranslations('common');
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState(value);
   const [saving, setSaving] = useState(false);
@@ -41,7 +50,7 @@ export default function PotentialQuickEdit({ companyId, value }: PotentialQuickE
       setOpen(false);
       router.refresh();
     } else {
-      setError(result.error || 'Không thể cập nhật');
+      setError(result.error || t('errorDefault'));
     }
   };
 
@@ -60,7 +69,7 @@ export default function PotentialQuickEdit({ companyId, value }: PotentialQuickE
           ))}
         </select>
         <button className="btn btn-text" type="submit" disabled={saving}>
-          {saving ? 'Đang lưu...' : 'Lưu'}
+          {saving ? tc('saving') : t('save')}
         </button>
       </form>
     </details>

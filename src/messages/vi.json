@@ -439,5 +439,43 @@
       "cancelButtonLabel": "Huỷ",
       "defaultErrorMessage": "Không thể rút hồ sơ"
     }
+  },
+  "unsaveJobButton": {
+    "processing": "Đang xử lý...",
+    "unsave": "🔖 Bỏ lưu",
+    "errorDefault": "Không thể bỏ lưu job này"
+  },
+  "cvDownloadButton": {
+    "loading": "Đang tải...",
+    "viewCv": "Xem CV"
+  },
+  "potentialQuickEdit": {
+    "save": "Lưu",
+    "errorDefault": "Không thể cập nhật"
+  },
+  "profileSubnav": {
+    "overview": "Thông tin chung",
+    "security": "Bảo mật",
+    "savedJobs": "Job đã lưu",
+    "applications": "Đã ứng tuyển",
+    "activity": "Hoạt động"
+  },
+  "crawlTabNav": {
+    "crawl": "Crawl",
+    "status": "Tình trạng dữ liệu",
+    "maintenance": "Bảo trì dữ liệu",
+    "history": "Lịch sử vận hành"
+  },
+  "themeToggle": {
+    "ariaLabel": "Chọn giao diện sáng/tối",
+    "light": "☀️ Sáng",
+    "dark": "🌙 Tối",
+    "system": "💻 Theo hệ thống"
+  },
+  "confirmActionButton": {
+    "defaultConfirmTitle": "⚠️ Xác nhận",
+    "defaultNoteLabel": "Lý do",
+    "defaultNoteRequiredError": "Vui lòng nhập lý do.",
+    "defaultCancelButtonLabel": "Hủy"
   }
 }

@@ -439,5 +439,43 @@
       "cancelButtonLabel": "Cancel",
       "defaultErrorMessage": "Failed to withdraw application"
     }
+  },
+  "unsaveJobButton": {
+    "processing": "Processing...",
+    "unsave": "🔖 Unsave",
+    "errorDefault": "Failed to unsave this job"
+  },
+  "cvDownloadButton": {
+    "loading": "Loading...",
+    "viewCv": "View CV"
+  },
+  "potentialQuickEdit": {
+    "save": "Save",
+    "errorDefault": "Failed to update"
+  },
+  "profileSubnav": {
+    "overview": "Overview",
+    "security": "Security",
+    "savedJobs": "Saved jobs",
+    "applications": "Applications",
+    "activity": "Activity"
+  },
+  "crawlTabNav": {
+    "crawl": "Crawl",
+    "status": "Data status",
+    "maintenance": "Data maintenance",
+    "history": "Operation history"
+  },
+  "themeToggle": {
+    "ariaLabel": "Choose light/dark theme",
+    "light": "☀️ Light",
+    "dark": "🌙 Dark",
+    "system": "💻 System"
+  },
+  "confirmActionButton": {
+    "defaultConfirmTitle": "⚠️ Confirm",
+    "defaultNoteLabel": "Reason",
+    "defaultNoteRequiredError": "Please enter a reason.",
+    "defaultCancelButtonLabel": "Cancel"
   }
 }

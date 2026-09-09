@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { getTranslations } from 'next-intl/server';
 
 /**
  * Sub-nav ngang cho khu vực "trang cá nhân" — khớp
@@ -13,8 +14,12 @@ import Link from 'next/link';
  * /profile/activity ở đợt này), nên trỏ thẳng path hiện có để không
  * link vào route chưa tồn tại.
  * Hoạt động (isStaff) — mới 09/2026, trỏ /profile/activity.
+ *
+ * i18n (Giai đoạn 2, nhóm 5, 09/2026): dịch qua
+ * getTranslations('profileSubnav') — dùng bản async vì đây là Server
+ * Component (được gọi trực tiếp từ profile/*.tsx, không có 'use client').
  */
-export default function ProfileSubnav({
+export default async function ProfileSubnav({
   active,
   isStudent,
   isStaff,
@@ -23,27 +28,29 @@ export default function ProfileSubnav({
   isStudent?: boolean;
   isStaff?: boolean;
 }) {
+  const t = await getTranslations('profileSubnav');
+
   return (
     <nav className="profile-subnav">
       <Link href="/profile" className={active === 'overview' ? 'active' : ''}>
-        Thông tin chung
+        {t('overview')}
       </Link>
       <Link href="/profile/security" className={active === 'security' ? 'active' : ''}>
-        Bảo mật
+        {t('security')}
       </Link>
       {isStudent && (
         <>
           <Link href="/saved-jobs" className={active === 'saved-jobs' ? 'active' : ''}>
-            Job đã lưu
+            {t('savedJobs')}
           </Link>
           <Link href="/my-applications" className={active === 'applications' ? 'active' : ''}>
-            Đã ứng tuyển
+            {t('applications')}
           </Link>
         </>
       )}
       {isStaff && (
         <Link href="/profile/activity" className={active === 'activity' ? 'active' : ''}>
-          Hoạt động
+          {t('activity')}
         </Link>
       )}
     </nav>

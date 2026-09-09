@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, type ReactNode } from 'react';
+import { useTranslations } from 'next-intl';
 
 /**
  * State machine "xác nhận hành động" dùng chung — trước đây cài lặp lại
@@ -14,6 +15,14 @@ import { useState, type ReactNode } from 'react';
  * - showNote: false (default) -> không có textarea (DeleteJobButton)
  * - onSuccess: cho mỗi nơi tự quyết hành vi sau khi thành công
  *   (router.push(...) hay router.refresh())
+ *
+ * i18n (Giai đoạn 2, nhóm 5, 09/2026): các prop text đều optional với
+ * fallback lấy từ useTranslations('confirmActionButton') (defaultConfirmTitle/
+ * defaultNoteLabel/defaultNoteRequiredError/defaultCancelButtonLabel) thay vì
+ * default parameter tiếng Việt cứng như trước — 3 caller hiện có
+ * (DeleteJobButton/DeleteCompanyButton/WithdrawApplicationButton) đều đã
+ * truyền tường minh nên fallback này chỉ có tác dụng cho caller mới sau này
+ * lỡ quên truyền.
  */
 
 export interface ConfirmActionButtonProps {
@@ -60,20 +69,26 @@ export interface ConfirmActionButtonProps {
 export default function ConfirmActionButton({
   triggerLabel,
   triggerClassName = 'btn btn-block btn-danger',
-  confirmTitle = '⚠️ Xác nhận',
+  confirmTitle,
   confirmMessage,
   showNote = false,
   requireNote = false,
-  noteLabel = 'Lý do',
+  noteLabel,
   notePlaceholder,
-  noteRequiredError = 'Vui lòng nhập lý do.',
+  noteRequiredError,
   confirmButtonLabel,
   confirmButtonLoadingLabel,
-  cancelButtonLabel = 'Hủy',
+  cancelButtonLabel,
   onConfirm,
   onSuccess,
   defaultErrorMessage,
 }: ConfirmActionButtonProps) {
+  const t = useTranslations('confirmActionButton');
+  const resolvedConfirmTitle = confirmTitle ?? t('defaultConfirmTitle');
+  const resolvedNoteLabel = noteLabel ?? t('defaultNoteLabel');
+  const resolvedNoteRequiredError = noteRequiredError ?? t('defaultNoteRequiredError');
+  const resolvedCancelButtonLabel = cancelButtonLabel ?? t('defaultCancelButtonLabel');
+
   const [showConfirm, setShowConfirm] = useState(false);
   const [note, setNote] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -83,7 +98,7 @@ export default function ConfirmActionButton({
     const trimmedNote = note.trim();
 
     if (showNote && requireNote && !trimmedNote) {
-      setError(noteRequiredError);
+      setError(resolvedNoteRequiredError);
       return;
     }
 
@@ -119,12 +134,12 @@ export default function ConfirmActionButton({
 
   return (
     <div className="card" style={{ padding: '16px', backgroundColor: 'var(--accent-soft)', border: '1px solid var(--accent)' }}>
-      <h4 style={{ margin: '0 0 8px 0', color: 'var(--accent)' }}>{confirmTitle}</h4>
+      <h4 style={{ margin: '0 0 8px 0', color: 'var(--accent)' }}>{resolvedConfirmTitle}</h4>
       <p style={{ margin: '0 0 12px 0', fontSize: '14px' }}>{confirmMessage}</p>
 
-      {showNote && (noteLabel ? (
+      {showNote && (resolvedNoteLabel ? (
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '12px' }}>
-          {noteLabel}
+          {resolvedNoteLabel}
           <textarea
             rows={2}
             value={note}
@@ -156,7 +171,7 @@ export default function ConfirmActionButton({
           {isProcessing ? confirmButtonLoadingLabel : confirmButtonLabel}
         </button>
         <button onClick={handleCancel} disabled={isProcessing} className="btn btn-ghost" style={{ flex: 1 }}>
-          {cancelButtonLabel}
+          {resolvedCancelButtonLabel}
         </button>
       </div>
     </div>

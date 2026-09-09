@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 
 /**
  * Tab nav cho trang /crawl ("Vận hành dữ liệu") — 4 tab, khớp Flask
@@ -16,28 +17,28 @@ import { useRouter } from 'next/navigation';
  * (`?tab=`) qua router.push() thay vì <Link> thường để khớp đúng
  * selector CSS ".tab-bar button" (Link render ra <a>, sẽ không nhận
  * style hover/active của family này).
+ *
+ * i18n (Giai đoạn 2, nhóm 5, 09/2026): nhãn tab dịch qua
+ * useTranslations('crawlTabNav'), key tab (dùng cho query param) giữ
+ * nguyên không đổi.
  */
 
-const TABS = [
-  { key: 'crawl', label: 'Crawl' },
-  { key: 'status', label: 'Tình trạng dữ liệu' },
-  { key: 'maintenance', label: 'Bảo trì dữ liệu' },
-  { key: 'history', label: 'Lịch sử vận hành' },
-] as const;
+const TAB_KEYS = ['crawl', 'status', 'maintenance', 'history'] as const;
 
 export default function CrawlTabNav({ active }: { active: string }) {
   const router = useRouter();
+  const t = useTranslations('crawlTabNav');
 
   return (
     <nav className="tab-bar" style={{ marginBottom: '22px' }}>
-      {TABS.map((t) => (
+      {TAB_KEYS.map((key) => (
         <button
-          key={t.key}
+          key={key}
           type="button"
-          className={active === t.key ? 'active' : ''}
-          onClick={() => router.push(`/crawl?tab=${t.key}`)}
+          className={active === key ? 'active' : ''}
+          onClick={() => router.push(`/crawl?tab=${key}`)}
         >
-          {t.label}
+          {t(key)}
         </button>
       ))}
     </nav>

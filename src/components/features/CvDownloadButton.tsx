@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { getCvSignedUrl } from '@/app/actions/me';
 
 /**
@@ -14,6 +15,9 @@ import { getCvSignedUrl } from '@/app/actions/me';
  * chỉ được gọi ở JobApplicantsPanel, KHÔNG được gắn vào bảng "Đã ứng
  * tuyển" ở /students/[id] dù cùng 1 role được phép xem, cùng 1 action
  * đã có sẵn — thiếu sót thuần UI, không phải thiếu backend.
+ *
+ * i18n (Giai đoạn 2, nhóm 5, 09/2026): dịch qua
+ * useTranslations('cvDownloadButton').
  */
 
 interface CvDownloadButtonProps {
@@ -21,6 +25,7 @@ interface CvDownloadButtonProps {
 }
 
 export default function CvDownloadButton({ applicationId }: CvDownloadButtonProps) {
+  const t = useTranslations('cvDownloadButton');
   const [loading, setLoading] = useState(false);
 
   async function handleClick() {
@@ -35,7 +40,7 @@ export default function CvDownloadButton({ applicationId }: CvDownloadButtonProp
 
   return (
     <button type="button" className="btn btn-text" onClick={handleClick} disabled={loading}>
-      {loading ? 'Đang tải...' : 'Xem CV'}
+      {loading ? t('loading') : t('viewCv')}
     </button>
   );
 }
