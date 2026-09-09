@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { applyToJob, withdrawApplication, saveJob, unsaveJob } from '@/app/actions/me';
 
 /**
@@ -14,6 +15,9 @@ import { applyToJob, withdrawApplication, saveJob, unsaveJob } from '@/app/actio
  * trước qua getMyApplications()/getMySavedJobs()) để tránh nhấp nháy lúc
  * mới vào trang — component chỉ tự quản lý trạng thái SAU khi người dùng
  * tương tác.
+ *
+ * i18n (Giai đoạn 2, nhóm 5, 09/2026): dịch label/nút bấm qua
+ * `useTranslations('jobApplyActions')`.
  */
 
 interface JobApplyActionsProps {
@@ -29,6 +33,7 @@ export default function JobApplyActions({
   initiallyApplied,
   initiallySaved,
 }: JobApplyActionsProps) {
+  const t = useTranslations('jobApplyActions');
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -49,7 +54,7 @@ export default function JobApplyActions({
 
     const file = fileInputRef.current?.files?.[0];
     if (!file) {
-      setError('Vui lòng chọn file CV (.pdf).');
+      setError(t('cvFileRequired'));
       return;
     }
 
@@ -63,7 +68,7 @@ export default function JobApplyActions({
       setNote('');
       router.refresh();
     } else {
-      setError(result.error || 'Không thể ứng tuyển job này');
+      setError(result.error || t('applyFailed'));
     }
   }
 
@@ -77,7 +82,7 @@ export default function JobApplyActions({
       setApplied(false);
       router.refresh();
     } else {
-      setError(result.error || 'Không thể rút hồ sơ');
+      setError(result.error || t('withdrawFailed'));
     }
   }
 
@@ -90,7 +95,7 @@ export default function JobApplyActions({
     if (result.success) {
       setSaved(!saved);
     } else {
-      setError(result.error || 'Không thể cập nhật trạng thái lưu job');
+      setError(result.error || t('saveToggleFailed'));
     }
   }
 
@@ -109,7 +114,7 @@ export default function JobApplyActions({
           disabled={isWithdrawing}
           className="btn btn-block btn-ghost"
         >
-          {isWithdrawing ? 'Đang rút hồ sơ...' : '✅ Đã ứng tuyển — Rút hồ sơ'}
+          {isWithdrawing ? t('withdrawing') : t('appliedWithdraw')}
         </button>
       ) : isOpen ? (
         showApplyForm ? (
@@ -119,7 +124,7 @@ export default function JobApplyActions({
                 <label> (xem .form-grid > label, public/css/07-forms.css),
                 không cần div wrapper riêng. */}
             <label htmlFor="cv_file" style={{ display: 'block', marginBottom: '12px' }}>
-              File CV (.pdf, tối đa 5MB) *
+              {t('cvFileLabel')}
               <input
                 ref={fileInputRef}
                 id="cv_file"
@@ -130,19 +135,19 @@ export default function JobApplyActions({
               />
             </label>
             <label htmlFor="apply_note" style={{ display: 'block', marginBottom: '12px' }}>
-              Ghi chú (tuỳ chọn)
+              {t('noteLabel')}
               <textarea
                 id="apply_note"
                 name="apply_note"
                 rows={3}
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
-                placeholder="Vài dòng giới thiệu bản thân..."
+                placeholder={t('notePlaceholder')}
               />
             </label>
             <div style={{ display: 'flex', gap: '8px' }}>
               <button type="submit" disabled={isApplying} className="btn btn-primary" style={{ flex: 1 }}>
-                {isApplying ? 'Đang gửi...' : 'Gửi hồ sơ ứng tuyển'}
+                {isApplying ? t('sendingApplication') : t('submitApplication')}
               </button>
               <button
                 type="button"
@@ -151,24 +156,24 @@ export default function JobApplyActions({
                 className="btn btn-ghost"
                 style={{ flex: 1 }}
               >
-                Huỷ
+                {t('cancel')}
               </button>
             </div>
           </form>
         ) : (
           <button onClick={() => setShowApplyForm(true)} className="btn btn-block btn-primary">
-            📝 Ứng tuyển
+            {t('applyButton')}
           </button>
         )
       ) : (
-        <button disabled className="btn btn-block" title="Job đã đóng, không thể ứng tuyển">
-          Job đã đóng — không thể ứng tuyển
+        <button disabled className="btn btn-block" title={t('closedTitle')}>
+          {t('closedButton')}
         </button>
       )}
 
       {/* Lưu / Bỏ lưu — luôn cho phép, kể cả job đã CLOSED */}
       <button onClick={handleToggleSave} disabled={isSaving} className="btn btn-block btn-ghost">
-        {isSaving ? 'Đang xử lý...' : saved ? '★ Đã lưu — Bỏ lưu' : '☆ Lưu job'}
+        {isSaving ? t('processing') : saved ? t('savedUnsave') : t('saveJob')}
       </button>
     </div>
   );

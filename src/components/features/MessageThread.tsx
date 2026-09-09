@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import {
   sendMessage,
   getMessagesSince,
@@ -21,6 +22,10 @@ import type { ChatMessage } from '@/types/messages';
  * page.tsx (server) đã SSR sẵn initialHistory nên khung chat có nội
  * dung đọc được ngay cả khi JS chưa kịp chạy — polling chỉ lo phần tin
  * đến SAU đó, giống đúng chia việc SSR/JS bên Flask.
+ *
+ * i18n (Giai đoạn 2, nhóm 5, 09/2026): dịch label/tiêu đề/nút bấm qua
+ * `useTranslations('messageThread')`. roleLabel() (lib/auth/roles.ts)
+ * CỐ Ý CHƯA dịch — xem ghi chú MessagesInbox.tsx.
  */
 
 const POLL_INTERVAL_MS = 5000;
@@ -59,6 +64,7 @@ export function MessageThread({
   isStudent,
   maxContentLength,
 }: MessageThreadProps) {
+  const t = useTranslations('messageThread');
   const router = useRouter();
   const [history, setHistory] = useState(initialHistory);
   const [lastMessageId, setLastMessageId] = useState(lastId);
@@ -96,7 +102,7 @@ export function MessageThread({
     e.preventDefault();
     const trimmed = content.trim();
     if (!trimmed) {
-      setError('Vui lòng nhập nội dung tin nhắn.');
+      setError(t('emptyContentError'));
       return;
     }
     setError('');
@@ -115,34 +121,36 @@ export function MessageThread({
     } else {
       // status === 'pending': chưa có tin nhắn thật nào được lưu —
       // chỉ hiện thông báo, giữ nguyên lịch sử (khớp flash message bên
-      // Flask, không tự chèn tin giả vào khung chat).
+      // Flask, không tự chèn tin giả vào khung chat). Message này đến
+      // thẳng từ backend (tiếng Việt), không dịch ở đây — cùng nguyên
+      // tắc tầng error_code (Giai đoạn 3): không đổi dữ liệu server.
       router.refresh();
       alert(result.message);
     }
   };
 
   const handleCancel = () => {
-    if (!confirm(`Huỷ yêu cầu nhắn tin đang chờ tới ${partnerName}?`)) return;
+    if (!confirm(t('confirmCancel', { name: partnerName }))) return;
     setError('');
     startTransition(async () => {
       const result = await cancelPendingRequest(partnerId);
       if (result.success) {
         router.push('/messages');
       } else {
-        setError(result.error || 'Không thể huỷ yêu cầu');
+        setError(result.error || t('cancelFailed'));
       }
     });
   };
 
   const handleBlock = () => {
-    if (!confirm(`Chặn ${partnerName}? Học viên này sẽ không nhắn tin được cho bạn nữa.`)) return;
+    if (!confirm(t('confirmBlock', { name: partnerName }))) return;
     setError('');
     startTransition(async () => {
       const result = await blockStudent(partnerId);
       if (result.success) {
         router.refresh();
       } else {
-        setError(result.error || 'Không thể chặn học viên');
+        setError(result.error || t('blockFailed'));
       }
     });
   };
@@ -155,7 +163,7 @@ export function MessageThread({
       if (result.success) {
         router.refresh();
       } else {
-        setError(result.error || 'Không thể bỏ chặn');
+        setError(result.error || t('unblockFailed'));
       }
     });
   };
@@ -172,7 +180,7 @@ export function MessageThread({
       <header className="page-head chat-head">
         <div>
           <Link className="back-link" href="/messages">
-            ← Tin nhắn
+            {t('backLink')}
           </Link>
           <h1>
             {partnerName}
@@ -182,7 +190,7 @@ export function MessageThread({
         {showBlockControls &&
           (relationshipStatus === 'blocked' && relationshipId ? (
             <button type="button" className="btn btn-ghost" disabled={isPending} onClick={handleUnblock}>
-              Bỏ chặn học viên
+              {t('unblockStudent')}
             </button>
           ) : relationshipStatus !== 'blocked' ? (
             <button
@@ -191,7 +199,7 @@ export function MessageThread({
               disabled={isPending}
               onClick={handleBlock}
             >
-              Chặn học viên
+              {t('blockStudent')}
             </button>
           ) : null)}
       </header>
@@ -218,8 +226,8 @@ export function MessageThread({
             <div className="empty-state chat-empty">
               <p>
                 {isStudent
-                  ? `Chưa có tin nhắn nào. Gửi tin đầu tiên bên dưới để tạo yêu cầu nhắn tin tới ${partnerName}.`
-                  : `Chưa có tin nhắn nào. Nhắn trước cho ${partnerName} — hội thoại sẽ tự mở, không cần chờ chấp nhận.`}
+                  ? t('emptyStateStudent', { name: partnerName })
+                  : t('emptyStateStaff', { name: partnerName })}
               </p>
             </div>
           )}
@@ -231,18 +239,18 @@ export function MessageThread({
             onChange={(e) => setContent(e.target.value)}
             maxLength={maxContentLength}
             rows={2}
-            placeholder="Nhập tin nhắn..."
+            placeholder={t('placeholder')}
             required
           />
           <button type="submit" className="btn btn-primary" disabled={isSending}>
-            {isSending ? 'Đang gửi...' : 'Gửi'}
+            {isSending ? t('sending') : t('send')}
           </button>
         </form>
 
         {showCancelControl && (
           <div className="cancel-request-form">
             <button type="button" className="btn btn-text" disabled={isPending} onClick={handleCancel}>
-              Đã gửi nhầm? Huỷ yêu cầu đang chờ (nếu có)
+              {t('cancelPendingLabel')}
             </button>
           </div>
         )}

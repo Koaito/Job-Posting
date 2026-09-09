@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import {
   acceptMessageRequest,
   declineMessageRequest,
@@ -22,6 +23,11 @@ import type { Conversation, PendingRequest } from '@/types/messages';
  * decline, block/unblock) — gộp lại đây thành 1 component vì cùng
  * chung state danh sách hội thoại/pending cần cập nhật lại sau mỗi
  * thao tác.
+ *
+ * i18n (Giai đoạn 2, nhóm 5, 09/2026): dịch label/tiêu đề/nút bấm qua
+ * `useTranslations('messagesInbox')`. roleLabel() (lib/auth/roles.ts)
+ * CỐ Ý CHƯA dịch — dùng chung nhiều file /messages/staff khác chưa
+ * dịch, để đợt riêng tránh nửa vời (xem ghi chú StaffActivityList.tsx).
  */
 
 interface MessagesInboxProps {
@@ -40,22 +46,23 @@ function formatDate(iso: string | null | undefined, withTime = true): string {
   return `${datePart} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-const STATUS_LABELS: Record<string, string> = {
-  pending: 'Đang chờ',
-  declined: 'Đã từ chối',
-  blocked: 'Đã chặn',
-};
-
 export function MessagesInbox({
   initialConversations,
   initialPendingRequests,
   isStaff,
 }: MessagesInboxProps) {
+  const t = useTranslations('messagesInbox');
   const router = useRouter();
   const [conversations, setConversations] = useState(initialConversations);
   const [pendingRequests, setPendingRequests] = useState(initialPendingRequests);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState('');
+
+  const STATUS_LABELS: Record<string, string> = {
+    pending: t('statusPending'),
+    declined: t('statusDeclined'),
+    blocked: t('statusBlocked'),
+  };
 
   const handleAccept = (relationshipId: string) => {
     setError('');
@@ -65,7 +72,7 @@ export function MessagesInbox({
         setPendingRequests((prev) => prev.filter((r) => r.relationship_id !== relationshipId));
         router.refresh();
       } else {
-        setError(result.error || 'Không thể chấp nhận yêu cầu');
+        setError(result.error || t('acceptFailed'));
       }
     });
   };
@@ -78,13 +85,13 @@ export function MessagesInbox({
         setPendingRequests((prev) => prev.filter((r) => r.relationship_id !== relationshipId));
         router.refresh();
       } else {
-        setError(result.error || 'Không thể từ chối yêu cầu');
+        setError(result.error || t('declineFailed'));
       }
     });
   };
 
   const handleBlock = (studentId: string, partnerName: string) => {
-    if (!confirm(`Chặn ${partnerName}? Học viên này sẽ không nhắn tin được cho bạn nữa.`)) return;
+    if (!confirm(t('confirmBlock', { name: partnerName }))) return;
     setError('');
     startTransition(async () => {
       const result = await blockStudent(studentId);
@@ -94,7 +101,7 @@ export function MessagesInbox({
         );
         router.refresh();
       } else {
-        setError(result.error || 'Không thể chặn học viên');
+        setError(result.error || t('blockFailed'));
       }
     });
   };
@@ -111,7 +118,7 @@ export function MessagesInbox({
         );
         router.refresh();
       } else {
-        setError(result.error || 'Không thể bỏ chặn');
+        setError(result.error || t('unblockFailed'));
       }
     });
   };
@@ -128,13 +135,17 @@ export function MessagesInbox({
 
       {hasPendingSection && (
         <section className="msg-section">
-          <h2 className="msg-section-title">Yêu cầu đang chờ ({pendingRequests.length})</h2>
+          <h2 className="msg-section-title">
+            {t('pendingSectionTitle')} ({pendingRequests.length})
+          </h2>
           <div className="pending-list">
             {pendingRequests.map((req) => (
               <div className="pending-row" key={req.relationship_id}>
                 <div className="pending-info">
                   <strong>{req.student_name}</strong>
-                  <span className="muted">Gửi lúc {formatDate(req.requested_at)}</span>
+                  <span className="muted">
+                    {t('sentAt')} {formatDate(req.requested_at)}
+                  </span>
                 </div>
                 <div className="pending-actions">
                   <button
@@ -143,7 +154,7 @@ export function MessagesInbox({
                     disabled={isPending}
                     onClick={() => handleAccept(req.relationship_id)}
                   >
-                    Chấp nhận
+                    {t('accept')}
                   </button>
                   <button
                     type="button"
@@ -151,7 +162,7 @@ export function MessagesInbox({
                     disabled={isPending}
                     onClick={() => handleDecline(req.relationship_id)}
                   >
-                    Từ chối
+                    {t('decline')}
                   </button>
                 </div>
               </div>
@@ -161,7 +172,7 @@ export function MessagesInbox({
       )}
 
       <section className="msg-section">
-        {hasPendingSection && <h2 className="msg-section-title">Hội thoại</h2>}
+        {hasPendingSection && <h2 className="msg-section-title">{t('conversationsTitle')}</h2>}
 
         {conversations.length > 0 ? (
           <div className="conversation-list">
@@ -205,7 +216,7 @@ export function MessagesInbox({
                         disabled={isPending}
                         onClick={() => handleUnblock(conv.relationship_id!)}
                       >
-                        Bỏ chặn
+                        {t('unblock')}
                       </button>
                     ) : (
                       <button
@@ -214,7 +225,7 @@ export function MessagesInbox({
                         disabled={isPending}
                         onClick={() => handleBlock(conv.partner_id, conv.partner_name)}
                       >
-                        Chặn
+                        {t('block')}
                       </button>
                     )}
                   </div>
@@ -225,9 +236,9 @@ export function MessagesInbox({
         ) : (
           !hasPendingSection && (
             <div className="empty-state">
-              <p>Chưa có hội thoại nào.</p>
+              <p>{t('emptyState')}</p>
               <Link className="btn btn-primary" href="/messages/new">
-                Bắt đầu nhắn tin mới
+                {t('startNewMessage')}
               </Link>
             </div>
           )
