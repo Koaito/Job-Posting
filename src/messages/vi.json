@@ -328,5 +328,17 @@
     "errorUpdateFailed": "Không thể cập nhật mẫu email",
     "errorUpdateNoteHint": " — nếu lỗi thiếu note, nhập lý do sửa rồi thử lại.",
     "errorCreateFailed": "Không thể thêm mẫu email"
+  },
+  "profileActivity": {
+    "title": "Hoạt động",
+    "staffOnly": "Trang này chỉ dành cho nhân viên (ss_team/admin).",
+    "heading": "Trang cá nhân",
+    "lede": "Job/công ty/contact bạn đã tự thêm tay, và contact đang được giao cho bạn phụ trách.",
+    "kv": {
+      "jobsCreated": "Job đã tạo",
+      "companiesCreated": "Công ty đã tạo",
+      "contactsCreated": "Contact đã tạo",
+      "contactsAssigned": "Contact đang phụ trách"
+    }
   }
 }

@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import { getTranslations } from 'next-intl/server';
 import { getCurrentUser, listUsers } from '@/app/actions/auth';
 import { isStaffRole } from '@/lib/auth/roles';
 import { getJobs } from '@/app/actions/jobs';
@@ -50,6 +51,7 @@ import { ActivitySections } from '@/components/features/ActivitySections';
  * created_by/assigned_ss_user (chính mình), số lượng nhỏ.
  */
 export default async function ProfileActivityPage() {
+  const t = await getTranslations('profileActivity');
   const user = await getCurrentUser();
   if (!user) {
     redirect('/login');
@@ -58,10 +60,10 @@ export default async function ProfileActivityPage() {
     return (
       <>
         <div className="page-head">
-          <h1>Hoạt động</h1>
+          <h1>{t('title')}</h1>
         </div>
         <div className="empty-state">
-          <p>Trang này chỉ dành cho nhân viên (ss_team/admin).</p>
+          <p>{t('staffOnly')}</p>
         </div>
       </>
     );
@@ -85,23 +87,20 @@ export default async function ProfileActivityPage() {
   return (
     <div className="auth-shell">
       <div className="auth-card profile-card">
-        <h1>Trang cá nhân</h1>
-        <p className="lede">
-          Job/công ty/contact bạn đã tự thêm tay, và contact đang được giao cho bạn phụ
-          trách.
-        </p>
+        <h1>{t('heading')}</h1>
+        <p className="lede">{t('lede')}</p>
 
         <ProfileSubnav active="activity" isStudent={false} isStaff />
 
         <div className="card student-summary-card">
           <dl className="kv">
-            <dt>Job đã tạo</dt>
+            <dt>{t('kv.jobsCreated')}</dt>
             <dd>{jobsCreated.length}</dd>
-            <dt>Công ty đã tạo</dt>
+            <dt>{t('kv.companiesCreated')}</dt>
             <dd>{companiesCreated.length}</dd>
-            <dt>Contact đã tạo</dt>
+            <dt>{t('kv.contactsCreated')}</dt>
             <dd>{contactsCreated.length}</dd>
-            <dt>Contact đang phụ trách</dt>
+            <dt>{t('kv.contactsAssigned')}</dt>
             <dd>{contactsAssigned.length}</dd>
           </dl>
         </div>

@@ -328,5 +328,17 @@
     "errorUpdateFailed": "Could not update email template",
     "errorUpdateNoteHint": " — if the error is about a missing note, enter the reason and try again.",
     "errorCreateFailed": "Could not add email template"
+  },
+  "profileActivity": {
+    "title": "Activity",
+    "staffOnly": "This page is for staff only (ss_team/admin).",
+    "heading": "My profile",
+    "lede": "Jobs/companies/contacts you added yourself, and contacts currently assigned to you.",
+    "kv": {
+      "jobsCreated": "Jobs created",
+      "companiesCreated": "Companies created",
+      "contactsCreated": "Contacts created",
+      "contactsAssigned": "Contacts assigned"
+    }
   }
 }
