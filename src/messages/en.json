@@ -340,5 +340,34 @@
       "contactsCreated": "Contacts created",
       "contactsAssigned": "Contacts assigned"
     }
+  },
+  "actions": {
+    "me": {
+      "cvPdfOnly": "Only .pdf CV files are accepted.",
+      "cvMaxSize": "Maximum CV file size is 5MB.",
+      "applyFailed": "Could not apply to this job",
+      "withdrawFailed": "Could not withdraw application",
+      "saveFailed": "Could not save this job",
+      "networkError": "Network error",
+      "unsaveFailed": "Could not unsave this job",
+      "cvUrlFailed": "Could not get the CV download link"
+    },
+    "jobs": {
+      "createFailed": "Failed to create job",
+      "updateFailed": "Failed to update job",
+      "deleteFailed": "Failed to delete job"
+    },
+    "contacts": {
+      "createFailed": "Could not add contact",
+      "updateFailed": "Could not update contact",
+      "assignFailed": "Could not assign contact",
+      "deleteFailed": "Could not delete contact",
+      "hardDeleteFailed": "Could not permanently delete contact"
+    },
+    "crawl": {
+      "startFailed": "Could not start crawl",
+      "startBatchFailed": "Could not start crawl batch",
+      "maintenanceFailed": "Could not trigger maintenance job"
+    }
   }
 }

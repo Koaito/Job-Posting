@@ -340,5 +340,34 @@
       "contactsCreated": "Contact đã tạo",
       "contactsAssigned": "Contact đang phụ trách"
     }
+  },
+  "actions": {
+    "me": {
+      "cvPdfOnly": "Chỉ chấp nhận file CV định dạng .pdf.",
+      "cvMaxSize": "Dung lượng file CV tối đa là 5MB.",
+      "applyFailed": "Không thể ứng tuyển job này",
+      "withdrawFailed": "Không thể rút hồ sơ",
+      "saveFailed": "Không thể lưu job này",
+      "networkError": "Lỗi mạng",
+      "unsaveFailed": "Không thể bỏ lưu job này",
+      "cvUrlFailed": "Không thể lấy link tải CV"
+    },
+    "jobs": {
+      "createFailed": "Không thể tạo job",
+      "updateFailed": "Không thể cập nhật job",
+      "deleteFailed": "Không thể xoá job"
+    },
+    "contacts": {
+      "createFailed": "Không thể thêm liên hệ",
+      "updateFailed": "Không thể cập nhật liên hệ",
+      "assignFailed": "Không thể gán liên hệ",
+      "deleteFailed": "Không thể xoá liên hệ",
+      "hardDeleteFailed": "Không thể xoá vĩnh viễn liên hệ"
+    },
+    "crawl": {
+      "startFailed": "Không thể kích hoạt crawl",
+      "startBatchFailed": "Không thể kích hoạt crawl batch",
+      "maintenanceFailed": "Không thể kích hoạt job bảo trì"
+    }
   }
 }

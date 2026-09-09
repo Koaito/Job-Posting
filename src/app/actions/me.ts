@@ -1,5 +1,6 @@
 'use server';
 
+import { getTranslations } from 'next-intl/server';
 import { apiFetch, apiFetchRaw, formatErrorDetail } from '@/lib/api/client';
 import type { JobApplication, SavedJob } from '@/types/auth';
 
@@ -44,11 +45,12 @@ export async function applyToJob(
   cvFile: File,
   note?: string
 ): Promise<{ success: boolean; application?: JobApplication; error?: string }> {
+  const t = await getTranslations('actions.me');
   if (!cvFile.name.toLowerCase().endsWith('.pdf')) {
-    return { success: false, error: 'Chỉ chấp nhận file CV định dạng .pdf.' };
+    return { success: false, error: t('cvPdfOnly') };
   }
   if (cvFile.size > 5 * 1024 * 1024) {
-    return { success: false, error: 'Dung lượng file CV tối đa là 5MB.' };
+    return { success: false, error: t('cvMaxSize') };
   }
 
   const formData = new FormData();
@@ -60,7 +62,7 @@ export async function applyToJob(
     method: 'POST',
     body: formData,
     isUpload: true,
-    fallbackError: 'Không thể ứng tuyển job này',
+    fallbackError: t('applyFailed'),
   });
 
   if (!result.success) {
@@ -79,13 +81,14 @@ export async function withdrawApplication(
   jobId: string,
   note?: string
 ): Promise<{ success: boolean; error?: string }> {
+  const t = await getTranslations('actions.me');
   const params = new URLSearchParams();
   if (note) params.append('note', note);
   const query = params.toString() ? `?${params}` : '';
 
   const result = await apiFetch<void>(`/me/applications/${jobId}${query}`, {
     method: 'DELETE',
-    fallbackError: 'Không thể rút hồ sơ',
+    fallbackError: t('withdrawFailed'),
   });
 
   if (!result.success) {
@@ -118,6 +121,7 @@ export async function getMyApplications(): Promise<JobApplication[]> {
 export async function saveJob(
   jobId: string
 ): Promise<{ success: boolean; savedJob?: SavedJob; error?: string }> {
+  const t = await getTranslations('actions.me');
   try {
     const response = await apiFetchRaw('/me/saved-jobs', {
       method: 'POST',
@@ -131,22 +135,23 @@ export async function saveJob(
       const error = await response.json().catch(() => ({ detail: response.statusText }));
       return {
         success: false,
-        error: error.detail != null ? await formatErrorDetail(error.detail) : 'Không thể lưu job này',
+        error: error.detail != null ? await formatErrorDetail(error.detail) : t('saveFailed'),
       };
     }
     const savedJob = await response.json();
     return { success: true, savedJob };
   } catch (error) {
     console.error('Error saving job:', error);
-    return { success: false, error: 'Network error' };
+    return { success: false, error: t('networkError') };
   }
 }
 
 /** Bỏ lưu job. */
 export async function unsaveJob(jobId: string): Promise<{ success: boolean; error?: string }> {
+  const t = await getTranslations('actions.me');
   const result = await apiFetch<void>(`/me/saved-jobs/${jobId}`, {
     method: 'DELETE',
-    fallbackError: 'Không thể bỏ lưu job này',
+    fallbackError: t('unsaveFailed'),
   });
 
   if (!result.success) {
@@ -175,9 +180,10 @@ export async function getMySavedJobs(): Promise<SavedJob[]> {
 export async function getCvSignedUrl(
   applicationId: string
 ): Promise<{ success: boolean; signedUrl?: string; error?: string }> {
+  const t = await getTranslations('actions.me');
   const result = await apiFetch<{ signed_url: string }>(`/me/applications/${applicationId}/cv-url`, {
     cache: 'no-store',
-    fallbackError: 'Không thể lấy link tải CV',
+    fallbackError: t('cvUrlFailed'),
   });
 
   if (!result.success) {

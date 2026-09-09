@@ -28,6 +28,23 @@ jest.mock('next-intl', () => ({
   useLocale: () => 'vi',
 }))
 
+// MOCK next-intl/server (thêm khi bắt đầu dịch Server Actions, Giai đoạn
+// 2 "me/jobs/contacts/crawl", 09/2026): cùng lý do với mock 'next-intl'
+// ở trên (ESM thuần trong node_modules, Jest không transform được) —
+// getTranslations() được dùng trong các action 'use server' (actions/
+// me.ts, jobs.ts, contacts.ts, crawl.ts...) để dịch fallbackError tĩnh.
+// Mock async, tra thẳng vi.json giống hệt useTranslations ở trên, để
+// test hiện có (assert message tiếng Việt) không cần viết lại.
+jest.mock('next-intl/server', () => ({
+  getTranslations: async (namespace) => {
+    const ns = namespace
+      .split('.')
+      .reduce((acc, key) => (acc && typeof acc === 'object' ? acc[key] : undefined), viMessages)
+    return (key) => (ns && typeof ns === 'object' && key in ns ? ns[key] : key)
+  },
+  getLocale: async () => 'vi',
+}))
+
 // Mock environment variables
 process.env.FASTAPI_URL = 'http://localhost:8000'
 process.env.CRAWLER_API_KEY = 'test-api-key'

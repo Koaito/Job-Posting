@@ -1,5 +1,6 @@
 'use server';
 
+import { getTranslations } from 'next-intl/server';
 import { apiFetch, buildParams } from '@/lib/api/client';
 import type {
   CompanyContact,
@@ -108,10 +109,11 @@ export async function createContact(
   companyId: string,
   data: ContactCreatePayload
 ): Promise<{ success: boolean; contact?: CompanyContact; error?: string }> {
+  const t = await getTranslations('actions.contacts');
   const result = await apiFetch<CompanyContact>(`/companies/${companyId}/contacts`, {
     method: 'POST',
     body: data,
-    fallbackError: 'Không thể thêm liên hệ',
+    fallbackError: t('createFailed'),
   });
 
   if (!result.success) {
@@ -132,10 +134,11 @@ export async function updateContact(
   contactId: string,
   data: ContactUpdatePayload
 ): Promise<{ success: boolean; contact?: CompanyContact; error?: string }> {
+  const t = await getTranslations('actions.contacts');
   const result = await apiFetch<CompanyContact>(`/companies/${companyId}/contacts/${contactId}`, {
     method: 'PATCH',
     body: data,
-    fallbackError: 'Không thể cập nhật liên hệ',
+    fallbackError: t('updateFailed'),
   });
 
   if (!result.success) {
@@ -158,10 +161,11 @@ export async function assignContact(
   contactId: string,
   data: ContactAssignPayload
 ): Promise<{ success: boolean; contact?: CompanyContact; error?: string }> {
+  const t = await getTranslations('actions.contacts');
   const result = await apiFetch<CompanyContact>(`/companies/${companyId}/contacts/${contactId}/assign`, {
     method: 'PATCH',
     body: data,
-    fallbackError: 'Không thể gán liên hệ',
+    fallbackError: t('assignFailed'),
   });
 
   if (!result.success) {
@@ -181,10 +185,11 @@ export async function deleteContact(
   contactId: string,
   payload: ContactDeletePayload
 ): Promise<{ success: boolean; error?: string }> {
+  const t = await getTranslations('actions.contacts');
   const result = await apiFetch<void>(`/companies/${companyId}/contacts/${contactId}`, {
     method: 'DELETE',
     body: payload,
-    fallbackError: 'Không thể xoá liên hệ',
+    fallbackError: t('deleteFailed'),
   });
 
   if (!result.success) {
@@ -204,9 +209,10 @@ export async function hardDeleteContact(
   companyId: string,
   contactId: string
 ): Promise<{ success: boolean; error?: string }> {
+  const t = await getTranslations('actions.contacts');
   const result = await apiFetch<void>(`/companies/${companyId}/contacts/${contactId}/hard`, {
     method: 'DELETE',
-    fallbackError: 'Không thể xoá vĩnh viễn liên hệ',
+    fallbackError: t('hardDeleteFailed'),
   });
 
   if (!result.success) {

@@ -1,5 +1,6 @@
 'use server';
 
+import { getTranslations } from 'next-intl/server';
 import { apiFetch, buildParams } from '@/lib/api/client';
 // BUG FIX (audit 09/2026 #11 — dọn "type debt"): file này trước đây tự
 // khai lại 1 interface Job RIÊNG, thiếu hẳn work_type/salary_period/
@@ -104,10 +105,11 @@ export async function getJobById(id: string): Promise<JobDetail | null> {
  * Matches Flask: blueprints/jobs.py::create()
  */
 export async function createJob(data: JobCreatePayload): Promise<{ success: boolean; job?: JobDetail; error?: string }> {
+  const t = await getTranslations('actions.jobs');
   const result = await apiFetch<JobDetail>('/jobs', {
     method: 'POST',
     body: data,
-    fallbackError: 'Failed to create job',
+    fallbackError: t('createFailed'),
   });
 
   if (!result.success) {
@@ -118,10 +120,11 @@ export async function createJob(data: JobCreatePayload): Promise<{ success: bool
 }
 
 export async function updateJob(id: string, data: JobUpdatePayload): Promise<{ success: boolean; job?: JobDetail; error?: string }> {
+  const t = await getTranslations('actions.jobs');
   const result = await apiFetch<JobDetail>(`/jobs/${id}`, {
     method: 'PATCH',
     body: data,
-    fallbackError: 'Failed to update job',
+    fallbackError: t('updateFailed'),
   });
 
   if (!result.success) {
@@ -136,10 +139,11 @@ export async function updateJob(id: string, data: JobUpdatePayload): Promise<{ s
  * Matches Flask: blueprints/jobs.py::delete()
  */
 export async function deleteJob(id: string): Promise<{ success: boolean; error?: string }> {
+  const t = await getTranslations('actions.jobs');
   const result = await apiFetch<JobDetail>(`/jobs/${id}`, {
     method: 'PATCH',
     body: { job_status: 'CLOSED' },
-    fallbackError: 'Failed to delete job',
+    fallbackError: t('deleteFailed'),
   });
 
   if (!result.success) {

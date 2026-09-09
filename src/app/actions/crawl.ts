@@ -1,5 +1,6 @@
 'use server';
 
+import { getTranslations } from 'next-intl/server';
 import { apiFetch, buildParams } from '@/lib/api/client';
 import type {
   CrawlTriggerPayload,
@@ -71,10 +72,11 @@ export async function getCrawlSources(): Promise<Record<string, Record<string, s
 export async function startCrawl(
   data: CrawlTriggerPayload
 ): Promise<{ success: boolean; result?: CrawlAccepted; error?: string }> {
+  const t = await getTranslations('actions.crawl');
   const result = await apiFetch<CrawlAccepted>('/crawl', {
     method: 'POST',
     body: data,
-    fallbackError: 'Không thể kích hoạt crawl',
+    fallbackError: t('startFailed'),
   });
 
   if (!result.success) {
@@ -93,10 +95,11 @@ export async function startCrawl(
 export async function startCrawlBatch(
   data: CrawlBatchTriggerPayload
 ): Promise<{ success: boolean; result?: CrawlBatchAccepted; error?: string }> {
+  const t = await getTranslations('actions.crawl');
   const result = await apiFetch<CrawlBatchAccepted>('/crawl/batch', {
     method: 'POST',
     body: data,
-    fallbackError: 'Không thể kích hoạt crawl batch',
+    fallbackError: t('startBatchFailed'),
   });
 
   if (!result.success) {
@@ -306,10 +309,11 @@ export async function triggerMaintenance(
   jobType: string,
   data: MaintenanceRunPayload
 ): Promise<{ success: boolean; result?: MaintenanceAccepted; error?: string }> {
+  const t = await getTranslations('actions.crawl');
   const result = await apiFetch<MaintenanceAccepted>(`/maintenance/${jobType}`, {
     method: 'POST',
     body: data,
-    fallbackError: 'Khong the kich hoat job bao tri',
+    fallbackError: t('maintenanceFailed'),
   });
 
   if (!result.success) {
