@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import type { User } from '@/types/auth';
 import { roleLabel } from '@/lib/auth/roles';
 
@@ -11,6 +12,14 @@ import { roleLabel } from '@/lib/auth/roles';
  * `templates/staff_activity.html` gốc bên Flask (script thuần, lọc
  * ngay trên bảng đã render sẵn) — số lượng nhân sự team SS luôn nhỏ,
  * không cần round-trip server cho mỗi lần gõ.
+ *
+ * i18n (Giai đoạn 2, nhóm 5, 09/2026): dịch text riêng của component
+ * này qua useTranslations('staffActivityList'). CỐ Ý CHƯA dịch:
+ * `roleLabel()` (lib/auth/roles.ts — dùng chung ở nhiều file module
+ * /messages/staff chưa dịch, cần đợt riêng để không nửa vời) và
+ * `toLocaleDateString('vi-VN')` (định dạng ngày theo locale — thuộc
+ * phạm vi Polish, chưa bắt đầu, xem 19 chỗ hardcode 'vi-VN' tương tự
+ * trong toàn repo).
  */
 export interface StaffActivityListProps {
   staff: User[];
@@ -18,6 +27,7 @@ export interface StaffActivityListProps {
 }
 
 export function StaffActivityList({ staff, currentUserId }: StaffActivityListProps) {
+  const t = useTranslations('staffActivityList');
   const [query, setQuery] = useState('');
 
   const filtered = useMemo(() => {
@@ -35,22 +45,22 @@ export function StaffActivityList({ staff, currentUserId }: StaffActivityListPro
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Tìm theo họ tên, email…"
+          placeholder={t('searchPlaceholder')}
           autoComplete="off"
         />
       </div>
       <p className="result-count">
-        Hiển thị {filtered.length} / {staff.length} thành viên
+        {t('resultCount', { shown: filtered.length, total: staff.length })}
       </p>
 
       <div className="contact-table-wrap">
         <table className="contact-table">
           <thead>
             <tr>
-              <th>Họ tên</th>
-              <th>Email</th>
-              <th>Vai trò</th>
-              <th>Ngày tạo tài khoản</th>
+              <th>{t('colFullName')}</th>
+              <th>{t('colEmail')}</th>
+              <th>{t('colRole')}</th>
+              <th>{t('colCreatedAt')}</th>
               <th></th>
             </tr>
           </thead>
@@ -61,7 +71,7 @@ export function StaffActivityList({ staff, currentUserId }: StaffActivityListPro
                 <tr key={s.ss_user_id}>
                   <td>
                     <strong>{s.full_name}</strong>
-                    {isSelf && <span className="you-badge">Bạn</span>}
+                    {isSelf && <span className="you-badge">{t('youBadge')}</span>}
                   </td>
                   <td className="muted">{s.email}</td>
                   <td>
@@ -71,11 +81,11 @@ export function StaffActivityList({ staff, currentUserId }: StaffActivityListPro
                   <td className="actions-cell">
                     {isSelf ? (
                       <Link className="btn btn-text" href="/profile/activity">
-                        Xem tại Trang cá nhân →
+                        {t('viewOwnProfile')}
                       </Link>
                     ) : (
                       <Link className="btn btn-text" href={`/staff-activity/${s.ss_user_id}`}>
-                        Xem hoạt động →
+                        {t('viewActivity')}
                       </Link>
                     )}
                   </td>

@@ -477,5 +477,26 @@
     "defaultNoteLabel": "Lý do",
     "defaultNoteRequiredError": "Vui lòng nhập lý do.",
     "defaultCancelButtonLabel": "Hủy"
+  },
+  "staffActivityList": {
+    "searchPlaceholder": "Tìm theo họ tên, email…",
+    "resultCount": "Hiển thị {shown} / {total} thành viên",
+    "colFullName": "Họ tên",
+    "colEmail": "Email",
+    "colRole": "Vai trò",
+    "colCreatedAt": "Ngày tạo tài khoản",
+    "youBadge": "Bạn",
+    "viewOwnProfile": "Xem tại Trang cá nhân →",
+    "viewActivity": "Xem hoạt động →"
+  },
+  "auditLogNoteEditor": {
+    "noteEmptyError": "Note không được để trống.",
+    "errorDefault": "Không thể cập nhật note",
+    "missingNoteHint": "— (thiếu note?)",
+    "noNoteYet": "— chưa có note",
+    "edit": "Sửa",
+    "notePlaceholder": "Nội dung note...",
+    "cancel": "Huỷ",
+    "save": "Lưu"
   }
 }

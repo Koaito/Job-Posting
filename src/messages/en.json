@@ -477,5 +477,26 @@
     "defaultNoteLabel": "Reason",
     "defaultNoteRequiredError": "Please enter a reason.",
     "defaultCancelButtonLabel": "Cancel"
+  },
+  "staffActivityList": {
+    "searchPlaceholder": "Search by name, email…",
+    "resultCount": "Showing {shown} / {total} members",
+    "colFullName": "Full name",
+    "colEmail": "Email",
+    "colRole": "Role",
+    "colCreatedAt": "Account created",
+    "youBadge": "You",
+    "viewOwnProfile": "View in your profile →",
+    "viewActivity": "View activity →"
+  },
+  "auditLogNoteEditor": {
+    "noteEmptyError": "Note cannot be empty.",
+    "errorDefault": "Failed to update note",
+    "missingNoteHint": "— (missing note?)",
+    "noNoteYet": "— no note yet",
+    "edit": "Edit",
+    "notePlaceholder": "Note content...",
+    "cancel": "Cancel",
+    "save": "Save"
   }
 }
