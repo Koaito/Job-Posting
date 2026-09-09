@@ -2,6 +2,7 @@
 
 import { cache } from 'react';
 import { cookies } from 'next/headers';
+import { getTranslations } from 'next-intl/server';
 import { getApiKey, refreshAccessToken, setAuthCookies, formatErrorDetail } from '@/lib/api/client';
 import type { User, UserCreatePayload, UserCreated, JobApplication, SavedJob } from '@/types/auth';
 
@@ -85,6 +86,7 @@ async function setUserDataCookie(userData: UserResponse) {
 }
 
 export async function login(email: string, password: string) {
+  const t = await getTranslations('actions.auth');
   try {
     // Step 1: Call FastAPI /auth/login endpoint
     const tokenResponse = await fetch(`${API_BASE}/auth/login`, {
@@ -117,7 +119,7 @@ export async function login(email: string, password: string) {
     if (!userResponse.ok) {
       return {
         success: false,
-        error: 'Không thể lấy thông tin người dùng',
+        error: t('fetchUserFailed'),
       };
     }
 
@@ -141,7 +143,7 @@ export async function login(email: string, password: string) {
     console.error('Login error:', error);
     return {
       success: false,
-      error: 'Đã xảy ra lỗi khi đăng nhập. Vui lòng thử lại.',
+      error: t('loginError'),
     };
   }
 }
@@ -377,12 +379,13 @@ export async function updateProfile(data: {
   phone?: string;
   track?: string;
 }): Promise<{ success: boolean; user?: User; error?: string }> {
+  const t = await getTranslations('actions.auth');
   try {
     const cookieStore = await cookies();
     const accessToken = cookieStore.get('access_token')?.value;
 
     if (!accessToken) {
-      return { success: false, error: 'Chưa đăng nhập.' };
+      return { success: false, error: t('notLoggedIn') };
     }
 
     const response = await fetch(`${API_BASE}/auth/me`, {
@@ -420,7 +423,7 @@ export async function updateProfile(data: {
     return { success: true, user };
   } catch (error) {
     console.error('Error updating profile:', error);
-    return { success: false, error: 'Đã xảy ra lỗi. Vui lòng thử lại.' };
+    return { success: false, error: t('genericError') };
   }
 }
 
@@ -449,12 +452,13 @@ export async function updateProfile(data: {
  * và để người gọi tự điều hướng về /login, KHÔNG cố giữ phiên cũ.
  */
 export async function changePassword(newPassword: string, oldPassword?: string) {
+  const t = await getTranslations('actions.auth');
   try {
     const cookieStore = await cookies();
     const accessToken = cookieStore.get('access_token')?.value;
 
     if (!accessToken) {
-      return { success: false, error: 'Chưa đăng nhập.' };
+      return { success: false, error: t('notLoggedIn') };
     }
 
     const response = await fetch(`${API_BASE}/auth/change-password`, {
@@ -472,11 +476,11 @@ export async function changePassword(newPassword: string, oldPassword?: string) 
     });
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: 'Đổi mật khẩu thất bại' }));
+      const error = await response.json().catch(() => ({ detail: t('changePasswordFailed') }));
       const message = typeof error.detail === 'string' ? error.detail : error.detail?.message;
       return {
         success: false,
-        error: message || 'Đổi mật khẩu thất bại',
+        error: message || t('changePasswordFailed'),
       };
     }
 
@@ -490,7 +494,7 @@ export async function changePassword(newPassword: string, oldPassword?: string) 
     return { success: true };
   } catch (error) {
     console.error('Change password error:', error);
-    return { success: false, error: 'Đã xảy ra lỗi. Vui lòng thử lại.' };
+    return { success: false, error: t('genericError') };
   }
 }
 
@@ -548,10 +552,11 @@ export async function listUsers(): Promise<User[]> {
 export async function createUser(
   data: UserCreatePayload
 ): Promise<{ success: boolean; user?: UserCreated; error?: string }> {
+  const t = await getTranslations('actions.auth');
   try {
     const cookieStore = await cookies();
     const accessToken = cookieStore.get('access_token')?.value;
-    if (!accessToken) return { success: false, error: 'Chưa đăng nhập.' };
+    if (!accessToken) return { success: false, error: t('notLoggedIn') };
 
     const response = await fetch(`${API_BASE}/auth/users`, {
       method: 'POST',
@@ -566,7 +571,7 @@ export async function createUser(
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: response.statusText }));
-      return { success: false, error: error.detail != null ? await formatErrorDetail(error.detail) : 'Không thể tạo tài khoản' };
+      return { success: false, error: error.detail != null ? await formatErrorDetail(error.detail) : t('createUserFailed') };
     }
     const user = await response.json();
     return { success: true, user };
@@ -581,10 +586,11 @@ export async function updateUserRole(
   ssUserId: string,
   role: string
 ): Promise<{ success: boolean; user?: User; error?: string }> {
+  const t = await getTranslations('actions.auth');
   try {
     const cookieStore = await cookies();
     const accessToken = cookieStore.get('access_token')?.value;
-    if (!accessToken) return { success: false, error: 'Chưa đăng nhập.' };
+    if (!accessToken) return { success: false, error: t('notLoggedIn') };
 
     const response = await fetch(`${API_BASE}/auth/users/${ssUserId}/role`, {
       method: 'PATCH',
@@ -599,7 +605,7 @@ export async function updateUserRole(
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: response.statusText }));
-      return { success: false, error: error.detail != null ? await formatErrorDetail(error.detail) : 'Không thể đổi vai trò' };
+      return { success: false, error: error.detail != null ? await formatErrorDetail(error.detail) : t('updateRoleFailed') };
     }
     const user = await response.json();
     return { success: true, user };
@@ -614,10 +620,11 @@ export async function updateUserActiveStatus(
   ssUserId: string,
   isActive: boolean
 ): Promise<{ success: boolean; user?: User; error?: string }> {
+  const t = await getTranslations('actions.auth');
   try {
     const cookieStore = await cookies();
     const accessToken = cookieStore.get('access_token')?.value;
-    if (!accessToken) return { success: false, error: 'Chưa đăng nhập.' };
+    if (!accessToken) return { success: false, error: t('notLoggedIn') };
 
     const response = await fetch(`${API_BASE}/auth/users/${ssUserId}/active-status`, {
       method: 'PATCH',
@@ -632,7 +639,7 @@ export async function updateUserActiveStatus(
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: response.statusText }));
-      return { success: false, error: error.detail != null ? await formatErrorDetail(error.detail) : 'Không thể đổi trạng thái tài khoản' };
+      return { success: false, error: error.detail != null ? await formatErrorDetail(error.detail) : t('updateActiveStatusFailed') };
     }
     const user = await response.json();
     return { success: true, user };
@@ -704,6 +711,7 @@ export async function register(data: {
   phone?: string;
   track?: string;
 }): Promise<{ success: boolean; message?: string; error?: string }> {
+  const t = await getTranslations('actions.auth');
   try {
     const response = await fetch(`${API_BASE}/auth/register`, {
       method: 'POST',
@@ -714,13 +722,13 @@ export async function register(data: {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: response.statusText }));
-      return { success: false, error: error.detail != null ? await formatErrorDetail(error.detail) : 'Đăng ký thất bại' };
+      return { success: false, error: error.detail != null ? await formatErrorDetail(error.detail) : t('registerFailed') };
     }
     const body = await response.json();
     return { success: true, message: body.message };
   } catch (error) {
     console.error('Register error:', error);
-    return { success: false, error: 'Đã xảy ra lỗi. Vui lòng thử lại.' };
+    return { success: false, error: t('genericError') };
   }
 }
 
@@ -731,6 +739,7 @@ export async function register(data: {
  * chỉ dùng cho lỗi mạng/rate-limit thật sự.
  */
 export async function forgotPassword(email: string): Promise<{ success: boolean; message?: string; error?: string }> {
+  const t = await getTranslations('actions.auth');
   try {
     const response = await fetch(`${API_BASE}/auth/forgot-password`, {
       method: 'POST',
@@ -741,13 +750,13 @@ export async function forgotPassword(email: string): Promise<{ success: boolean;
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: response.statusText }));
-      return { success: false, error: error.detail != null ? await formatErrorDetail(error.detail) : 'Không thể gửi email đặt lại mật khẩu' };
+      return { success: false, error: error.detail != null ? await formatErrorDetail(error.detail) : t('forgotPasswordFailed') };
     }
     const body = await response.json();
     return { success: true, message: body.message };
   } catch (error) {
     console.error('Forgot password error:', error);
-    return { success: false, error: 'Đã xảy ra lỗi. Vui lòng thử lại.' };
+    return { success: false, error: t('genericError') };
   }
 }
 
@@ -760,6 +769,7 @@ export async function resetPassword(
   token: string,
   newPassword: string
 ): Promise<{ success: boolean; message?: string; error?: string }> {
+  const t = await getTranslations('actions.auth');
   try {
     const response = await fetch(`${API_BASE}/auth/reset-password`, {
       method: 'POST',
@@ -770,12 +780,12 @@ export async function resetPassword(
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: response.statusText }));
-      return { success: false, error: error.detail != null ? await formatErrorDetail(error.detail) : 'Đặt lại mật khẩu thất bại' };
+      return { success: false, error: error.detail != null ? await formatErrorDetail(error.detail) : t('resetPasswordFailed') };
     }
     const body = await response.json();
     return { success: true, message: body.message };
   } catch (error) {
     console.error('Reset password error:', error);
-    return { success: false, error: 'Đã xảy ra lỗi. Vui lòng thử lại.' };
+    return { success: false, error: t('genericError') };
   }
 }

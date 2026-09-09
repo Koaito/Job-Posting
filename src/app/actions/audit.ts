@@ -1,5 +1,6 @@
 'use server';
 
+import { getTranslations } from 'next-intl/server';
 import { apiFetch, buildParams } from '@/lib/api/client';
 import type { AuditLog, AuditLogFilters, PaginatedAuditLogs } from '@/types/audit';
 
@@ -59,10 +60,11 @@ export async function updateAuditLogNote(
   logId: string,
   note: string
 ): Promise<{ success: boolean; log?: AuditLog; error?: string }> {
+  const t = await getTranslations('actions.audit');
   const result = await apiFetch<AuditLog>(`/audit-logs/${logId}/note`, {
     method: 'PATCH',
     body: { note },
-    fallbackError: 'Không thể cập nhật note',
+    fallbackError: t('updateNoteFailed'),
   });
 
   if (!result.success) {

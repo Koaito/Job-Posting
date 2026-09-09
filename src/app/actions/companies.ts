@@ -1,5 +1,6 @@
 'use server';
 
+import { getTranslations } from 'next-intl/server';
 import { apiFetch, buildParams } from '@/lib/api/client';
 import type {
   Company,
@@ -82,10 +83,11 @@ export async function getCompanyById(id: string): Promise<CompanyDetail | null> 
 export async function createCompany(
   data: CompanyCreatePayload
 ): Promise<{ success: boolean; company?: Company; error?: string }> {
+  const t = await getTranslations('actions.companies');
   const result = await apiFetch<Company>('/companies', {
     method: 'POST',
     body: data,
-    fallbackError: 'Không thể tạo công ty',
+    fallbackError: t('createFailed'),
   });
 
   if (!result.success) {
@@ -100,10 +102,11 @@ export async function updateCompany(
   id: string,
   data: CompanyUpdatePayload
 ): Promise<{ success: boolean; company?: CompanyDetail; error?: string }> {
+  const t = await getTranslations('actions.companies');
   const result = await apiFetch<CompanyDetail>(`/companies/${id}`, {
     method: 'PATCH',
     body: data,
-    fallbackError: 'Không thể cập nhật công ty',
+    fallbackError: t('updateFailed'),
   });
 
   if (!result.success) {
@@ -121,10 +124,11 @@ export async function deleteCompany(
   id: string,
   payload: CompanyDeletePayload
 ): Promise<{ success: boolean; error?: string }> {
+  const t = await getTranslations('actions.companies');
   const result = await apiFetch<void>(`/companies/${id}`, {
     method: 'DELETE',
     body: payload,
-    fallbackError: 'Không thể xoá công ty',
+    fallbackError: t('deleteFailed'),
   });
 
   if (!result.success) {

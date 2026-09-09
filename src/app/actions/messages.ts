@@ -1,5 +1,6 @@
 'use server';
 
+import { getTranslations } from 'next-intl/server';
 import { apiFetch, apiFetchRaw, formatErrorDetail } from '@/lib/api/client';
 import type {
   ChatMessage,
@@ -223,9 +224,10 @@ export async function sendMessage(
 export async function cancelPendingRequest(
   ssId: string
 ): Promise<{ success: boolean; error?: string }> {
+  const t = await getTranslations('actions.messages');
   const result = await apiFetch<void>(`/messages/cancel/${ssId}`, {
     method: 'POST',
-    fallbackError: 'Không thể huỷ yêu cầu',
+    fallbackError: t('cancelRequestFailed'),
   });
 
   if (!result.success) {
@@ -242,9 +244,10 @@ export async function cancelPendingRequest(
 export async function acceptMessageRequest(
   relationshipId: string
 ): Promise<{ success: boolean; error?: string }> {
+  const t = await getTranslations('actions.messages');
   const result = await apiFetch<void>(`/messages/relationships/${relationshipId}/accept`, {
     method: 'POST',
-    fallbackError: 'Không thể chấp nhận yêu cầu',
+    fallbackError: t('acceptRequestFailed'),
   });
 
   if (!result.success) {
@@ -258,9 +261,10 @@ export async function acceptMessageRequest(
 export async function declineMessageRequest(
   relationshipId: string
 ): Promise<{ success: boolean; error?: string }> {
+  const t = await getTranslations('actions.messages');
   const result = await apiFetch<void>(`/messages/relationships/${relationshipId}/decline`, {
     method: 'POST',
-    fallbackError: 'Không thể từ chối yêu cầu',
+    fallbackError: t('declineRequestFailed'),
   });
 
   if (!result.success) {
@@ -279,9 +283,10 @@ export async function declineMessageRequest(
 export async function blockStudent(
   studentId: string
 ): Promise<{ success: boolean; error?: string }> {
+  const t = await getTranslations('actions.messages');
   const result = await apiFetch<void>(`/messages/block/${studentId}`, {
     method: 'POST',
-    fallbackError: 'Không thể chặn học viên',
+    fallbackError: t('blockStudentFailed'),
   });
 
   if (!result.success) {
@@ -300,9 +305,10 @@ export async function blockStudent(
 export async function unblockRelationship(
   relationshipId: string
 ): Promise<{ success: boolean; error?: string }> {
+  const t = await getTranslations('actions.messages');
   const result = await apiFetch<void>(`/messages/relationships/${relationshipId}/unblock`, {
     method: 'POST',
-    fallbackError: 'Không thể bỏ chặn',
+    fallbackError: t('unblockFailed'),
   });
 
   if (!result.success) {

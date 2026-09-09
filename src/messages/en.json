@@ -368,6 +368,42 @@
       "startFailed": "Could not start crawl",
       "startBatchFailed": "Could not start crawl batch",
       "maintenanceFailed": "Could not trigger maintenance job"
+    },
+    "audit": {
+      "updateNoteFailed": "Could not update the note"
+    },
+    "companies": {
+      "createFailed": "Could not create company",
+      "updateFailed": "Could not update company",
+      "deleteFailed": "Could not delete company"
+    },
+    "emailTemplates": {
+      "createFailed": "Could not add email template",
+      "updateFailed": "Could not update email template",
+      "deleteFailed": "Could not delete email template"
+    },
+    "messages": {
+      "cancelRequestFailed": "Could not cancel the request",
+      "acceptRequestFailed": "Could not accept the request",
+      "declineRequestFailed": "Could not decline the request",
+      "blockStudentFailed": "Could not block the student",
+      "unblockFailed": "Could not unblock"
+    },
+    "importExport": {
+      "uploadRateLimited": "Too many uploads (limit: 20/hour) — please try again later."
+    },
+    "auth": {
+      "loginError": "An error occurred while logging in. Please try again.",
+      "fetchUserFailed": "Could not fetch user information",
+      "notLoggedIn": "Not logged in.",
+      "genericError": "An error occurred. Please try again.",
+      "changePasswordFailed": "Failed to change password",
+      "createUserFailed": "Could not create account",
+      "updateRoleFailed": "Could not change role",
+      "updateActiveStatusFailed": "Could not change account status",
+      "registerFailed": "Registration failed",
+      "forgotPasswordFailed": "Could not send password reset email",
+      "resetPasswordFailed": "Failed to reset password"
     }
   }
 }

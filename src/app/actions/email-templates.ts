@@ -1,5 +1,6 @@
 'use server';
 
+import { getTranslations } from 'next-intl/server';
 import { apiFetch } from '@/lib/api/client';
 import type {
   EmailTemplate,
@@ -42,10 +43,11 @@ export async function getPlaceholderHelp(): Promise<PlaceholderHelp> {
 export async function createEmailTemplate(
   data: EmailTemplateCreatePayload
 ): Promise<{ success: boolean; template?: EmailTemplate; error?: string }> {
+  const t = await getTranslations('actions.emailTemplates');
   const result = await apiFetch<EmailTemplate>('/email-templates', {
     method: 'POST',
     body: data,
-    fallbackError: 'Không thể thêm mẫu email',
+    fallbackError: t('createFailed'),
   });
 
   if (!result.success) {
@@ -60,10 +62,11 @@ export async function updateEmailTemplate(
   templateId: string,
   data: EmailTemplateUpdatePayload
 ): Promise<{ success: boolean; template?: EmailTemplate; error?: string }> {
+  const t = await getTranslations('actions.emailTemplates');
   const result = await apiFetch<EmailTemplate>(`/email-templates/${templateId}`, {
     method: 'PATCH',
     body: data,
-    fallbackError: 'Không thể cập nhật mẫu email',
+    fallbackError: t('updateFailed'),
   });
 
   if (!result.success) {
@@ -78,10 +81,11 @@ export async function deleteEmailTemplate(
   templateId: string,
   note: string
 ): Promise<{ success: boolean; error?: string }> {
+  const t = await getTranslations('actions.emailTemplates');
   const result = await apiFetch<void>(`/email-templates/${templateId}`, {
     method: 'DELETE',
     body: { note },
-    fallbackError: 'Không thể xoá mẫu email',
+    fallbackError: t('deleteFailed'),
   });
 
   if (!result.success) {

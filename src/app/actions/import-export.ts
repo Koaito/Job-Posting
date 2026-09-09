@@ -1,5 +1,6 @@
 'use server';
 
+import { getTranslations } from 'next-intl/server';
 import { apiFetchRaw, buildParams } from '@/lib/api/client';
 import type {
   ImportExportEntityType,
@@ -232,6 +233,7 @@ export async function uploadImportFile(
   error?: string;
   fileErrors?: Array<{ row_number: number; field_name: string; rule: string; message: string }>;
 }> {
+  const t = await getTranslations('actions.importExport');
   try {
     const formData = new FormData();
     formData.append('file', file);
@@ -249,7 +251,7 @@ export async function uploadImportFile(
     if (response.status === 429) {
       return {
         success: false,
-        error: 'Đã upload quá nhiều lần (giới hạn 20 lần/giờ) — vui lòng thử lại sau.',
+        error: t('uploadRateLimited'),
       };
     }
 

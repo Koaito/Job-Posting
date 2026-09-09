@@ -368,6 +368,42 @@
       "startFailed": "Không thể kích hoạt crawl",
       "startBatchFailed": "Không thể kích hoạt crawl batch",
       "maintenanceFailed": "Không thể kích hoạt job bảo trì"
+    },
+    "audit": {
+      "updateNoteFailed": "Không thể cập nhật note"
+    },
+    "companies": {
+      "createFailed": "Không thể tạo công ty",
+      "updateFailed": "Không thể cập nhật công ty",
+      "deleteFailed": "Không thể xoá công ty"
+    },
+    "emailTemplates": {
+      "createFailed": "Không thể thêm mẫu email",
+      "updateFailed": "Không thể cập nhật mẫu email",
+      "deleteFailed": "Không thể xoá mẫu email"
+    },
+    "messages": {
+      "cancelRequestFailed": "Không thể huỷ yêu cầu",
+      "acceptRequestFailed": "Không thể chấp nhận yêu cầu",
+      "declineRequestFailed": "Không thể từ chối yêu cầu",
+      "blockStudentFailed": "Không thể chặn học viên",
+      "unblockFailed": "Không thể bỏ chặn"
+    },
+    "importExport": {
+      "uploadRateLimited": "Đã upload quá nhiều lần (giới hạn 20 lần/giờ) — vui lòng thử lại sau."
+    },
+    "auth": {
+      "loginError": "Đã xảy ra lỗi khi đăng nhập. Vui lòng thử lại.",
+      "fetchUserFailed": "Không thể lấy thông tin người dùng",
+      "notLoggedIn": "Chưa đăng nhập.",
+      "genericError": "Đã xảy ra lỗi. Vui lòng thử lại.",
+      "changePasswordFailed": "Đổi mật khẩu thất bại",
+      "createUserFailed": "Không thể tạo tài khoản",
+      "updateRoleFailed": "Không thể đổi vai trò",
+      "updateActiveStatusFailed": "Không thể đổi trạng thái tài khoản",
+      "registerFailed": "Đăng ký thất bại",
+      "forgotPasswordFailed": "Không thể gửi email đặt lại mật khẩu",
+      "resetPasswordFailed": "Đặt lại mật khẩu thất bại"
     }
   }
 }
