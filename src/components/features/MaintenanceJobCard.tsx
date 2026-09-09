@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { triggerMaintenance, getMaintenanceStatus, getMaintenanceLogs } from '@/app/actions/crawl';
 import type { MaintenanceStatus, MaintenanceLog } from '@/types/crawl';
 import { crawlStatusBadgeClass, crawlStatusLabel } from '@/lib/crawl/badges';
@@ -21,6 +22,13 @@ import { MAINTENANCE_CHECK_EXPIRED_JOB_TYPE } from '@/lib/maintenance/jobs';
  * card) — ở đây mỗi card tự poll log RIÊNG (5 request thay vì 1 khi cả
  * 5 job cùng chạy), đổi lấy code đơn giản hơn nhiều lần, chấp nhận
  * được vì trong thực tế hiếm khi chạy đồng thời cả 5 job bảo trì.
+ *
+ * i18n (Giai đoạn 2, nhóm 5, 09/2026): dịch label/nút bấm qua
+ * `useTranslations('maintenanceJobCard')`. `label`/`description` (props
+ * truyền từ lib/maintenance/jobs.ts) CỐ Ý CHƯA dịch — xem ghi chú
+ * MAINTENANCE_JOBS trong file đó (cần tách "label hiển thị" khỏi dữ
+ * liệu tĩnh trước). crawlStatusLabel() cùng lý do (lib/crawl/badges.ts).
+ * toLocaleTimeString('vi-VN') CỐ Ý CHƯA đổi — thuộc phạm vi Polish.
  */
 
 interface MaintenanceJobCardProps {
@@ -46,6 +54,7 @@ export default function MaintenanceJobCard({
   isAdmin,
   initialRun,
 }: MaintenanceJobCardProps) {
+  const t = useTranslations('maintenanceJobCard');
   const router = useRouter();
 
   const [limit, setLimit] = useState('');
@@ -106,7 +115,7 @@ export default function MaintenanceJobCard({
     setError(null);
 
     if (requireLimit && !limit) {
-      setError(`'${label}' gọi Tavily/Gemini (tốn phí thật) — bắt buộc nhập số lượng giới hạn trước khi bấm chạy.`);
+      setError(t('limitRequiredError', { label }));
       return;
     }
 
@@ -123,7 +132,7 @@ export default function MaintenanceJobCard({
       lastIdRef.current = 0;
       setActiveRunId(result.result.run_id);
     } else {
-      setError(result.error || 'Không thể kích hoạt job bảo trì');
+      setError(result.error || t('triggerFailed'));
     }
   };
 
@@ -131,7 +140,7 @@ export default function MaintenanceJobCard({
     <div className="crawl-source-card">
       <h2>
         {label}
-        {costsMoney && <span className="badge badge-warning maint-cost-badge">Tốn phí thật</span>}
+        {costsMoney && <span className="badge badge-warning maint-cost-badge">{t('costsMoneyBadge')}</span>}
       </h2>
       <p className="crawl-source-sub">{description}</p>
 
@@ -140,7 +149,7 @@ export default function MaintenanceJobCard({
           {error && <div className="flash flash-error" style={{ marginBottom: '12px' }}>{error}</div>}
           <div className="form-grid">
             <label className="span-2">
-              Giới hạn số lượng{requireLimit ? ' (bắt buộc)' : ' (bỏ trống = chạy hết)'}
+              {t('limitLabel')}{requireLimit ? t('limitRequiredSuffix') : t('limitOptionalSuffix')}
               <input
                 type="number"
                 min={1}
@@ -160,7 +169,7 @@ export default function MaintenanceJobCard({
                     onChange={(e) => setDryRun(e.target.checked)}
                     disabled={submitting || isRunActive}
                   />
-                  Chỉ xem trước (không ghi vào DB)
+                  {t('dryRunOption')}
                 </label>
                 <label className="checkbox-label">
                   <input
@@ -169,20 +178,20 @@ export default function MaintenanceJobCard({
                     onChange={(e) => setCheckDeadlineOnly(e.target.checked)}
                     disabled={submitting || isRunActive}
                   />
-                  Chỉ check deadline (không gọi mạng tới source_url)
+                  {t('checkDeadlineOption')}
                 </label>
               </div>
             )}
             <div className="form-actions span-4">
               <button type="submit" className="btn btn-primary" disabled={submitting || isRunActive}>
-                {submitting ? 'Đang gửi...' : isRunActive ? 'Đang chạy...' : 'Chạy job này'}
+                {submitting ? t('sending') : isRunActive ? t('running') : t('runButton')}
               </button>
             </div>
           </div>
         </form>
       ) : (
         <p className="muted" style={{ margin: 0 }}>
-          Chỉ tài khoản <strong>admin</strong> mới kích hoạt được. Bạn vẫn xem được log/trạng thái bên dưới.
+          {t('adminOnlyPrefix')} <strong>admin</strong> {t('adminOnlySuffixMaintenance')}
         </p>
       )}
 
@@ -199,7 +208,7 @@ export default function MaintenanceJobCard({
           )}
           {runStatus.stats && (
             <details style={{ marginTop: '6px' }}>
-              <summary className="muted" style={{ cursor: 'pointer', fontSize: '12.5px' }}>Kết quả</summary>
+              <summary className="muted" style={{ cursor: 'pointer', fontSize: '12.5px' }}>{t('resultsSummary')}</summary>
               <pre style={{ fontSize: '12px', whiteSpace: 'pre-wrap' }}>{JSON.stringify(runStatus.stats, null, 2)}</pre>
             </details>
           )}
@@ -208,7 +217,7 @@ export default function MaintenanceJobCard({
 
       <div className="crawl-log-card maint-log-card">
         <div className="crawl-log-head">
-          <span>Log live</span>
+          <span>{t('logLiveTitle')}</span>
         </div>
         <div className="crawl-log-body maint-log-body">
           {logs.length > 0 ? (
@@ -218,7 +227,7 @@ export default function MaintenanceJobCard({
               </div>
             ))
           ) : (
-            <span style={{ opacity: 0.6 }}>Chưa có log nào.</span>
+            <span style={{ opacity: 0.6 }}>{t('noLogs')}</span>
           )}
         </div>
       </div>

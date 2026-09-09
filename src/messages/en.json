@@ -554,5 +554,43 @@
     "processing": "Processing...",
     "savedUnsave": "★ Saved — Unsave",
     "saveJob": "☆ Save job"
+  },
+  "crawlTrigger": {
+    "newCrawlTitle": "Start a new crawl",
+    "sourceLabel": "Source",
+    "categoryLabel": "Category",
+    "pagesLabel": "Pages (max 20)",
+    "pagesPlaceholder": "Default",
+    "maxJobsLabel": "Max JDs",
+    "maxJobsPlaceholder": "No limit",
+    "sending": "Sending...",
+    "runInProgress": "A run is already in progress...",
+    "startCrawl": "🕷️ Start crawl",
+    "oneRunPerSourceNote": "Each source can only run one crawl at a time — other sources can still crawl in parallel.",
+    "adminOnlyPrefix": "Only",
+    "adminOnlySuffixTrigger": "accounts can start a new crawl. You can still view logs/history below.",
+    "logLiveTitle": "Live log",
+    "progressLine": "Fetched: {fetched} · Saved: {inserted} · Updated at {time}",
+    "neverCrawled": "Never crawled yet.",
+    "noLogs": "No logs yet.",
+    "crawlFailed": "Couldn't start the crawl"
+  },
+  "maintenanceJobCard": {
+    "costsMoneyBadge": "Costs real money",
+    "limitRequiredError": "'{label}' calls Tavily/Gemini (costs real money) — you must enter a limit before running.",
+    "limitLabel": "Limit",
+    "limitRequiredSuffix": " (required)",
+    "limitOptionalSuffix": " (leave blank to run all)",
+    "dryRunOption": "Preview only (no DB writes)",
+    "checkDeadlineOption": "Check deadline only (no network call to source_url)",
+    "sending": "Sending...",
+    "running": "Running...",
+    "runButton": "Run this job",
+    "adminOnlyPrefix": "Only",
+    "adminOnlySuffixMaintenance": "accounts can run this. You can still view logs/status below.",
+    "resultsSummary": "Results",
+    "logLiveTitle": "Live log",
+    "noLogs": "No logs yet.",
+    "triggerFailed": "Couldn't start the maintenance job"
   }
 }

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { startCrawl, getCrawlStatus, getCrawlLogs } from '@/app/actions/crawl';
 import type { CrawlStatus, CrawlLog } from '@/types/crawl';
 import { crawlStatusBadgeClass, crawlStatusLabel } from '@/lib/crawl/badges';
@@ -16,6 +17,12 @@ import { crawlStatusBadgeClass, crawlStatusLabel } from '@/lib/crawl/badges';
  * của lần gọi trước (xem docstring backend) — dừng poll khi status
  * không còn 'queued'/'running'. Trạng thái run cũng tự poll GET
  * /crawl/{run_id} song song để cập nhật progress/status.
+ *
+ * i18n (Giai đoạn 2, nhóm 5, 09/2026): dịch label/nút bấm qua
+ * `useTranslations('crawlTrigger')`. crawlStatusLabel() (lib/crawl/
+ * badges.ts) CỐ Ý CHƯA dịch — nhãn gắn liền tên class CSS suy từ label
+ * tiếng Việt, cần tách trước (xem ghi chú lib/companies/potential.ts).
+ * toLocaleTimeString('vi-VN') CỐ Ý CHƯA đổi — thuộc phạm vi Polish.
  */
 
 interface CrawlTriggerProps {
@@ -28,6 +35,7 @@ interface CrawlTriggerProps {
 const POLL_INTERVAL_MS = 2000;
 
 export default function CrawlTrigger({ isAdmin, sources, initialRun }: CrawlTriggerProps) {
+  const t = useTranslations('crawlTrigger');
   const router = useRouter();
   const sourceKeys = Object.keys(sources);
 
@@ -119,7 +127,7 @@ export default function CrawlTrigger({ isAdmin, sources, initialRun }: CrawlTrig
       lastIdRef.current = 0;
       setActiveRunId(result.result.run_id);
     } else {
-      setError(result.error || 'Không thể kích hoạt crawl');
+      setError(result.error || t('crawlFailed'));
     }
   };
 
@@ -141,11 +149,11 @@ export default function CrawlTrigger({ isAdmin, sources, initialRun }: CrawlTrig
     <div>
       {isAdmin ? (
         <form onSubmit={handleSubmit} className="card" style={{ marginBottom: '22px' }}>
-          <h4 style={{ marginTop: 0 }}>Kích hoạt crawl mới</h4>
+          <h4 style={{ marginTop: 0 }}>{t('newCrawlTitle')}</h4>
           {error && <div className="flash flash-error" style={{ marginBottom: '12px' }}>{error}</div>}
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label htmlFor="source">Nguồn</label>
+              <label htmlFor="source">{t('sourceLabel')}</label>
               <select
                 id="source"
                 value={selectedSource}
@@ -158,7 +166,7 @@ export default function CrawlTrigger({ isAdmin, sources, initialRun }: CrawlTrig
               </select>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label htmlFor="category">Ngành</label>
+              <label htmlFor="category">{t('categoryLabel')}</label>
               <select
                 id="category"
                 value={selectedCategory}
@@ -171,7 +179,7 @@ export default function CrawlTrigger({ isAdmin, sources, initialRun }: CrawlTrig
               </select>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label htmlFor="pages">Số trang (tối đa 20)</label>
+              <label htmlFor="pages">{t('pagesLabel')}</label>
               <input
                 id="pages"
                 type="number"
@@ -179,13 +187,13 @@ export default function CrawlTrigger({ isAdmin, sources, initialRun }: CrawlTrig
                 max={20}
                 value={pages}
                 onChange={(e) => setPages(e.target.value)}
-                placeholder="Mặc định"
+                placeholder={t('pagesPlaceholder')}
                 disabled={submitting || isRunActive}
                 style={{ width: '110px' }}
               />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label htmlFor="max_jobs">Số JD tối đa</label>
+              <label htmlFor="max_jobs">{t('maxJobsLabel')}</label>
               <input
                 id="max_jobs"
                 type="number"
@@ -193,29 +201,29 @@ export default function CrawlTrigger({ isAdmin, sources, initialRun }: CrawlTrig
                 max={1000}
                 value={maxJobs}
                 onChange={(e) => setMaxJobs(e.target.value)}
-                placeholder="Không giới hạn"
+                placeholder={t('maxJobsPlaceholder')}
                 disabled={submitting || isRunActive}
                 style={{ width: '130px' }}
               />
             </div>
             <button type="submit" className="btn btn-primary" disabled={submitting || isRunActive || !selectedSource || !selectedCategory}>
-              {submitting ? 'Đang gửi...' : isRunActive ? 'Đang có lượt chạy...' : '🕷️ Bắt đầu crawl'}
+              {submitting ? t('sending') : isRunActive ? t('runInProgress') : t('startCrawl')}
             </button>
           </div>
           <p className="muted" style={{ fontSize: '12px', marginTop: '8px', marginBottom: 0 }}>
-            Mỗi nguồn chỉ chạy được 1 lượt tại 1 thời điểm — nguồn khác vẫn crawl song song bình thường.
+            {t('oneRunPerSourceNote')}
           </p>
         </form>
       ) : (
         <div className="card" style={{ marginBottom: '22px' }}>
           <p className="muted" style={{ margin: 0 }}>
-            Chỉ tài khoản <strong>admin</strong> mới kích hoạt được crawl mới. Bạn vẫn xem được log/lịch sử bên dưới.
+            {t('adminOnlyPrefix')} <strong>admin</strong> {t('adminOnlySuffixTrigger')}
           </p>
         </div>
       )}
 
       <div className="card">
-        <h4 style={{ marginTop: 0 }}>Log live</h4>
+        <h4 style={{ marginTop: 0 }}>{t('logLiveTitle')}</h4>
         {runStatus ? (
           <div style={{ marginBottom: '12px' }}>
             <p style={{ margin: '0 0 4px 0' }}>
@@ -233,8 +241,11 @@ export default function CrawlTrigger({ isAdmin, sources, initialRun }: CrawlTrig
             </p>
             {runStatus.progress && (
               <p className="muted" style={{ margin: 0, fontSize: '13px' }}>
-                Đã tải: {runStatus.progress.fetched} · Đã lưu: {runStatus.progress.inserted} · Cập nhật lúc{' '}
-                {new Date(runStatus.progress.last_update).toLocaleTimeString('vi-VN')}
+                {t('progressLine', {
+                  fetched: runStatus.progress.fetched,
+                  inserted: runStatus.progress.inserted,
+                  time: new Date(runStatus.progress.last_update).toLocaleTimeString('vi-VN'),
+                })}
               </p>
             )}
             {runStatus.error && (
@@ -242,7 +253,7 @@ export default function CrawlTrigger({ isAdmin, sources, initialRun }: CrawlTrig
             )}
           </div>
         ) : (
-          <p className="muted">Chưa từng crawl lần nào.</p>
+          <p className="muted">{t('neverCrawled')}</p>
         )}
 
         <div
@@ -267,7 +278,7 @@ export default function CrawlTrigger({ isAdmin, sources, initialRun }: CrawlTrig
               </div>
             ))
           ) : (
-            <span style={{ opacity: 0.6 }}>Chưa có log nào.</span>
+            <span style={{ opacity: 0.6 }}>{t('noLogs')}</span>
           )}
         </div>
       </div>

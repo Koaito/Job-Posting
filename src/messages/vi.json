@@ -554,5 +554,43 @@
     "processing": "Đang xử lý...",
     "savedUnsave": "★ Đã lưu — Bỏ lưu",
     "saveJob": "☆ Lưu job"
+  },
+  "crawlTrigger": {
+    "newCrawlTitle": "Kích hoạt crawl mới",
+    "sourceLabel": "Nguồn",
+    "categoryLabel": "Ngành",
+    "pagesLabel": "Số trang (tối đa 20)",
+    "pagesPlaceholder": "Mặc định",
+    "maxJobsLabel": "Số JD tối đa",
+    "maxJobsPlaceholder": "Không giới hạn",
+    "sending": "Đang gửi...",
+    "runInProgress": "Đang có lượt chạy...",
+    "startCrawl": "🕷️ Bắt đầu crawl",
+    "oneRunPerSourceNote": "Mỗi nguồn chỉ chạy được 1 lượt tại 1 thời điểm — nguồn khác vẫn crawl song song bình thường.",
+    "adminOnlyPrefix": "Chỉ tài khoản",
+    "adminOnlySuffixTrigger": "mới kích hoạt được crawl mới. Bạn vẫn xem được log/lịch sử bên dưới.",
+    "logLiveTitle": "Log live",
+    "progressLine": "Đã tải: {fetched} · Đã lưu: {inserted} · Cập nhật lúc {time}",
+    "neverCrawled": "Chưa từng crawl lần nào.",
+    "noLogs": "Chưa có log nào.",
+    "crawlFailed": "Không thể kích hoạt crawl"
+  },
+  "maintenanceJobCard": {
+    "costsMoneyBadge": "Tốn phí thật",
+    "limitRequiredError": "'{label}' gọi Tavily/Gemini (tốn phí thật) — bắt buộc nhập số lượng giới hạn trước khi bấm chạy.",
+    "limitLabel": "Giới hạn số lượng",
+    "limitRequiredSuffix": " (bắt buộc)",
+    "limitOptionalSuffix": " (bỏ trống = chạy hết)",
+    "dryRunOption": "Chỉ xem trước (không ghi vào DB)",
+    "checkDeadlineOption": "Chỉ check deadline (không gọi mạng tới source_url)",
+    "sending": "Đang gửi...",
+    "running": "Đang chạy...",
+    "runButton": "Chạy job này",
+    "adminOnlyPrefix": "Chỉ tài khoản",
+    "adminOnlySuffixMaintenance": "mới kích hoạt được. Bạn vẫn xem được log/trạng thái bên dưới.",
+    "resultsSummary": "Kết quả",
+    "logLiveTitle": "Log live",
+    "noLogs": "Chưa có log nào.",
+    "triggerFailed": "Không thể kích hoạt job bảo trì"
   }
 }
