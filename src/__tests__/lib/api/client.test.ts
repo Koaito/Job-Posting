@@ -262,5 +262,68 @@ describe('formatErrorDetail()', () => {
         })
       ).toBe("This job is in status 'CLOSED' and can't be applied to.");
     });
+
+    it('locale=en + đợt "template biến số" phần 2/2 batch 2 (11 mã cuối, nhiều biến/số lượng) -> dịch động', async () => {
+      mockCookieGet.mockImplementation((name: string) =>
+        name === 'locale' ? { value: 'en' } : undefined
+      );
+      expect(
+        await formatErrorDetail({
+          error_code: 'auth_locked_2',
+          message: 'Sai mật khẩu quá 5 lần liên tiếp — tài khoản bị khoá tạm 15 phút.',
+        })
+      ).toBe('Wrong password too many times in a row (5x) — account temporarily locked for 15 minutes.');
+      expect(
+        await formatErrorDetail({
+          error_code: 'crawl_not_found_3',
+          message: "Category ['foo', 'bar'] không tồn tại cho source 'topcv'. Có sẵn: ['data-analyst']",
+        })
+      ).toBe("Category foo, bar not found for source 'topcv'. Available: data-analyst");
+      expect(
+        await formatErrorDetail({
+          error_code: 'import_row_index_preview',
+          message: 'row_index 42 không có trong preview này.',
+        })
+      ).toBe('row_index 42 is not in this preview.');
+      expect(
+        await formatErrorDetail({
+          error_code: 'import_status_invalid',
+          message: "status 'bad' không hợp lệ cho 'job' — chỉ nhận ['OPEN', 'CLOSED'].",
+        })
+      ).toBe("status: 'bad' is not valid for 'job' — only OPEN, CLOSED accepted.");
+      expect(
+        await formatErrorDetail({
+          error_code: 'maintenance_run_ids_muc_after_ids',
+          message: 'run_ids (3 mục) và after_ids (2 mục) phải có CÙNG SỐ LƯỢNG, khớp theo thứ tự.',
+        })
+      ).toBe('run_ids (3 items) and after_ids (2 items) must have the SAME LENGTH, matched by order.');
+      expect(
+        await formatErrorDetail({
+          error_code: 'message_ban_qua_nhieu_yeu_cau',
+          message: 'Bạn đang có quá nhiều yêu cầu nhắn tin đang chờ xử lý (tối đa 3 cùng lúc). Vui lòng đợi SS phản hồi trước khi gửi yêu cầu mới.',
+        })
+      ).toBe('You have too many pending message requests (max 3 at a time). Please wait for the SS to respond before sending a new request.');
+      expect(
+        await formatErrorDetail({
+          error_code: 'message_yeu_cau_truoc_choi_vui',
+          message: 'Yêu cầu trước đã bị từ chối — vui lòng thử lại sau 7 ngày kể từ lúc bị từ chối.',
+        })
+      ).toBe('Your previous request was declined — please try again 7 days after it was declined.');
+    });
+
+    it('locale=en + error_code có message = str(exc) (không có khuôn cố định) -> KHÔNG có handler, luôn fallback về vi gốc', async () => {
+      mockCookieGet.mockImplementation((name: string) =>
+        name === 'locale' ? { value: 'en' } : undefined
+      );
+      // 4 mã cố ý không dịch: import_field_verify_failed,
+      // import_resolve_company_failed, import_row_resolution_failed,
+      // profile_cv_upload_failed — message là str(exc) tuỳ ý, không có
+      // pattern để bóc. Test 1 mã đại diện.
+      const detail = {
+        error_code: 'profile_cv_upload_failed',
+        message: 'Lỗi kết nối Supabase Storage: timeout sau 30s.',
+      };
+      expect(await formatErrorDetail(detail)).toBe(detail.message);
+    });
   });
 });

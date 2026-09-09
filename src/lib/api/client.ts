@@ -321,6 +321,100 @@ const DYNAMIC_ERROR_HANDLERS: DynamicErrorHandler[] = [
       return match ? template(match[1]) : null;
     },
   })),
+  /**
+   * Phần 2/2, batch 2 (09/2026, đợt cuối cùng của "cơ chế template biến
+   * số") — 11 error_code còn lại, mỗi mã 1 khuôn câu riêng (nhiều biến
+   * hơn nhóm batch 1, nên template nhận thẳng `RegExpExecArray` thay vì
+   * ép cứng đúng 1 tham số string như mảng ở trên).
+   *
+   * Việc dịch xong batch này đưa Giai đoạn 3 lên 130/135 (85 tĩnh + 45
+   * động qua template) — 5 mã còn lại KHÔNG dịch được bằng cơ chế này vì
+   * `message` = `str(exc)` (text lỗi Python thô, không có khuôn cố
+   * định) hoặc đã là tiếng Anh sẵn ở backend (`import_internal_error`,
+   * bug riêng, xem ghi chú Đợt 3) — xem plan_language_polish.md.
+   */
+  ...(
+    [
+      {
+        code: 'auth_locked_2',
+        pattern: /^Sai mật khẩu quá (\d+) lần liên tiếp — tài khoản bị khoá tạm (\d+) phút\.$/,
+        template: (m: RegExpExecArray) =>
+          `Wrong password too many times in a row (${m[1]}x) — account temporarily locked for ${m[2]} minutes.`,
+      },
+      {
+        // Khác crawl_not_found_2 (category CÓ nháy đơn) — {unknown} ở
+        // đây KHÔNG có nháy quanh, vì bản thân nó đã là 1 repr
+        // list/set (nhiều category sai cùng lúc) chứ không phải 1 chuỗi
+        // đơn -> cũng cần prettify qua prettifyPythonListRepr().
+        code: 'crawl_not_found_3',
+        pattern: /^Category (\[.*\]|\{.*\}) không tồn tại cho source '(.*)'\. Có sẵn: (\[.*\])$/,
+        template: (m: RegExpExecArray) =>
+          `Category ${prettifyPythonListRepr(m[1])} not found for source '${m[2]}'. Available: ${prettifyPythonListRepr(m[3])}`,
+      },
+      {
+        code: 'import_preview_id_thuoc_entity_type',
+        pattern: /^preview_id này thuộc entity_type '(.*)', không phải '(.*)'\.$/,
+        template: (m: RegExpExecArray) => `This preview_id belongs to entity_type '${m[1]}', not '${m[2]}'.`,
+      },
+      {
+        code: 'import_row_index_preview',
+        pattern: /^row_index (\d+) không có trong preview này\.$/,
+        template: (m: RegExpExecArray) => `row_index ${m[1]} is not in this preview.`,
+      },
+      {
+        // valid_values có thể là repr list/tuple (`"['a', 'b']"`) hoặc
+        // 1 chuỗi đơn tuỳ nơi gọi — prettifyPythonListRepr() bỏ qua an
+        // toàn (trả nguyên văn) nếu không có dấu ngoặc vuông/nhọn để bóc.
+        code: 'import_status_invalid',
+        pattern: /^status '(.*)' không hợp lệ cho '(.*)' — chỉ nhận (.*)\.$/,
+        template: (m: RegExpExecArray) =>
+          `status: '${m[1]}' is not valid for '${m[2]}' — only ${prettifyPythonListRepr(m[3])} accepted.`,
+      },
+      {
+        code: 'maintenance_after_id_ung_run_id',
+        pattern: /^after_id '(.*)' \(ứng với run_id '(.*)'\) phải là số nguyên >= 0\.$/,
+        template: (m: RegExpExecArray) => `after_id '${m[1]}' (for run_id '${m[2]}') must be an integer >= 0.`,
+      },
+      {
+        code: 'maintenance_dry_run_check_deadline_only',
+        pattern: /^'dry_run'\/'check_deadline_only' chỉ áp dụng cho job_type '(.*)', không áp dụng cho '(.*)'\.$/,
+        template: (m: RegExpExecArray) =>
+          `'dry_run'/'check_deadline_only' only applies to job_type '${m[1]}', not to '${m[2]}'.`,
+      },
+      {
+        code: 'maintenance_required',
+        pattern:
+          /^job_type '(.*)' gọi Tavily\/Gemini \(tốn phí thật\) — bắt buộc truyền 'limit' khi kích hoạt từ web, không được để trống \(tránh chạy hết toàn bộ company chưa có dữ liệu\)\.$/,
+        template: (m: RegExpExecArray) =>
+          `job_type: '${m[1]}' calls Tavily/Gemini (real cost) — 'limit' is required when triggered from the web; it can't be left empty (to avoid running against every company with no data).`,
+      },
+      {
+        code: 'maintenance_run_ids_muc_after_ids',
+        pattern: /^run_ids \((\d+) mục\) và after_ids \((\d+) mục\) phải có CÙNG SỐ LƯỢNG, khớp theo thứ tự\.$/,
+        template: (m: RegExpExecArray) =>
+          `run_ids (${m[1]} items) and after_ids (${m[2]} items) must have the SAME LENGTH, matched by order.`,
+      },
+      {
+        code: 'message_ban_qua_nhieu_yeu_cau',
+        pattern:
+          /^Bạn đang có quá nhiều yêu cầu nhắn tin đang chờ xử lý \(tối đa (\d+) cùng lúc\)\. Vui lòng đợi SS phản hồi trước khi gửi yêu cầu mới\.$/,
+        template: (m: RegExpExecArray) =>
+          `You have too many pending message requests (max ${m[1]} at a time). Please wait for the SS to respond before sending a new request.`,
+      },
+      {
+        code: 'message_yeu_cau_truoc_choi_vui',
+        pattern: /^Yêu cầu trước đã bị từ chối — vui lòng thử lại sau (\d+) ngày kể từ lúc bị từ chối\.$/,
+        template: (m: RegExpExecArray) =>
+          `Your previous request was declined — please try again ${m[1]} days after it was declined.`,
+      },
+    ] satisfies { code: string; pattern: RegExp; template: (m: RegExpExecArray) => string }[]
+  ).map(({ code, pattern, template }) => ({
+    appliesTo: (errorCode: string) => errorCode === code,
+    translate: (message: string) => {
+      const match = pattern.exec(message);
+      return match ? template(match) : null;
+    },
+  })),
 ];
 
 
