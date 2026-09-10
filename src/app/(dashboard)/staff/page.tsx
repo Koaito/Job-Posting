@@ -1,5 +1,6 @@
 import { getStaff } from '@/app/actions/staff';
 import { getCurrentUser } from '@/app/actions/auth';
+import { getTranslations } from 'next-intl/server';
 import { isAdminRole } from '@/lib/auth/roles';
 import { StaffAccountsManager } from '@/components/features/StaffAccountsManager';
 
@@ -16,6 +17,7 @@ import { StaffAccountsManager } from '@/components/features/StaffAccountsManager
  * StaffAccountsManager.tsx).
  */
 export default async function StaffPage() {
+  const t = await getTranslations('staffPage');
   const [staff, currentUser] = await Promise.all([getStaff(), getCurrentUser()]);
 
   return (
@@ -24,9 +26,9 @@ export default async function StaffPage() {
     <>
       <div className="page-head">
         <div>
-          <span className="eyebrow">Career Hub / Quản lý</span>
-          <h1>Nhân viên</h1>
-          <p className="lede">Tổng {staff.length} tài khoản ss_team/admin</p>
+          <span className="eyebrow">{t('eyebrow')}</span>
+          <h1>{t('title')}</h1>
+          <p className="lede">{t('lede', { count: staff.length })}</p>
         </div>
       </div>
 

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { getTranslations } from 'next-intl/server';
 import { getAuditLogs } from '@/app/actions/audit';
 import AuditLogNoteEditor from '@/components/features/AuditLogNoteEditor';
 import { getCurrentUser, listUsers } from '@/app/actions/auth';
@@ -46,15 +47,14 @@ const ACTION_TYPE_OPTIONS = [
   'APPLY_JOB', 'WITHDRAW_JOB_APPLICATION',
 ];
 
-function actionTypeLabel(action: string): string {
-  const labels: Record<string, string> = {
-    CREATE_JOB: 'Tạo JD', UPDATE_JOB: 'Sửa JD', DELETE_JOB: 'Xoá JD',
-    CREATE_COMPANY: 'Tạo công ty', UPDATE_COMPANY: 'Sửa công ty', DELETE_COMPANY: 'Xoá công ty',
-    CREATE_CONTACT: 'Tạo liên hệ', UPDATE_CONTACT: 'Sửa liên hệ',
-    DELETE_CONTACT: 'Xoá liên hệ', ASSIGN_CONTACT: 'Gán liên hệ',
-    APPLY_JOB: 'Ứng tuyển', WITHDRAW_JOB_APPLICATION: 'Huỷ ứng tuyển',
-  };
-  return labels[action] || action;
+function actionTypeLabel(action: string, t: Awaited<ReturnType<typeof getTranslations>>): string {
+  const known = [
+    'CREATE_JOB', 'UPDATE_JOB', 'DELETE_JOB',
+    'CREATE_COMPANY', 'UPDATE_COMPANY', 'DELETE_COMPANY',
+    'CREATE_CONTACT', 'UPDATE_CONTACT', 'DELETE_CONTACT', 'ASSIGN_CONTACT',
+    'APPLY_JOB', 'WITHDRAW_JOB_APPLICATION',
+  ];
+  return known.includes(action) ? t(`actionType.${action}`) : action;
 }
 
 export default async function ActivityPage({
@@ -63,6 +63,7 @@ export default async function ActivityPage({
   searchParams: Promise<SearchParams>;
 }) {
   const sp = await searchParams;
+  const t = await getTranslations('activityPage');
   const currentUser = await getCurrentUser();
   const isStaff = isStaffRole(currentUser?.role);
 
@@ -72,10 +73,10 @@ export default async function ActivityPage({
       // (root layout.tsx) đã lo container rồi.
       <>
         <div className="page-head">
-          <h1>Lịch sử thao tác</h1>
+          <h1>{t('title')}</h1>
         </div>
         <div className="empty-state">
-          <p>Trang này chỉ dành cho nhân viên (ss_team/admin).</p>
+          <p>{t('staffOnly')}</p>
         </div>
       </>
     );
@@ -124,10 +125,10 @@ export default async function ActivityPage({
     <>
       <div className="page-head">
         <div>
-          <span className="eyebrow">Career Hub / Quản lý</span>
-          <h1>Lịch sử thao tác</h1>
+          <span className="eyebrow">{t('eyebrow')}</span>
+          <h1>{t('title')}</h1>
           <p className="lede">
-            Nhật ký ai tạo/sửa/xoá JD, công ty, liên hệ HR — {total} bản ghi.
+            {t('lede', { total })}
           </p>
         </div>
       </div>
@@ -144,13 +145,13 @@ export default async function ActivityPage({
           href={qs({ view: 'auto', page: '1' })}
           className={view === 'auto' ? 'active' : ''}
         >
-          Tất cả thao tác
+          {t('tabAll')}
         </Link>
         <Link
           href={qs({ view: 'manual', page: '1' })}
           className={view === 'manual' ? 'active' : ''}
         >
-          Log thủ công (có note)
+          {t('tabManual')}
         </Link>
       </nav>
 
@@ -158,27 +159,27 @@ export default async function ActivityPage({
         <form method="get" action="/activity" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
           <input type="hidden" name="view" value={view} />
           <select name="entity_type" defaultValue={sp.entity_type || ''}>
-            <option value="">Mọi loại</option>
-            {ENTITY_TYPE_OPTIONS.map((t) => (
-              <option key={t} value={t}>{t}</option>
+            <option value="">{t('allTypes')}</option>
+            {ENTITY_TYPE_OPTIONS.map((et) => (
+              <option key={et} value={et}>{et}</option>
             ))}
           </select>
           <select name="company_id" defaultValue={sp.company_id || ''}>
-            <option value="">Mọi công ty</option>
+            <option value="">{t('allCompanies')}</option>
             {companies.map((c) => (
               <option key={c.company_id} value={c.company_id}>{c.company_name}</option>
             ))}
           </select>
           <select name="actor_id" defaultValue={sp.actor_id || ''}>
-            <option value="">Mọi người thực hiện</option>
+            <option value="">{t('allActors')}</option>
             {staffUsers.map((u) => (
               <option key={u.ss_user_id} value={u.ss_user_id}>{u.full_name}</option>
             ))}
           </select>
           <select name="action_type" defaultValue={sp.action_type || ''}>
-            <option value="">Mọi hành động</option>
+            <option value="">{t('allActions')}</option>
             {ACTION_TYPE_OPTIONS.map((a) => (
-              <option key={a} value={a}>{actionTypeLabel(a)}</option>
+              <option key={a} value={a}>{actionTypeLabel(a, t)}</option>
             ))}
           </select>
           {view === 'manual' && (
@@ -189,10 +190,10 @@ export default async function ActivityPage({
                 value="true"
                 defaultChecked={sp.pending_note === 'true'}
               />
-              Chỉ log còn thiếu note
+              {t('pendingNoteOnly')}
             </label>
           )}
-          <button type="submit" className="btn">Lọc</button>
+          <button type="submit" className="btn">{t('filterButton')}</button>
           <Link
             href={qs({
               entity_type: undefined,
@@ -204,7 +205,7 @@ export default async function ActivityPage({
             })}
             className="btn"
           >
-            Xoá lọc
+            {t('clearFilters')}
           </Link>
         </form>
       </div>
@@ -215,20 +216,22 @@ export default async function ActivityPage({
             <table className="contact-table">
               <thead>
                 <tr>
-                  <th>Thời gian</th>
-                  <th>Người thực hiện</th>
-                  <th>Hành động</th>
-                  <th>Đối tượng</th>
-                  <th>Công ty</th>
-                  {view === 'manual' && <th>Note</th>}
+                  <th>{t('colTime')}</th>
+                  <th>{t('colActor')}</th>
+                  <th>{t('colAction')}</th>
+                  <th>{t('colEntity')}</th>
+                  <th>{t('colCompany')}</th>
+                  {view === 'manual' && <th>{t('colNote')}</th>}
                 </tr>
               </thead>
               <tbody>
                 {logs.map((log) => (
                   <tr key={log.log_id}>
+                    {/* CỐ Ý CHƯA dịch: toLocaleString('vi-VN') — thuộc
+                        phạm vi Polish, không xử lý ở đợt Language này. */}
                     <td className="muted">{new Date(log.created_at).toLocaleString('vi-VN')}</td>
-                    <td>{log.actor_name || <span className="muted">Hệ thống (crawl tự động)</span>}</td>
-                    <td>{actionTypeLabel(log.action_type)}</td>
+                    <td>{log.actor_name || <span className="muted">{t('systemActor')}</span>}</td>
+                    <td>{actionTypeLabel(log.action_type, t)}</td>
                     <td>
                       {log.entity_label || <span className="muted">—</span>}
                       <div className="muted" style={{ fontSize: '12px' }}>{log.entity_type}</div>
@@ -258,18 +261,18 @@ export default async function ActivityPage({
           {totalPages > 1 && (
             <div className="pagination">
               {page > 1 && (
-                <Link href={qs({ page: String(page - 1) })} className="page-btn">← Trang trước</Link>
+                <Link href={qs({ page: String(page - 1) })} className="page-btn">{t('prevPage')}</Link>
               )}
-              <span className="page-status">Trang {page} / {totalPages}</span>
+              <span className="page-status">{t('pageStatus', { page, totalPages })}</span>
               {page < totalPages && (
-                <Link href={qs({ page: String(page + 1) })} className="page-btn">Trang sau →</Link>
+                <Link href={qs({ page: String(page + 1) })} className="page-btn">{t('nextPage')}</Link>
               )}
             </div>
           )}
         </>
       ) : (
         <div className="empty-state">
-          <p>Không có bản ghi nào khớp bộ lọc.</p>
+          <p>{t('empty')}</p>
         </div>
       )}
     </>

@@ -1,5 +1,6 @@
 import { getStaff } from '@/app/actions/staff';
 import { getCurrentUser } from '@/app/actions/auth';
+import { getTranslations } from 'next-intl/server';
 import { isStaffRole } from '@/lib/auth/roles';
 import { StaffActivityList } from '@/components/features/StaffActivityList';
 
@@ -26,16 +27,17 @@ import { StaffActivityList } from '@/components/features/StaffActivityList';
  * Server Action mới.
  */
 export default async function StaffActivityPage() {
+  const t = await getTranslations('staffActivityPage');
   const [staff, currentUser] = await Promise.all([getStaff(), getCurrentUser()]);
 
   if (!isStaffRole(currentUser?.role)) {
     return (
       <>
         <div className="page-head">
-          <h1>Hoạt động team SS</h1>
+          <h1>{t('title')}</h1>
         </div>
         <div className="empty-state">
-          <p>Trang này chỉ dành cho nhân viên (ss_team/admin).</p>
+          <p>{t('staffOnly')}</p>
         </div>
       </>
     );
@@ -45,13 +47,11 @@ export default async function StaffActivityPage() {
     <>
       <div className="page-head">
         <div>
-          <span className="eyebrow">Career Hub / Quản trị</span>
-          <h1>Hoạt động team SS</h1>
+          <span className="eyebrow">{t('eyebrow')}</span>
+          <h1>{t('title')}</h1>
           <p className="lede">
-            Chọn 1 thành viên để xem job/công ty/contact họ đã tự thêm tay, và contact đang
-            được giao cho họ phụ trách — dùng để nắm ai đang làm việc gì. Xem hoạt động của
-            chính bạn? Vào{' '}
-            <a href="/profile/activity">Trang cá nhân</a>.
+            {t('ledeBeforeLink')}{' '}
+            <a href="/profile/activity">{t('ledeLink')}</a>.
           </p>
         </div>
       </div>
@@ -60,7 +60,7 @@ export default async function StaffActivityPage() {
         <StaffActivityList staff={staff} currentUserId={currentUser?.ss_user_id || ''} />
       ) : (
         <div className="empty-state">
-          <p>Chưa có thành viên team SS nào.</p>
+          <p>{t('empty')}</p>
         </div>
       )}
     </>

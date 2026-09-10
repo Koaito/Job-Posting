@@ -1,6 +1,7 @@
 import { getStudentById } from '@/app/actions/students';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { getTranslations } from 'next-intl/server';
 import CvDownloadButton from '@/components/features/CvDownloadButton';
 
 /**
@@ -22,6 +23,7 @@ export default async function StudentDetailPage({
   // BUG FIX: Next.js 15/16 — params là Promise, phải await trước khi đọc.
   params: Promise<{ id: string }>;
 }) {
+  const t = await getTranslations('studentDetailPage');
   const { id } = await params;
   const data = await getStudentById(id);
 
@@ -38,7 +40,7 @@ export default async function StudentDetailPage({
       <div className="page-head">
         <div>
           <span className="eyebrow">
-            <Link href="/students">← Học viên</Link>
+            <Link href="/students">{t('backToList')}</Link>
           </span>
           <h1>{student.full_name}</h1>
           <p className="lede">{student.email}</p>
@@ -48,39 +50,41 @@ export default async function StudentDetailPage({
       <div className="card" style={{ marginBottom: '22px' }}>
         <dl style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
           <div>
-            <dt className="muted">SĐT</dt>
+            <dt className="muted">{t('phone')}</dt>
             <dd>{student.phone || '—'}</dd>
           </div>
           <div>
-            <dt className="muted">Lớp (track)</dt>
+            <dt className="muted">{t('track')}</dt>
             <dd>{student.track || '—'}</dd>
           </div>
           <div>
-            <dt className="muted">Trạng thái</dt>
+            <dt className="muted">{t('status')}</dt>
             {/* BUG FIX (audit CSS 09/2026): cùng bug với students/page.tsx
                 — bỏ chip "status-chip status-open/status-closed" mượn
                 sai domain job, hiện chữ thường theo đúng cách Flask gốc
                 hiện trạng thái tài khoản (staff_accounts.html). */}
-            <dd>{student.is_active ? 'Hoạt động' : 'Đã khoá'}</dd>
+            <dd>{student.is_active ? t('statusActive') : t('statusLocked')}</dd>
           </div>
           <div>
-            <dt className="muted">Đăng nhập gần nhất</dt>
-            <dd>{student.last_login_at ? new Date(student.last_login_at).toLocaleString('vi-VN') : 'Chưa đăng nhập'}</dd>
+            <dt className="muted">{t('lastLogin')}</dt>
+            {/* CỐ Ý CHƯA dịch: toLocaleString('vi-VN') — thuộc phạm vi
+                Polish, không xử lý ở đợt Language này. */}
+            <dd>{student.last_login_at ? new Date(student.last_login_at).toLocaleString('vi-VN') : t('neverLoggedIn')}</dd>
           </div>
         </dl>
       </div>
 
-      <h2>Đã ứng tuyển ({applications.length})</h2>
+      <h2>{t('appliedJobs', { count: applications.length })}</h2>
       {applications.length > 0 ? (
         <div className="contact-table-wrap" style={{ marginBottom: '22px' }}>
           <table className="contact-table">
             <thead>
               <tr>
-                <th>Job</th>
-                <th>Công ty</th>
-                <th>Trạng thái job</th>
-                <th>Ngày ứng tuyển</th>
-                <th>CV</th>
+                <th>{t('colJob')}</th>
+                <th>{t('colCompany')}</th>
+                <th>{t('colJobStatus')}</th>
+                <th>{t('colAppliedAt')}</th>
+                <th>{t('colCv')}</th>
               </tr>
             </thead>
             <tbody>
@@ -99,19 +103,19 @@ export default async function StudentDetailPage({
           </table>
         </div>
       ) : (
-        <div className="empty-state" style={{ marginBottom: '22px' }}>Chưa ứng tuyển job nào.</div>
+        <div className="empty-state" style={{ marginBottom: '22px' }}>{t('noApplications')}</div>
       )}
 
-      <h2>Đã lưu ({savedJobs.length})</h2>
+      <h2>{t('savedJobs', { count: savedJobs.length })}</h2>
       {savedJobs.length > 0 ? (
         <div className="contact-table-wrap">
           <table className="contact-table">
             <thead>
               <tr>
-                <th>Job</th>
-                <th>Công ty</th>
-                <th>Trạng thái job</th>
-                <th>Ngày lưu</th>
+                <th>{t('colJob')}</th>
+                <th>{t('colCompany')}</th>
+                <th>{t('colJobStatus')}</th>
+                <th>{t('colSavedAt')}</th>
               </tr>
             </thead>
             <tbody>
@@ -129,7 +133,7 @@ export default async function StudentDetailPage({
           </table>
         </div>
       ) : (
-        <div className="empty-state">Chưa lưu job nào.</div>
+        <div className="empty-state">{t('noSavedJobs')}</div>
       )}
     </>
   );

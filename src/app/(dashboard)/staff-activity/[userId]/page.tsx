@@ -1,5 +1,6 @@
 import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
+import { getTranslations } from 'next-intl/server';
 import { getCurrentUser, listUsers } from '@/app/actions/auth';
 import { getStaffById } from '@/app/actions/staff';
 import { isStaffRole, roleLabel } from '@/lib/auth/roles';
@@ -40,6 +41,7 @@ export default async function StaffActivityDetailPage({
 }: {
   params: Promise<{ userId: string }>;
 }) {
+  const t = await getTranslations('staffActivityDetailPage');
   const { userId } = await params;
   const currentUser = await getCurrentUser();
 
@@ -47,10 +49,10 @@ export default async function StaffActivityDetailPage({
     return (
       <>
         <div className="page-head">
-          <h1>Hoạt động team SS</h1>
+          <h1>{t('title')}</h1>
         </div>
         <div className="empty-state">
-          <p>Trang này chỉ dành cho nhân viên (ss_team/admin).</p>
+          <p>{t('staffOnly')}</p>
         </div>
       </>
     );
@@ -81,14 +83,16 @@ export default async function StaffActivityDetailPage({
   return (
     <>
       <Link className="back-link" href="/staff-activity">
-        ← Hoạt động team SS
+        {t('backToList')}
       </Link>
 
       <div className="page-head">
         <div>
-          <span className="eyebrow">Career Hub / Quản trị / Hoạt động team SS</span>
+          <span className="eyebrow">{t('eyebrow')}</span>
           <h1>{staffMember.full_name}</h1>
           <p className="lede">
+            {/* CỐ Ý CHƯA dịch: roleLabel() dùng chung ở nhiều file khác
+                chưa dịch — cùng lý do đã ghi ở StaffActivityList.tsx. */}
             {staffMember.email} · {roleLabel(staffMember.role)}
           </p>
         </div>
@@ -96,17 +100,19 @@ export default async function StaffActivityDetailPage({
 
       <div className="card student-summary-card">
         <dl className="kv">
-          <dt>Job đã tạo</dt>
+          <dt>{t('kv.jobsCreated')}</dt>
           <dd>{jobsCreated.length}</dd>
-          <dt>Công ty đã tạo</dt>
+          <dt>{t('kv.companiesCreated')}</dt>
           <dd>{companiesCreated.length}</dd>
-          <dt>Contact đã tạo</dt>
+          <dt>{t('kv.contactsCreated')}</dt>
           <dd>{contactsCreated.length}</dd>
-          <dt>Contact đang phụ trách</dt>
+          <dt>{t('kv.contactsAssigned')}</dt>
           <dd>{contactsAssigned.length}</dd>
         </dl>
         <dl className="kv">
-          <dt>Ngày tạo tài khoản</dt>
+          <dt>{t('accountCreatedAt')}</dt>
+          {/* CỐ Ý CHƯA dịch: toLocaleDateString('vi-VN') — thuộc phạm vi
+              Polish, không xử lý ở đợt Language này. */}
           <dd>{new Date(staffMember.created_at).toLocaleDateString('vi-VN')}</dd>
         </dl>
       </div>

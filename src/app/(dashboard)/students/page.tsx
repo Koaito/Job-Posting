@@ -1,5 +1,6 @@
 import { getStudents } from '@/app/actions/students';
 import Link from 'next/link';
+import { getTranslations } from 'next-intl/server';
 
 /**
  * Students List Page (Học viên)
@@ -21,6 +22,7 @@ export default async function StudentsPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
+  const t = await getTranslations('studentsPage');
   const resolvedSearchParams = await searchParams;
   const students = await getStudents({ keyword: resolvedSearchParams.search });
 
@@ -31,9 +33,9 @@ export default async function StudentsPage({
     <>
       <div className="page-head">
         <div>
-          <span className="eyebrow">Career Hub / Quản lý</span>
-          <h1>Học viên</h1>
-          <p className="lede">Tổng {students.length} tài khoản học viên</p>
+          <span className="eyebrow">{t('eyebrow')}</span>
+          <h1>{t('title')}</h1>
+          <p className="lede">{t('lede', { count: students.length })}</p>
         </div>
       </div>
 
@@ -42,13 +44,13 @@ export default async function StudentsPage({
           <input
             type="search"
             name="search"
-            placeholder="Tìm theo tên hoặc email..."
+            placeholder={t('searchPlaceholder')}
             defaultValue={resolvedSearchParams.search}
             style={{ flex: '1 1 300px', minWidth: '200px' }}
           />
-          <button type="submit" className="btn">Lọc</button>
+          <button type="submit" className="btn">{t('filterButton')}</button>
           {resolvedSearchParams.search && (
-            <Link href="/students" className="btn">Xóa bộ lọc</Link>
+            <Link href="/students" className="btn">{t('clearFilters')}</Link>
           )}
         </form>
       </div>
@@ -58,12 +60,12 @@ export default async function StudentsPage({
           <table className="contact-table">
             <thead>
               <tr>
-                <th>Họ tên</th>
-                <th>Email</th>
-                <th>SĐT</th>
-                <th>Lớp (track)</th>
-                <th>Trạng thái</th>
-                <th>Đăng nhập gần nhất</th>
+                <th>{t('colName')}</th>
+                <th>{t('colEmail')}</th>
+                <th>{t('colPhone')}</th>
+                <th>{t('colTrack')}</th>
+                <th>{t('colStatus')}</th>
+                <th>{t('colLastLogin')}</th>
               </tr>
             </thead>
             <tbody>
@@ -84,9 +86,11 @@ export default async function StudentsPage({
                       chữ thường, không chip (xem staff_accounts.html) —
                       chưa có class CSS riêng cho domain này nên bỏ chip
                       mượn nhầm thay vì tự chế class mới. */}
-                  <td>{s.is_active ? 'Hoạt động' : 'Đã khoá'}</td>
+                  <td>{s.is_active ? t('statusActive') : t('statusLocked')}</td>
                   <td className="muted">
-                    {s.last_login_at ? new Date(s.last_login_at).toLocaleString('vi-VN') : 'Chưa đăng nhập'}
+                    {/* CỐ Ý CHƯA dịch: toLocaleString('vi-VN') — thuộc
+                        phạm vi Polish, không xử lý ở đợt Language này. */}
+                    {s.last_login_at ? new Date(s.last_login_at).toLocaleString('vi-VN') : t('neverLoggedIn')}
                   </td>
                 </tr>
               ))}
@@ -94,7 +98,7 @@ export default async function StudentsPage({
           </table>
         </div>
       ) : (
-        <div className="empty-state">Không tìm thấy học viên nào.</div>
+        <div className="empty-state">{t('empty')}</div>
       )}
     </>
   );

@@ -2,6 +2,7 @@ import { getMyApplications } from '@/app/actions/me';
 import { getCurrentUser } from '@/app/actions/auth';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
+import { getTranslations } from 'next-intl/server';
 import WithdrawApplicationButton from '@/components/features/WithdrawApplicationButton';
 import { jobStatusChipClass, jobStatusLabel } from '@/lib/jobs/badges';
 
@@ -28,6 +29,7 @@ import { jobStatusChipClass, jobStatusLabel } from '@/lib/jobs/badges';
  */
 
 export default async function MyApplicationsPage() {
+  const t = await getTranslations('myApplicationsPage');
   const user = await getCurrentUser();
   if (!user) {
     redirect('/login');
@@ -40,17 +42,17 @@ export default async function MyApplicationsPage() {
     <>
       <div className="page-head">
         <div>
-          <span className="eyebrow">Trang cá nhân</span>
-          <h1>Đơn ứng tuyển của tôi</h1>
-          <p className="lede">Danh sách job bạn đã ứng tuyển và trạng thái xử lý.</p>
+          <span className="eyebrow">{t('eyebrow')}</span>
+          <h1>{t('title')}</h1>
+          <p className="lede">{t('lede')}</p>
         </div>
       </div>
 
       {applications.length === 0 ? (
         <div className="card">
-          <p className="muted">Bạn chưa ứng tuyển job nào.</p>
+          <p className="muted">{t('empty')}</p>
           <Link href="/jobs" className="btn btn-primary" style={{ marginTop: '12px' }}>
-            Tìm job để ứng tuyển
+            {t('findJobs')}
           </Link>
         </div>
       ) : (
@@ -82,7 +84,7 @@ export default async function MyApplicationsPage() {
                   <dl className="kv">
                     {app.job_status && (
                       <>
-                        <dt>Trạng thái job</dt>
+                        <dt>{t('jobStatus')}</dt>
                         <dd>
                           <span className={`status-chip ${jobStatusChipClass(app.job_status)}`}>
                             {jobStatusLabel(app.job_status)}
@@ -90,11 +92,13 @@ export default async function MyApplicationsPage() {
                         </dd>
                       </>
                     )}
-                    <dt>Ngày ứng tuyển</dt>
+                    <dt>{t('appliedAt')}</dt>
+                    {/* CỐ Ý CHƯA dịch: toLocaleDateString('vi-VN') — thuộc
+                        phạm vi Polish, không xử lý ở đợt Language này. */}
                     <dd>{new Date(app.applied_at).toLocaleDateString('vi-VN')}</dd>
                     {app.note && (
                       <>
-                        <dt>Ghi chú</dt>
+                        <dt>{t('note')}</dt>
                         <dd>{app.note}</dd>
                       </>
                     )}

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { getTranslations } from 'next-intl/server';
 import { getCurrentUser } from '@/app/actions/auth';
 import { isStaffRole } from '@/lib/auth/roles';
 import type { ImportExportEntityType } from '@/types/import-export';
@@ -17,11 +18,7 @@ import ImportPanel from '@/components/features/data-management/ImportPanel';
  * (xem docstring actions/import-export.ts::confirmImport).
  */
 
-const ENTITY_OPTIONS: { value: ImportExportEntityType; label: string }[] = [
-  { value: 'job', label: 'Job' },
-  { value: 'company', label: 'Công ty' },
-  { value: 'contact', label: 'Liên hệ' },
-];
+const ENTITY_VALUES: ImportExportEntityType[] = ['job', 'company', 'contact'];
 
 interface SearchParams {
   entity?: string;
@@ -38,6 +35,7 @@ export default async function DataManagementPage({
   searchParams: Promise<SearchParams>;
 }) {
   const sp = await searchParams;
+  const t = await getTranslations('dataManagementPage');
   const currentUser = await getCurrentUser();
   const isStaff = isStaffRole(currentUser?.role);
 
@@ -46,10 +44,10 @@ export default async function DataManagementPage({
       // BUG FIX (audit CSS 09/2026): bỏ "page-container" ảo.
       <>
         <div className="page-head">
-          <h1>Import / Export dữ liệu</h1>
+          <h1>{t('title')}</h1>
         </div>
         <div className="empty-state">
-          <p>Trang này chỉ dành cho nhân viên (ss_team/admin).</p>
+          <p>{t('staffOnly')}</p>
         </div>
       </>
     );
@@ -58,27 +56,30 @@ export default async function DataManagementPage({
   const entity: ImportExportEntityType = isValidEntity(sp.entity) ? sp.entity : 'job';
   const tab: 'export' | 'import' = sp.tab === 'import' ? 'import' : 'export';
 
+  const entityLabel = (value: ImportExportEntityType) =>
+    value === 'job' ? t('entityJob') : value === 'company' ? t('entityCompany') : t('entityContact');
+
   return (
     // BUG FIX (audit CSS 09/2026): bỏ "page-container" ảo.
     <>
       <div className="page-head">
         <div>
-          <span className="eyebrow">Career Hub / Vận hành</span>
-          <h1>Import / Export dữ liệu</h1>
+          <span className="eyebrow">{t('eyebrow')}</span>
+          <h1>{t('title')}</h1>
           <p className="lede">
-            Xuất dữ liệu Job/Công ty/Liên hệ ra CSV/XLSX, hoặc nhập hàng loạt từ file có sẵn.
+            {t('lede')}
           </p>
         </div>
       </div>
 
       <div className="dm-entity-switch">
-        {ENTITY_OPTIONS.map((opt) => (
+        {ENTITY_VALUES.map((value) => (
           <Link
-            key={opt.value}
-            href={`/data-management?entity=${opt.value}&tab=${tab}`}
-            className={`dm-entity-tab ${entity === opt.value ? 'active' : ''}`}
+            key={value}
+            href={`/data-management?entity=${value}&tab=${tab}`}
+            className={`dm-entity-tab ${entity === value ? 'active' : ''}`}
           >
-            {opt.label}
+            {entityLabel(value)}
           </Link>
         ))}
       </div>
@@ -88,13 +89,13 @@ export default async function DataManagementPage({
           href={`/data-management?entity=${entity}&tab=export`}
           className={tab === 'export' ? 'active' : ''}
         >
-          Export
+          {t('tabExport')}
         </Link>
         <Link
           href={`/data-management?entity=${entity}&tab=import`}
           className={tab === 'import' ? 'active' : ''}
         >
-          Import
+          {t('tabImport')}
         </Link>
       </nav>
 

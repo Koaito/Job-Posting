@@ -2,6 +2,7 @@ import { getMySavedJobs } from '@/app/actions/me';
 import { getCurrentUser } from '@/app/actions/auth';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
+import { getTranslations } from 'next-intl/server';
 import UnsaveJobButton from '@/components/features/UnsaveJobButton';
 import { jobStatusChipClass, jobStatusLabel } from '@/lib/jobs/badges';
 
@@ -19,6 +20,7 @@ import { jobStatusChipClass, jobStatusLabel } from '@/lib/jobs/badges';
  */
 
 export default async function SavedJobsPage() {
+  const t = await getTranslations('savedJobsPage');
   const user = await getCurrentUser();
   if (!user) {
     redirect('/login');
@@ -31,17 +33,17 @@ export default async function SavedJobsPage() {
     <>
       <div className="page-head">
         <div>
-          <span className="eyebrow">Trang cá nhân</span>
-          <h1>Job đã lưu</h1>
-          <p className="lede">Danh sách job bạn đã lưu để xem lại sau.</p>
+          <span className="eyebrow">{t('eyebrow')}</span>
+          <h1>{t('title')}</h1>
+          <p className="lede">{t('lede')}</p>
         </div>
       </div>
 
       {savedJobs.length === 0 ? (
         <div className="card">
-          <p className="muted">Bạn chưa lưu job nào.</p>
+          <p className="muted">{t('empty')}</p>
           <Link href="/jobs" className="btn btn-primary" style={{ marginTop: '12px' }}>
-            Tìm job để lưu
+            {t('findJobs')}
           </Link>
         </div>
       ) : (
@@ -70,7 +72,7 @@ export default async function SavedJobsPage() {
                   <dl className="kv">
                     {sj.job_status && (
                       <>
-                        <dt>Trạng thái job</dt>
+                        <dt>{t('jobStatus')}</dt>
                         <dd>
                           <span className={`status-chip ${jobStatusChipClass(sj.job_status)}`}>
                             {jobStatusLabel(sj.job_status)}
@@ -78,7 +80,9 @@ export default async function SavedJobsPage() {
                         </dd>
                       </>
                     )}
-                    <dt>Ngày lưu</dt>
+                    <dt>{t('savedAt')}</dt>
+                    {/* CỐ Ý CHƯA dịch: toLocaleDateString('vi-VN') — thuộc
+                        phạm vi Polish, không xử lý ở đợt Language này. */}
                     <dd>{new Date(sj.created_at).toLocaleDateString('vi-VN')}</dd>
                   </dl>
                 </div>
