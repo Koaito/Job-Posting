@@ -6,6 +6,7 @@ import { useTranslations, useLocale } from 'next-intl';
 import { createStaff, updateStaffRole, updateStaffActiveStatus } from '@/app/actions/staff';
 import type { User } from '@/types/auth';
 import { toIntlLocale } from '@/i18n/config';
+import { useToast } from '@/components/ui/toast/ToastProvider';
 
 /**
  * Quản lý danh sách nhân viên — mới 09/2026 (xem staff/page.tsx).
@@ -21,6 +22,16 @@ import { toIntlLocale } from '@/i18n/config';
  * admin không tự đổi role/khoá CHÍNH MÌNH được (backend chặn cứng 400,
  * xem update_user_role()/update_user_active_status()) — ẩn hẳn 2 nút đó
  * ở hàng của currentUserId thay vì để bấm rồi nhận lỗi.
+ *
+ * B.1 Polish (09/2026) — tách state lỗi TRƯỚC ĐÂY dùng chung 1 `error`
+ * cho cả 2 bản chất khác nhau:
+ * - Tạo tài khoản (`handleCreate`) là FORM SUBMIT nhiều field, lỗi cần
+ *   ở lại persistent để admin đọc và sửa → giữ `formError` inline, y
+ *   như CompanyForm.tsx/JobForm.tsx (KHÔNG đổi sang toast).
+ * - Đổi role/khoá tài khoản (`handleRoleChange`/`handleToggleActive`)
+ *   là hành động bấm-chọn-xong-liền trên 1 dòng bảng, không có form nào
+ *   đang mở để "sửa lại" — khớp đúng use case gốc `showToast()`, đổi
+ *   sang `toast.error()`. Xem ghi chú tương tự ở MessagesInbox.tsx.
  */
 
 interface StaffAccountsManagerProps {
@@ -33,14 +44,15 @@ export function StaffAccountsManager({ initialStaff, currentUserId, isAdmin }: S
   const t = useTranslations('staffAccountsManager');
   const dateLocale = toIntlLocale(useLocale());
   const router = useRouter();
+  const toast = useToast();
   const [staff, setStaff] = useState(initialStaff);
   const [isPending, startTransition] = useTransition();
-  const [error, setError] = useState('');
+  const [formError, setFormError] = useState('');
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [createdAccount, setCreatedAccount] = useState<{ email: string; temp_password: string } | null>(null);
 
   const handleCreate = (formData: FormData) => {
-    setError('');
+    setFormError('');
     startTransition(async () => {
       const result = await createStaff({
         full_name: String(formData.get('full_name') || ''),
@@ -54,38 +66,36 @@ export function StaffAccountsManager({ initialStaff, currentUserId, isAdmin }: S
         setStaff((prev) => [...prev, result.user!]);
         router.refresh();
       } else {
-        setError(result.error || t('createFailed'));
+        setFormError(result.error || t('createFailed'));
       }
     });
   };
 
   const handleRoleChange = (ssUserId: string, role: string) => {
-    setError('');
     startTransition(async () => {
       const result = await updateStaffRole(ssUserId, role);
       if (result.success && result.user) {
         setStaff((prev) => prev.map((s) => (s.ss_user_id === ssUserId ? result.user! : s)));
       } else {
-        setError(result.error || t('roleChangeFailed'));
+        toast.error(result.error || t('roleChangeFailed'));
       }
     });
   };
 
   const handleToggleActive = (ssUserId: string, isActive: boolean) => {
-    setError('');
     startTransition(async () => {
       const result = await updateStaffActiveStatus(ssUserId, !isActive);
       if (result.success && result.user) {
         setStaff((prev) => prev.map((s) => (s.ss_user_id === ssUserId ? result.user! : s)));
       } else {
-        setError(result.error || t('statusChangeFailed'));
+        toast.error(result.error || t('statusChangeFailed'));
       }
     });
   };
 
   return (
     <div>
-      {error && <div className="flash flash-error" style={{ marginBottom: '16px' }}>{error}</div>}
+      {formError && <div className="flash flash-error" style={{ marginBottom: '16px' }}>{formError}</div>}
 
       {createdAccount && (
         <div className="flash flash-success" style={{ marginBottom: '16px' }}>

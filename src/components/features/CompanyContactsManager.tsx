@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { createContact, updateContact, assignContact, deleteContact } from '@/app/actions/contacts';
 import type { CompanyContact } from '@/types/contacts';
+import { useToast } from '@/components/ui/toast/ToastProvider';
 
 /**
  * Quản lý liên hệ HR của 1 công ty — dùng trong company detail page
@@ -15,6 +16,15 @@ import type { CompanyContact } from '@/types/contacts';
  * đổi (422/thiếu note không lưu) — form ở đây LUÔN hiện ô note khi sửa/
  * gán/xoá, không cố đoán trước "có đổi hay không" (đơn giản hơn, để
  * backend là nguồn sự thật duy nhất về việc có cần note không).
+ *
+ * B.1 Polish (09/2026) — tách state lỗi TRƯỚC ĐÂY dùng chung 1 `error`:
+ * - Thêm liên hệ mới (`handleCreate`) là FORM SUBMIT nhiều field → giữ
+ *   `formError` inline, không đổi sang toast (giống CompanyForm.tsx).
+ * - Đổi trạng thái/gỡ gán/xoá (`handleUpdateStatus`/`handleUnassign`/
+ *   `handleDelete`) là hành động bấm-nút-xong-liền ngay trên 1 dòng
+ *   bảng (kể cả lỗi "thiếu note" — chỉ 1 câu đơn giản, không phải nhiều
+ *   field cần soi lại, giống ghi chú `cvFileRequired` ở
+ *   JobApplyActions.tsx) → đổi sang `toast.error()`.
  */
 
 const CONTACT_STATUS_VALUES = ['UNCONTACTED', 'EMAIL_SENT', 'RESPONDED', 'IN_PARTNERSHIP'] as const;
@@ -32,9 +42,10 @@ export default function CompanyContactsManager({ companyId, initialContacts }: C
     (CONTACT_STATUS_VALUES as readonly string[]).includes(status)
       ? tStatus(status as (typeof CONTACT_STATUS_VALUES)[number])
       : status;
+  const toast = useToast();
   const [contacts, setContacts] = useState(initialContacts);
   const [isPending, startTransition] = useTransition();
-  const [error, setError] = useState('');
+  const [formError, setFormError] = useState('');
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editNote, setEditNote] = useState('');
@@ -42,7 +53,7 @@ export default function CompanyContactsManager({ companyId, initialContacts }: C
   const [deleteNote, setDeleteNote] = useState('');
 
   const handleCreate = (formData: FormData) => {
-    setError('');
+    setFormError('');
     startTransition(async () => {
       const result = await createContact(companyId, {
         contact_name: String(formData.get('contact_name') || ''),
@@ -58,13 +69,12 @@ export default function CompanyContactsManager({ companyId, initialContacts }: C
         setShowCreateForm(false);
         router.refresh();
       } else {
-        setError(result.error || t('errorAddFailed'));
+        setFormError(result.error || t('errorAddFailed'));
       }
     });
   };
 
   const handleUpdateStatus = (contactId: string, status: string) => {
-    setError('');
     startTransition(async () => {
       const result = await updateContact(companyId, contactId, {
         contact_status: status,
@@ -75,7 +85,7 @@ export default function CompanyContactsManager({ companyId, initialContacts }: C
         setEditingId(null);
         setEditNote('');
       } else {
-        setError(
+        toast.error(
           (result.error || '') + (result.error?.includes('note') ? '' : t('errorUpdateStatusNoteHint'))
         );
       }
@@ -84,10 +94,9 @@ export default function CompanyContactsManager({ companyId, initialContacts }: C
 
   const handleUnassign = (contactId: string) => {
     if (!editNote.trim()) {
-      setError(t('errorUnassignNoteRequired'));
+      toast.error(t('errorUnassignNoteRequired'));
       return;
     }
-    setError('');
     startTransition(async () => {
       const result = await assignContact(companyId, contactId, {
         assigned_ss_user: null,
@@ -98,17 +107,16 @@ export default function CompanyContactsManager({ companyId, initialContacts }: C
         setEditingId(null);
         setEditNote('');
       } else {
-        setError(result.error || t('errorUnassignFailed'));
+        toast.error(result.error || t('errorUnassignFailed'));
       }
     });
   };
 
   const handleDelete = (contactId: string) => {
     if (!deleteNote.trim()) {
-      setError(t('errorDeleteNoteRequired'));
+      toast.error(t('errorDeleteNoteRequired'));
       return;
     }
-    setError('');
     startTransition(async () => {
       const result = await deleteContact(companyId, contactId, { note: deleteNote.trim() });
       if (result.success) {
@@ -117,14 +125,14 @@ export default function CompanyContactsManager({ companyId, initialContacts }: C
         setDeleteNote('');
         router.refresh();
       } else {
-        setError(result.error || t('errorDeleteFailed'));
+        toast.error(result.error || t('errorDeleteFailed'));
       }
     });
   };
 
   return (
     <div>
-      {error && <div className="flash flash-error" style={{ marginBottom: '16px' }}>{error}</div>}
+      {formError && <div className="flash flash-error" style={{ marginBottom: '16px' }}>{formError}</div>}
 
       <div style={{ marginBottom: '18px' }}>
         {!showCreateForm ? (

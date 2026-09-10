@@ -13,6 +13,7 @@ import {
 } from '@/app/actions/messages';
 import { roleLabel } from '@/lib/auth/roles';
 import type { ChatMessage } from '@/types/messages';
+import { useToast } from '@/components/ui/toast/ToastProvider';
 
 /**
  * Khung chat (client) — phần đảm nhiệm bởi public/app.js bên Flask gốc:
@@ -27,6 +28,16 @@ import type { ChatMessage } from '@/types/messages';
  * `useTranslations('messageThread')`. roleLabel() (lib/auth/roles.ts)
  * giờ đã dịch theo `t` namespace `roles` (đợt sau) — xem ghi chú
  * MessagesInbox.tsx.
+ *
+ * B.1 Polish (09/2026) — tách state lỗi TRƯỚC ĐÂY dùng chung 1 `error`:
+ * - Gửi tin nhắn (`handleSend`) là Ô SOẠN THẢO đang mở, lỗi (rỗng nội
+ *   dung, hoặc lỗi backend) cần ở lại persistent cạnh khung soạn để
+ *   user sửa ngay, KHÔNG đổi sang toast (giống lý do giữ inline ở
+ *   CompanyForm.tsx/JobForm.tsx).
+ * - Huỷ yêu cầu / chặn / bỏ chặn (`handleCancel`/`handleBlock`/
+ *   `handleUnblock`) là hành động bấm-nút-xong-liền ở phần header, đã
+ *   có `confirm()` riêng trước khi gọi — khớp đúng use case gốc
+ *   `showToast()`, đổi sang `toast.error()` (giống MessagesInbox.tsx).
  */
 
 const POLL_INTERVAL_MS = 5000;
@@ -68,10 +79,11 @@ export function MessageThread({
   const t = useTranslations('messageThread');
   const tRole = useTranslations('roles');
   const router = useRouter();
+  const toast = useToast();
   const [history, setHistory] = useState(initialHistory);
   const [lastMessageId, setLastMessageId] = useState(lastId);
   const [content, setContent] = useState('');
-  const [error, setError] = useState('');
+  const [formError, setFormError] = useState('');
   const [isPending, startTransition] = useTransition();
   const [isSending, setIsSending] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -104,16 +116,16 @@ export function MessageThread({
     e.preventDefault();
     const trimmed = content.trim();
     if (!trimmed) {
-      setError(t('emptyContentError'));
+      setFormError(t('emptyContentError'));
       return;
     }
-    setError('');
+    setFormError('');
     setIsSending(true);
     const result = await sendMessage(partnerId, trimmed);
     setIsSending(false);
 
     if (!result.success) {
-      setError(result.error);
+      setFormError(result.error);
       return;
     }
     setContent('');
@@ -133,39 +145,36 @@ export function MessageThread({
 
   const handleCancel = () => {
     if (!confirm(t('confirmCancel', { name: partnerName }))) return;
-    setError('');
     startTransition(async () => {
       const result = await cancelPendingRequest(partnerId);
       if (result.success) {
         router.push('/messages');
       } else {
-        setError(result.error || t('cancelFailed'));
+        toast.error(result.error || t('cancelFailed'));
       }
     });
   };
 
   const handleBlock = () => {
     if (!confirm(t('confirmBlock', { name: partnerName }))) return;
-    setError('');
     startTransition(async () => {
       const result = await blockStudent(partnerId);
       if (result.success) {
         router.refresh();
       } else {
-        setError(result.error || t('blockFailed'));
+        toast.error(result.error || t('blockFailed'));
       }
     });
   };
 
   const handleUnblock = () => {
     if (!relationshipId) return;
-    setError('');
     startTransition(async () => {
       const result = await unblockRelationship(relationshipId);
       if (result.success) {
         router.refresh();
       } else {
-        setError(result.error || t('unblockFailed'));
+        toast.error(result.error || t('unblockFailed'));
       }
     });
   };
@@ -206,9 +215,9 @@ export function MessageThread({
           ) : null)}
       </header>
 
-      {error && (
+      {formError && (
         <div className="flash flash-error" style={{ marginBottom: '16px' }}>
-          {error}
+          {formError}
         </div>
       )}
 

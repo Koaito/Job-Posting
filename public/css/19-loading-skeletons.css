@@ -1,0 +1,74 @@
+/* ---------------- Loading skeletons (B.2 Polish, mục 6.6, 09/2026) ---------------- */
+/* Used by: `loading.tsx` của các route list/table nặng dữ liệu
+   (/jobs, /companies, /contacts, /students, /crawl, /data-management)
+   — xem <TableSkeleton>/<CardSkeleton> ở src/components/ui/skeleton/.
+
+   Chỉ dùng token màu ĐÃ có sẵn ở 00-tokens.css (--border, --surface,
+   --ink-soft qua opacity) — đúng bài học từ bug CSS #fff3cd đã tìm và
+   sửa trước đó (không tự bịa màu mới ngoài thang đo hệ thống). */
+
+.skeleton-bar {
+  display: inline-block;
+  height: 12px;
+  width: 100%;
+  border-radius: 6px;
+  background: linear-gradient(
+    90deg,
+    var(--border) 25%,
+    color-mix(in srgb, var(--border) 55%, var(--surface)) 50%,
+    var(--border) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+.skeleton-bar--head {
+  height: 10px;
+  width: 60%;
+}
+
+.skeleton-bar--title {
+  height: 15px;
+  width: 65%;
+  margin-bottom: var(--space-3);
+}
+
+/* Mỗi thanh (trừ thanh đầu ngay sau tiêu đề) cách nhau 1 khoảng nhỏ,
+   khớp --space-2 đã dùng cho gap hẹp ở nơi khác trong hệ thống. */
+.skeleton-card .skeleton-bar + .skeleton-bar {
+  margin-top: var(--space-2);
+}
+
+.skeleton-wrap .contact-table tbody .skeleton-bar {
+  height: 11px;
+}
+
+.skeleton-card-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.skeleton-card {
+  flex: 1 1 320px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Tôn trọng prefers-reduced-motion — người dùng tắt animation hệ thống
+   thì skeleton đứng yên (vẫn thấy được hình dạng đang tải), không ép
+   animation chạy bất chấp lựa chọn hệ điều hành. */
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-bar {
+    animation: none;
+  }
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}

@@ -75,6 +75,7 @@ export default async function RootLayout({
         <link rel="stylesheet" href="/css/16-email-template-manager.css" />
         <link rel="stylesheet" href="/css/17-error-pages.css" />
         <link rel="stylesheet" href="/css/18-messages.css" />
+        <link rel="stylesheet" href="/css/19-loading-skeletons.css" />
       </head>
       <body>
         <NextIntlClientProvider>
