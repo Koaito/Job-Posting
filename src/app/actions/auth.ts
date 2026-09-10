@@ -102,7 +102,7 @@ export async function login(email: string, password: string) {
       const error = await tokenResponse.json().catch(() => ({ detail: 'Login failed' }));
       return {
         success: false,
-        error: error.detail || 'Email hoặc mật khẩu không đúng',
+        error: error.detail || t('invalidCredentials'),
       };
     }
 
@@ -408,7 +408,7 @@ export async function updateProfile(data: {
       const error = await response.json().catch(() => ({ detail: response.statusText }));
       return {
         success: false,
-        error: error.detail != null ? await formatErrorDetail(error.detail) : 'Không thể cập nhật hồ sơ',
+        error: error.detail != null ? await formatErrorDetail(error.detail) : t('updateProfileFailed'),
       };
     }
 

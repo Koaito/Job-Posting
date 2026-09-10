@@ -387,10 +387,27 @@
       "acceptRequestFailed": "Không thể chấp nhận yêu cầu",
       "declineRequestFailed": "Không thể từ chối yêu cầu",
       "blockStudentFailed": "Không thể chặn học viên",
-      "unblockFailed": "Không thể bỏ chặn"
+      "unblockFailed": "Không thể bỏ chặn",
+      "emptyMessage": "Vui lòng nhập nội dung tin nhắn.",
+      "messageTooLong": "Tin nhắn không được vượt quá 2000 ký tự.",
+      "requestSentFallback": "Đã gửi yêu cầu nhắn tin.",
+      "sendFailed": "Không thể gửi tin nhắn",
+      "rateLimited": "Bạn đang gửi quá nhanh, vui lòng thử lại sau ít phút.",
+      "conversationStateChanged": "Trạng thái hội thoại vừa thay đổi, tải lại trang để xem mới nhất.",
+      "notAllowedToMessage": "Bạn không có quyền nhắn tin với người này.",
+      "receiverNotFound": "Không tìm thấy người nhận."
     },
     "importExport": {
-      "uploadRateLimited": "Đã upload quá nhiều lần (giới hạn 20 lần/giờ) — vui lòng thử lại sau."
+      "uploadRateLimited": "Đã upload quá nhiều lần (giới hạn 20 lần/giờ) — vui lòng thử lại sau.",
+      "genericError": "Có lỗi xảy ra",
+      "previewExportFailed": "Không thể xem trước dữ liệu export",
+      "downloadExportFailed": "Không thể tải file export",
+      "importFailed": "Không thể xử lý file import",
+      "previewExpired": "Preview đã hết hạn (quá 1 giờ) — vui lòng upload lại file.",
+      "previewNotFound": "Không tìm thấy preview này",
+      "verifyFieldFailed": "Không thể xác nhận ô đã sửa",
+      "resolveCompanyFailed": "Không thể gán công ty cho dòng này",
+      "confirmImportFailed": "Không thể xác nhận import"
     },
     "auth": {
       "loginError": "Đã xảy ra lỗi khi đăng nhập. Vui lòng thử lại.",
@@ -403,7 +420,9 @@
       "updateActiveStatusFailed": "Không thể đổi trạng thái tài khoản",
       "registerFailed": "Đăng ký thất bại",
       "forgotPasswordFailed": "Không thể gửi email đặt lại mật khẩu",
-      "resetPasswordFailed": "Đặt lại mật khẩu thất bại"
+      "resetPasswordFailed": "Đặt lại mật khẩu thất bại",
+      "invalidCredentials": "Email hoặc mật khẩu không đúng",
+      "updateProfileFailed": "Không thể cập nhật hồ sơ"
     }
   },
   "confirmButtons": {

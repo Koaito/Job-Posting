@@ -387,10 +387,27 @@
       "acceptRequestFailed": "Could not accept the request",
       "declineRequestFailed": "Could not decline the request",
       "blockStudentFailed": "Could not block the student",
-      "unblockFailed": "Could not unblock"
+      "unblockFailed": "Could not unblock",
+      "emptyMessage": "Please enter a message.",
+      "messageTooLong": "Message must not exceed 2000 characters.",
+      "requestSentFallback": "Message request sent.",
+      "sendFailed": "Could not send the message",
+      "rateLimited": "You're sending messages too fast, please try again in a few minutes.",
+      "conversationStateChanged": "The conversation status just changed — reload the page to see the latest.",
+      "notAllowedToMessage": "You don't have permission to message this person.",
+      "receiverNotFound": "Recipient not found."
     },
     "importExport": {
-      "uploadRateLimited": "Too many uploads (limit: 20/hour) — please try again later."
+      "uploadRateLimited": "Too many uploads (limit: 20/hour) — please try again later.",
+      "genericError": "An error occurred",
+      "previewExportFailed": "Could not preview the export data",
+      "downloadExportFailed": "Could not download the export file",
+      "importFailed": "Could not process the import file",
+      "previewExpired": "The preview has expired (over 1 hour) — please upload the file again.",
+      "previewNotFound": "This preview could not be found",
+      "verifyFieldFailed": "Could not confirm the edited cell",
+      "resolveCompanyFailed": "Could not assign a company to this row",
+      "confirmImportFailed": "Could not confirm the import"
     },
     "auth": {
       "loginError": "An error occurred while logging in. Please try again.",
@@ -403,7 +420,9 @@
       "updateActiveStatusFailed": "Could not change account status",
       "registerFailed": "Registration failed",
       "forgotPasswordFailed": "Could not send password reset email",
-      "resetPasswordFailed": "Failed to reset password"
+      "resetPasswordFailed": "Failed to reset password",
+      "invalidCredentials": "Incorrect email or password",
+      "updateProfileFailed": "Could not update the profile"
     }
   },
   "confirmButtons": {

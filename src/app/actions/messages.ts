@@ -177,12 +177,13 @@ export async function sendMessage(
   | { success: true; status: 'pending'; message: string }
   | { success: false; error: string }
 > {
+  const t = await getTranslations('actions.messages');
   const trimmed = content.trim();
   if (!trimmed) {
-    return { success: false, error: 'Vui lòng nhập nội dung tin nhắn.' };
+    return { success: false, error: t('emptyMessage') };
   }
   if (trimmed.length > 2000) {
-    return { success: false, error: 'Tin nhắn không được vượt quá 2000 ký tự.' };
+    return { success: false, error: t('messageTooLong') };
   }
 
   try {
@@ -197,15 +198,15 @@ export async function sendMessage(
     }
     if (response.status === 202) {
       const data = await response.json();
-      return { success: true, status: 'pending', message: data.message || 'Đã gửi yêu cầu nhắn tin.' };
+      return { success: true, status: 'pending', message: data.message || t('requestSentFallback') };
     }
 
     const error = await response.json().catch(() => ({ detail: response.statusText }));
-    let fallback = 'Không thể gửi tin nhắn';
-    if (response.status === 429) fallback = 'Bạn đang gửi quá nhanh, vui lòng thử lại sau ít phút.';
-    if (response.status === 409) fallback = 'Trạng thái hội thoại vừa thay đổi, tải lại trang để xem mới nhất.';
-    if (response.status === 403) fallback = 'Bạn không có quyền nhắn tin với người này.';
-    if (response.status === 404) fallback = 'Không tìm thấy người nhận.';
+    let fallback = t('sendFailed');
+    if (response.status === 429) fallback = t('rateLimited');
+    if (response.status === 409) fallback = t('conversationStateChanged');
+    if (response.status === 403) fallback = t('notAllowedToMessage');
+    if (response.status === 404) fallback = t('receiverNotFound');
     return {
       success: false,
       error: error.detail != null ? await formatErrorDetail(error.detail) : fallback,

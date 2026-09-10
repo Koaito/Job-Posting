@@ -91,7 +91,10 @@ const DEFAULT_TIMEOUT_MS = 30000;
  *    có dòng không hợp lệ (validate_dataframe reject cả file) — dạng này
  *    cần giữ lại "errors" để hiện chi tiết từng dòng, không chỉ 1 câu chung.
  */
-function extractErrorInfo(detail: unknown): {
+function extractErrorInfo(
+  detail: unknown,
+  fallback: string
+): {
   message: string;
   fileErrors?: Array<{ row_number: number; field_name: string; rule: string; message: string }>;
 } {
@@ -116,7 +119,7 @@ function extractErrorInfo(detail: unknown): {
         : undefined,
     };
   }
-  return { message: 'Có lỗi xảy ra' };
+  return { message: fallback };
 }
 
 /** Gom query param filter export — dùng chung cho preview lẫn tải file,
@@ -145,6 +148,7 @@ export async function getExportPreview(
   entityType: ImportExportEntityType,
   filters?: ExportFilters
 ): Promise<{ success: boolean; preview?: ExportPreviewResult; error?: string }> {
+  const t = await getTranslations('actions.importExport');
   try {
     const params = buildExportQueryParams(filters);
     const response = await apiFetchRaw(`/export/${entityType}/preview?${params}`, {
@@ -154,8 +158,8 @@ export async function getExportPreview(
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: response.statusText }));
-      const { message } = extractErrorInfo(error.detail);
-      return { success: false, error: message || 'Không thể xem trước dữ liệu export' };
+      const { message } = extractErrorInfo(error.detail, t('genericError'));
+      return { success: false, error: message || t('previewExportFailed') };
     }
     const preview = await response.json();
     return { success: true, preview };
@@ -184,6 +188,7 @@ export async function exportEntity(
   base64?: string;
   error?: string;
 }> {
+  const t = await getTranslations('actions.importExport');
   try {
     const params = buildExportQueryParams(filters);
     params.append('format', format);
@@ -195,8 +200,8 @@ export async function exportEntity(
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: response.statusText }));
-      const { message } = extractErrorInfo(error.detail);
-      return { success: false, error: message || 'Không thể tải file export' };
+      const { message } = extractErrorInfo(error.detail, t('genericError'));
+      return { success: false, error: message || t('downloadExportFailed') };
     }
 
     const contentType = response.headers.get('content-type') || undefined;
@@ -257,10 +262,10 @@ export async function uploadImportFile(
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: response.statusText }));
-      const { message, fileErrors } = extractErrorInfo(error.detail);
+      const { message, fileErrors } = extractErrorInfo(error.detail, t('genericError'));
       return {
         success: false,
-        error: message || 'Không thể xử lý file import',
+        error: message || t('importFailed'),
         fileErrors,
       };
     }
@@ -282,6 +287,7 @@ export async function getImportPreview(
   entityType: ImportExportEntityType,
   previewId: string
 ): Promise<{ success: boolean; preview?: ImportPreviewResult; error?: string; expired?: boolean }> {
+  const t = await getTranslations('actions.importExport');
   try {
     const response = await apiFetchRaw(`/import/${entityType}/preview/${previewId}`, {
       cache: 'no-store',
@@ -289,12 +295,12 @@ export async function getImportPreview(
     });
 
     if (response.status === 410) {
-      return { success: false, error: 'Preview đã hết hạn (quá 1 giờ) — vui lòng upload lại file.', expired: true };
+      return { success: false, error: t('previewExpired'), expired: true };
     }
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: response.statusText }));
-      const { message } = extractErrorInfo(error.detail);
-      return { success: false, error: message || 'Không tìm thấy preview này' };
+      const { message } = extractErrorInfo(error.detail, t('genericError'));
+      return { success: false, error: message || t('previewNotFound') };
     }
 
     const preview = await response.json();
@@ -328,6 +334,7 @@ export async function verifyField(
   fieldError?: ImportFieldError | null;
   error?: string;
 }> {
+  const t = await getTranslations('actions.importExport');
   try {
     const response = await apiFetchRaw(
       `/import/${entityType}/preview/${previewId}/rows/${rowIndex}/verify-field`,
@@ -340,8 +347,8 @@ export async function verifyField(
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: response.statusText }));
-      const { message } = extractErrorInfo(error.detail);
-      return { success: false, error: message || 'Không thể xác nhận ô đã sửa' };
+      const { message } = extractErrorInfo(error.detail, t('genericError'));
+      return { success: false, error: message || t('verifyFieldFailed') };
     }
     const data = await response.json();
     return { success: true, row: data.row, fieldError: data.field_error ?? null };
@@ -364,6 +371,7 @@ export async function resolveCompany(
   rowIndex: number,
   companyId: string | null
 ): Promise<{ success: boolean; row?: ImportPreviewRow; error?: string }> {
+  const t = await getTranslations('actions.importExport');
   try {
     const response = await apiFetchRaw(
       `/import/${entityType}/preview/${previewId}/rows/${rowIndex}/resolve-company`,
@@ -376,8 +384,8 @@ export async function resolveCompany(
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: response.statusText }));
-      const { message } = extractErrorInfo(error.detail);
-      return { success: false, error: message || 'Không thể gán công ty cho dòng này' };
+      const { message } = extractErrorInfo(error.detail, t('genericError'));
+      return { success: false, error: message || t('resolveCompanyFailed') };
     }
     const data = await response.json();
     return { success: true, row: data.row };
@@ -398,6 +406,7 @@ export async function confirmImport(
   resolutions: Record<string, ImportRowResolution>,
   note: string
 ): Promise<{ success: boolean; result?: ImportConfirmSummary; error?: string }> {
+  const t = await getTranslations('actions.importExport');
   try {
     const response = await apiFetchRaw(`/import/${entityType}/confirm`, {
       method: 'POST',
@@ -407,8 +416,8 @@ export async function confirmImport(
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: response.statusText }));
-      const { message } = extractErrorInfo(error.detail);
-      return { success: false, error: message || 'Không thể xác nhận import' };
+      const { message } = extractErrorInfo(error.detail, t('genericError'));
+      return { success: false, error: message || t('confirmImportFailed') };
     }
 
     const result = await response.json();
