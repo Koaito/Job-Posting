@@ -1130,5 +1130,27 @@
     "allJobs": "Mọi job",
     "jobColumn": "Job",
     "noMaintenanceRuns": "Chưa có lượt bảo trì nào khớp bộ lọc."
+  },
+  "maintenanceJobs": {
+    "backfill_company_profiles": {
+      "label": "Vá hồ sơ công ty",
+      "description": "Vá industry, company_size, address, website (kèm products_services) — đọc lại đúng trang nguồn đã lưu (source_profile_url). Miễn phí, chỉ tốn thời gian chờ."
+    },
+    "enrich_profile_from_website": {
+      "label": "Tra cứu từ website công ty",
+      "description": "Vá industry, products_services — đọc companies.website + 1 lần gọi Gemini/công ty để phân loại. Chi phí rẻ (không dùng Tavily)."
+    },
+    "enrich_web_info": {
+      "label": "Tra cứu web (Tavily + Gemini)",
+      "description": "Vá website, tax_id — Tavily search (2 query/công ty) + Gemini trích xuất. TỐN PHÍ THẬT, tốn nhất trong 5 job — chỉ nên chạy cho công ty chưa có source_profile_url."
+    },
+    "get_fb_linkedin": {
+      "label": "Tìm Facebook/LinkedIn công ty",
+      "description": "Vá fanpage_url, linkedin_url — đọc companies.website (crawl HTML thô). Miễn phí, nhưng giới hạn với site dạng SPA/React (render bằng JS)."
+    },
+    "check_expired_jobs": {
+      "label": "Dọn job hết hạn",
+      "description": "Kiểm tra deadline + kiểm tra link job còn sống không, tự đóng job đã hết hạn/nguồn đã gỡ."
+    }
   }
 }

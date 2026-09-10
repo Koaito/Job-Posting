@@ -24,11 +24,21 @@ import { MAINTENANCE_CHECK_EXPIRED_JOB_TYPE } from '@/lib/maintenance/jobs';
  * được vì trong thực tế hiếm khi chạy đồng thời cả 5 job bảo trì.
  *
  * i18n (Giai đoạn 2, nhóm 5, 09/2026): dịch label/nút bấm qua
- * `useTranslations('maintenanceJobCard')`. `label`/`description` (props
- * truyền từ lib/maintenance/jobs.ts) CỐ Ý CHƯA dịch — xem ghi chú
- * MAINTENANCE_JOBS trong file đó (cần tách "label hiển thị" khỏi dữ
- * liệu tĩnh trước). crawlStatusLabel() cùng lý do (lib/crawl/badges.ts).
- * toLocaleTimeString('vi-VN') CỐ Ý CHƯA đổi — thuộc phạm vi Polish.
+ * `useTranslations('maintenanceJobCard')`. crawlStatusLabel() dùng
+ * chung `t` namespace `crawlStatus` (lib/crawl/badges.ts).
+ *
+ * i18n (đợt sau nữa, 09/2026): `label`/`description` (props nhận từ
+ * MaintenanceGrid.tsx) giờ ĐÃ là string đã dịch — MaintenanceGrid (Server
+ * Component) tự gọi `maintenanceJobLabel()`/`maintenanceJobDescription()`
+ * (lib/maintenance/jobs.ts, namespace `maintenanceJobs`) trước khi truyền
+ * xuống đây, component này (Client Component) chỉ hiển thị nguyên văn,
+ * không tự tra bảng dịch.
+ *
+ * `toLocaleTimeString('vi-VN')` (log live) CỐ Ý CHƯA đổi — khác
+ * `toLocaleDateString`/`toLocaleString('vi-VN')` đã xử lý ở đợt Polish
+ * "định dạng ngày/giờ theo locale" (commit `00cdf67`) vì đó là quét theo
+ * đúng 2 method đó; `toLocaleTimeString` là method thứ 3 chưa nằm trong
+ * phạm vi lần quét đó — vẫn treo lại cho Polish.
  */
 
 interface MaintenanceJobCardProps {

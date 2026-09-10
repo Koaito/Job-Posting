@@ -1,5 +1,11 @@
+import { getTranslations } from 'next-intl/server';
 import MaintenanceJobCard from '@/components/features/MaintenanceJobCard';
-import { MAINTENANCE_JOBS, MAINTENANCE_JOB_TYPES_REQUIRE_LIMIT } from '@/lib/maintenance/jobs';
+import {
+  MAINTENANCE_JOBS,
+  MAINTENANCE_JOB_TYPES_REQUIRE_LIMIT,
+  maintenanceJobLabel,
+  maintenanceJobDescription,
+} from '@/lib/maintenance/jobs';
 import type { MaintenanceStatus } from '@/types/crawl';
 
 /**
@@ -9,6 +15,12 @@ import type { MaintenanceStatus } from '@/types/crawl';
  *
  * THÊM 09/2026 (rà soát #3, chat139) — module còn thiếu hoàn toàn ở
  * Next.js trước đợt này.
+ *
+ * i18n (đợt sau, 09/2026): chuyển thành async function để gọi
+ * `getTranslations('maintenanceJobs')` — label/description giờ dịch tại
+ * đây (Server Component) rồi truyền STRING đã dịch xuống MaintenanceJobCard
+ * (Client Component) qua props, đúng pattern chung của dự án (Server
+ * Component nắm i18n, Client Component chỉ nhận string đã dịch).
  */
 
 interface MaintenanceGridProps {
@@ -17,15 +29,17 @@ interface MaintenanceGridProps {
   activeRuns: Record<string, MaintenanceStatus>;
 }
 
-export default function MaintenanceGrid({ isAdmin, activeRuns }: MaintenanceGridProps) {
+export default async function MaintenanceGrid({ isAdmin, activeRuns }: MaintenanceGridProps) {
+  const t = await getTranslations('maintenanceJobs');
+
   return (
     <div className="crawl-sources crawl-sources--fixed-2col">
       {MAINTENANCE_JOBS.map((job) => (
         <MaintenanceJobCard
           key={job.jobType}
           jobType={job.jobType}
-          label={job.label}
-          description={job.description}
+          label={maintenanceJobLabel(job.jobType, t)}
+          description={maintenanceJobDescription(job.jobType, t)}
           costsMoney={job.costsMoney}
           supportsDryRun={job.supportsDryRun}
           requireLimit={MAINTENANCE_JOB_TYPES_REQUIRE_LIMIT.has(job.jobType)}

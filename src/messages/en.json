@@ -1130,5 +1130,27 @@
     "allJobs": "All jobs",
     "jobColumn": "Job",
     "noMaintenanceRuns": "No maintenance runs match the filter."
+  },
+  "maintenanceJobs": {
+    "backfill_company_profiles": {
+      "label": "Backfill company profiles",
+      "description": "Fills in industry, company_size, address, website (incl. products_services) — re-reads the saved source page (source_profile_url). Free, only takes time to run."
+    },
+    "enrich_profile_from_website": {
+      "label": "Look up from company website",
+      "description": "Fills in industry, products_services — reads companies.website + 1 Gemini call per company to classify. Low cost (no Tavily)."
+    },
+    "enrich_web_info": {
+      "label": "Web lookup (Tavily + Gemini)",
+      "description": "Fills in website, tax_id — Tavily search (2 queries/company) + Gemini extraction. REAL COST, the most expensive of the 5 jobs — only run for companies that don't have a source_profile_url yet."
+    },
+    "get_fb_linkedin": {
+      "label": "Find company Facebook/LinkedIn",
+      "description": "Fills in fanpage_url, linkedin_url — reads companies.website (raw HTML crawl). Free, but limited for SPA/React sites (JS-rendered)."
+    },
+    "check_expired_jobs": {
+      "label": "Clean up expired jobs",
+      "description": "Checks the deadline and whether the job link is still alive, and auto-closes jobs that have expired or whose source has been removed."
+    }
   }
 }

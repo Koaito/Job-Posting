@@ -19,10 +19,13 @@ import { toIntlLocale } from '@/i18n/config';
  * `getTranslations('historyView')` (Server Component, không có
  * `'use client'`). crawlStatusLabel() dùng chung `t` namespace
  * `crawlStatus` — cùng đợt refactor với lib/crawl/badges.ts.
- * CỐ Ý CHƯA dịch: `maintenanceJobLabel()` (lib/maintenance/jobs.ts —
- * nhãn/mô tả 5 job bảo trì, nằm ngoài phạm vi 3 hàm được yêu cầu refactor
- * đợt này). `toLocaleString()` giờ dùng `dateLocale` theo locale hiện
- * tại (Polish, 09/2026) thay vì hard-code `'vi-VN'`.
+ * `toLocaleString()` giờ dùng `dateLocale` theo locale hiện tại (Polish,
+ * 09/2026) thay vì hard-code `'vi-VN'`.
+ *
+ * i18n (đợt sau nữa, 09/2026): `maintenanceJobLabel()` (lib/maintenance/jobs.ts)
+ * giờ nhận thêm `tMaintenanceJobs` — namespace mới `maintenanceJobs`,
+ * cùng đợt tách label/description khỏi metadata tĩnh (xem ghi chú trong
+ * file đó). Đã hết phần "CỐ Ý CHƯA dịch" ghi ở đây trước đây.
  */
 
 const STATUS_OPTIONS = ['queued', 'running', 'done', 'error'];
@@ -58,6 +61,7 @@ export default async function HistoryView({
 }: HistoryViewProps) {
   const t = await getTranslations('historyView');
   const tCrawlStatus = await getTranslations('crawlStatus');
+  const tMaintenanceJobs = await getTranslations('maintenanceJobs');
   const dateLocale = toIntlLocale(await getLocale());
   const crawlTotalPages = Math.max(1, Math.ceil(crawlRuns.total / crawlLimit));
   const maintTotalPages = Math.max(1, Math.ceil(maintenanceRuns.total / maintenanceLimit));
@@ -152,7 +156,7 @@ export default async function HistoryView({
             <select name="m_job_type" defaultValue={maintenanceJobType || ''}>
               <option value="">{t('allJobs')}</option>
               {['backfill_company_profiles', 'enrich_profile_from_website', 'enrich_web_info', 'get_fb_linkedin', 'check_expired_jobs'].map((jt) => (
-                <option key={jt} value={jt}>{maintenanceJobLabel(jt)}</option>
+                <option key={jt} value={jt}>{maintenanceJobLabel(jt, tMaintenanceJobs)}</option>
               ))}
             </select>
             <select name="m_status" defaultValue={maintenanceStatus || ''}>
@@ -182,7 +186,7 @@ export default async function HistoryView({
                 <tbody>
                   {maintenanceRuns.items.map((run) => (
                     <tr key={run.run_id}>
-                      <td>{maintenanceJobLabel(run.job_type)}</td>
+                      <td>{maintenanceJobLabel(run.job_type, tMaintenanceJobs)}</td>
                       <td>
                         <span className={`badge ${crawlStatusBadgeClass(run.status)}`}>{crawlStatusLabel(run.status, tCrawlStatus)}</span>
                       </td>
