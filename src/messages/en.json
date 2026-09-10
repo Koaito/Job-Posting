@@ -1152,5 +1152,13 @@
       "label": "Clean up expired jobs",
       "description": "Checks the deadline and whether the job link is still alive, and auto-closes jobs that have expired or whose source has been removed."
     }
+  },
+  "errorBoundary": {
+    "eyebrow": "Career Hub / Error",
+    "chipLabel": "Something went wrong",
+    "title": "Something went wrong",
+    "message": "This page ran into a problem while rendering. You can try again, or go back to the homepage.",
+    "retry": "Try again",
+    "goHome": "Go to homepage"
   }
 }

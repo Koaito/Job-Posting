@@ -1152,5 +1152,13 @@
       "label": "Dọn job hết hạn",
       "description": "Kiểm tra deadline + kiểm tra link job còn sống không, tự đóng job đã hết hạn/nguồn đã gỡ."
     }
+  },
+  "errorBoundary": {
+    "eyebrow": "Career Hub / Lỗi",
+    "chipLabel": "Đã xảy ra lỗi",
+    "title": "Có lỗi xảy ra",
+    "message": "Trang này gặp sự cố khi hiển thị. Bạn có thể thử lại, hoặc quay về trang chủ.",
+    "retry": "Thử lại",
+    "goHome": "Về trang chủ"
   }
 }
