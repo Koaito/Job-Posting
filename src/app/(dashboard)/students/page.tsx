@@ -1,6 +1,7 @@
 import { getStudents } from '@/app/actions/students';
 import Link from 'next/link';
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, getLocale } from 'next-intl/server';
+import { toIntlLocale } from '@/i18n/config';
 
 /**
  * Students List Page (Học viên)
@@ -23,6 +24,7 @@ export default async function StudentsPage({
   searchParams: Promise<SearchParams>;
 }) {
   const t = await getTranslations('studentsPage');
+  const dateLocale = toIntlLocale(await getLocale());
   const resolvedSearchParams = await searchParams;
   const students = await getStudents({ keyword: resolvedSearchParams.search });
 
@@ -88,9 +90,9 @@ export default async function StudentsPage({
                       mượn nhầm thay vì tự chế class mới. */}
                   <td>{s.is_active ? t('statusActive') : t('statusLocked')}</td>
                   <td className="muted">
-                    {/* CỐ Ý CHƯA dịch: toLocaleString('vi-VN') — thuộc
-                        phạm vi Polish, không xử lý ở đợt Language này. */}
-                    {s.last_login_at ? new Date(s.last_login_at).toLocaleString('vi-VN') : t('neverLoggedIn')}
+                    {/* Polish (09/2026): dateLocale theo locale hiện tại
+                        thay vì hard-code 'vi-VN'. */}
+                    {s.last_login_at ? new Date(s.last_login_at).toLocaleString(dateLocale) : t('neverLoggedIn')}
                   </td>
                 </tr>
               ))}

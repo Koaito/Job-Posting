@@ -3,6 +3,7 @@ import { getTranslations, getLocale } from 'next-intl/server';
 import { getDashboardStats, getRecentActivity } from '@/app/actions/dashboard';
 import { getCurrentUser } from '@/app/actions/auth';
 import { isStaffRole } from '@/lib/auth/roles';
+import { toIntlLocale } from '@/i18n/config';
 
 /**
  * Dashboard Homepage
@@ -32,11 +33,10 @@ export default async function DashboardPage() {
   // /audit-logs (nguồn của getRecentActivity) yêu cầu ss_team trở lên
   // — chỉ gọi khi chắc chắn có quyền, tránh gọi API vô ích rồi bị 403.
   const recentActivity = isStaff ? await getRecentActivity(8) : [];
-  // Locale cho new Date().toLocaleString() — 'vi-VN' hard-code trước đây
-  // luôn hiện định dạng ngày tiếng Việt kể cả khi UI đã ở locale=en.
-  // next-intl dùng mã "en"/"vi" (xem i18n/config.ts), Intl API cần BCP-47
-  // đầy đủ hơn (en-US/vi-VN) để định dạng đúng — map thủ công ở đây.
-  const dateLocale = locale === 'en' ? 'en-US' : 'vi-VN';
+  // Locale cho new Date().toLocaleString() — dùng helper dùng chung
+  // toIntlLocale() (Polish, 09/2026, xem src/i18n/config.ts) thay vì tự
+  // suy ternary riêng ở đây, để mọi nơi map locale -> BCP-47 giống nhau.
+  const dateLocale = toIntlLocale(locale);
 
   return (
     // CHUYỂN 09/2026 (audit CSS): bỏ div "page-container" bọc ngoài —

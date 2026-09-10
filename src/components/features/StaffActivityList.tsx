@@ -2,9 +2,10 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import type { User } from '@/types/auth';
 import { roleLabel } from '@/lib/auth/roles';
+import { toIntlLocale } from '@/i18n/config';
 
 /**
  * Bảng danh sách nhân viên ở `/staff-activity` — lọc client-side theo
@@ -16,9 +17,9 @@ import { roleLabel } from '@/lib/auth/roles';
  * i18n (Giai đoạn 2, nhóm 5, 09/2026): dịch text riêng của component
  * này qua useTranslations('staffActivityList'). `roleLabel()` (lib/auth/
  * roles.ts) giờ đã dịch theo `t` namespace `roles` (đợt sau).
- * CỐ Ý CHƯA dịch: `toLocaleDateString('vi-VN')` (định dạng ngày theo
- * locale — thuộc phạm vi Polish, chưa bắt đầu, xem 50 chỗ hardcode
- * 'vi-VN' tương tự trong toàn repo).
+ * `toLocaleDateString()` giờ dùng `dateLocale` (qua `useLocale()` — bản
+ * Client Component của `getLocale()`) theo locale hiện tại (Polish,
+ * 09/2026) thay vì hard-code `'vi-VN'`.
  */
 export interface StaffActivityListProps {
   staff: User[];
@@ -28,6 +29,7 @@ export interface StaffActivityListProps {
 export function StaffActivityList({ staff, currentUserId }: StaffActivityListProps) {
   const t = useTranslations('staffActivityList');
   const tRole = useTranslations('roles');
+  const dateLocale = toIntlLocale(useLocale());
   const [query, setQuery] = useState('');
 
   const filtered = useMemo(() => {
@@ -77,7 +79,7 @@ export function StaffActivityList({ staff, currentUserId }: StaffActivityListPro
                   <td>
                     <span className="role-chip">{roleLabel(s.role, tRole)}</span>
                   </td>
-                  <td className="muted">{new Date(s.created_at).toLocaleDateString('vi-VN')}</td>
+                  <td className="muted">{new Date(s.created_at).toLocaleDateString(dateLocale)}</td>
                   <td className="actions-cell">
                     {isSelf ? (
                       <Link className="btn btn-text" href="/profile/activity">

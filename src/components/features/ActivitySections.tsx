@@ -1,11 +1,12 @@
 import Link from 'next/link';
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, getLocale } from 'next-intl/server';
 import type { Job } from '@/types/jobs';
 import type { Company } from '@/types/companies';
 import type { CompanyContactWithCompany } from '@/types/contacts';
 import type { User } from '@/types/auth';
 import { industryClass, jobStatusChipClass, jobStatusLabel } from '@/lib/jobs/badges';
 import { partnershipPotentialClass, partnershipPotentialLabel } from '@/lib/companies/potential';
+import { toIntlLocale } from '@/i18n/config';
 
 /**
  * 4 khối "job/công ty/contact đã tự thêm tay + contact đang phụ trách"
@@ -39,6 +40,7 @@ export async function ActivitySections({
 }: ActivitySectionsProps) {
   const t = await getTranslations('activitySections');
   const tPotential = await getTranslations('partnershipPotential');
+  const dateLocale = toIntlLocale(await getLocale());
   return (
     <>
       <div className="activity-section-head">
@@ -73,9 +75,9 @@ export async function ActivitySections({
                 <div className="ticket-meta">
                   <span>
                     📅 {t('deadline')}:{' '}
-                    {/* CỐ Ý CHƯA dịch: toLocaleDateString('vi-VN') — thuộc
-                        phạm vi Polish, không xử lý ở đợt Language này. */}
-                    {job.deadline ? new Date(job.deadline).toLocaleDateString('vi-VN') : '—'}
+                    {/* Polish (09/2026): dateLocale theo locale hiện tại
+                        thay vì hard-code 'vi-VN'. */}
+                    {job.deadline ? new Date(job.deadline).toLocaleDateString(dateLocale) : '—'}
                   </span>
                 </div>
               </div>

@@ -1,6 +1,7 @@
 import Link from 'next/link';
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, getLocale } from 'next-intl/server';
 import type { CompanyDataHealth, JobDataHealth, FieldHealthRow } from '@/types/crawl';
+import { toIntlLocale } from '@/i18n/config';
 
 /**
  * Tab "Tình trạng dữ liệu" ở trang /crawl — cho admin/ss_team thấy
@@ -17,9 +18,8 @@ import type { CompanyDataHealth, JobDataHealth, FieldHealthRow } from '@/types/c
  * đợt dịch component trước (không nằm trong danh sách 7 component đã
  * dịch dù cùng thư mục `features/`). Chuyển thành async function để
  * gọi `getTranslations('dataHealthView')` (Server Component, không có
- * `'use client'`). `toLocaleDateString('vi-VN')` CỐ Ý CHƯA đổi — thuộc
- * phạm vi Polish, không xử lý ở đợt Language này (cùng quy ước với các
- * file khác trong repo).
+ * `'use client'`). `toLocaleDateString()` giờ dùng `dateLocale` theo
+ * locale hiện tại (Polish, 09/2026) thay vì hard-code `'vi-VN'`.
  */
 
 function FieldHealthTable({
@@ -71,6 +71,7 @@ interface DataHealthViewProps {
 
 export default async function DataHealthView({ companyHealth, jobHealth }: DataHealthViewProps) {
   const t = await getTranslations('dataHealthView');
+  const dateLocale = toIntlLocale(await getLocale());
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
@@ -126,7 +127,7 @@ export default async function DataHealthView({ companyHealth, jobHealth }: DataH
                   <tr key={j.id}>
                     <td><Link href={`/jobs/${j.id}`}>{j.position}</Link></td>
                     <td className="muted">{j.company}</td>
-                    <td className="muted">{j.deadline ? new Date(j.deadline).toLocaleDateString('vi-VN') : '—'}</td>
+                    <td className="muted">{j.deadline ? new Date(j.deadline).toLocaleDateString(dateLocale) : '—'}</td>
                     <td className="muted">{j.source}</td>
                   </tr>
                 ))}
@@ -161,7 +162,7 @@ export default async function DataHealthView({ companyHealth, jobHealth }: DataH
                       {group.jobs.map((j) => (
                         <tr key={j.id}>
                           <td><Link href={`/jobs/${j.id}`}>{j.position}</Link></td>
-                          <td className="muted">{j.deadline ? new Date(j.deadline).toLocaleDateString('vi-VN') : '—'}</td>
+                          <td className="muted">{j.deadline ? new Date(j.deadline).toLocaleDateString(dateLocale) : '—'}</td>
                           <td className="muted">{j.source}</td>
                           <td>
                             {j.suggest_keep === true && <span className="badge badge-success">{t('suggestKeep')}</span>}

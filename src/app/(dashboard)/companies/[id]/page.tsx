@@ -3,11 +3,12 @@ import { getContactsByCompany } from '@/app/actions/contacts';
 import { getCurrentUser } from '@/app/actions/auth';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, getLocale } from 'next-intl/server';
 import DeleteCompanyButton from '@/components/features/DeleteCompanyButton';
 import CompanyContactsManager from '@/components/features/CompanyContactsManager';
 import { isStaffRole } from '@/lib/auth/roles';
 import { partnershipPotentialClass, partnershipPotentialLabel } from '@/lib/companies/potential';
+import { toIntlLocale } from '@/i18n/config';
 
 /**
  * Company Detail Page
@@ -28,6 +29,7 @@ export default async function CompanyDetailPage({
 }) {
   const t = await getTranslations('companyDetailPage');
   const tPotential = await getTranslations('partnershipPotential');
+  const dateLocale = toIntlLocale(await getLocale());
   const { id } = await params;
   const [company, currentUser] = await Promise.all([getCompanyById(id), getCurrentUser()]);
 
@@ -177,12 +179,12 @@ export default async function CompanyDetailPage({
               <dd>{company.company_id}</dd>
 
               <dt>{t('createdAt')}</dt>
-              {/* CỐ Ý CHƯA dịch: toLocaleDateString('vi-VN') — thuộc
-                  phạm vi Polish, không xử lý ở đợt Language này. */}
-              <dd>{new Date(company.created_at).toLocaleDateString('vi-VN')}</dd>
+              {/* Polish (09/2026): dateLocale theo locale hiện tại thay vì
+                  hard-code 'vi-VN'. */}
+              <dd>{new Date(company.created_at).toLocaleDateString(dateLocale)}</dd>
 
               <dt>{t('updatedAt')}</dt>
-              <dd>{new Date(company.updated_at).toLocaleDateString('vi-VN')}</dd>
+              <dd>{new Date(company.updated_at).toLocaleDateString(dateLocale)}</dd>
             </dl>
           </section>
 

@@ -2,9 +2,10 @@ import { getMySavedJobs } from '@/app/actions/me';
 import { getCurrentUser } from '@/app/actions/auth';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, getLocale } from 'next-intl/server';
 import UnsaveJobButton from '@/components/features/UnsaveJobButton';
 import { jobStatusChipClass, jobStatusLabel } from '@/lib/jobs/badges';
+import { toIntlLocale } from '@/i18n/config';
 
 /**
  * Saved Jobs Page (Job đã lưu)
@@ -21,6 +22,7 @@ import { jobStatusChipClass, jobStatusLabel } from '@/lib/jobs/badges';
 
 export default async function SavedJobsPage() {
   const t = await getTranslations('savedJobsPage');
+  const dateLocale = toIntlLocale(await getLocale());
   const user = await getCurrentUser();
   if (!user) {
     redirect('/login');
@@ -81,9 +83,9 @@ export default async function SavedJobsPage() {
                       </>
                     )}
                     <dt>{t('savedAt')}</dt>
-                    {/* CỐ Ý CHƯA dịch: toLocaleDateString('vi-VN') — thuộc
-                        phạm vi Polish, không xử lý ở đợt Language này. */}
-                    <dd>{new Date(sj.created_at).toLocaleDateString('vi-VN')}</dd>
+                    {/* Polish (09/2026): dateLocale theo locale hiện tại
+                        thay vì hard-code 'vi-VN'. */}
+                    <dd>{new Date(sj.created_at).toLocaleDateString(dateLocale)}</dd>
                   </dl>
                 </div>
                 <UnsaveJobButton jobId={sj.job_id} />

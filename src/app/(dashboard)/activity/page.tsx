@@ -1,10 +1,11 @@
 import Link from 'next/link';
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, getLocale } from 'next-intl/server';
 import { getAuditLogs } from '@/app/actions/audit';
 import AuditLogNoteEditor from '@/components/features/AuditLogNoteEditor';
 import { getCurrentUser, listUsers } from '@/app/actions/auth';
 import { getCompanies } from '@/app/actions/companies';
 import { isStaffRole } from '@/lib/auth/roles';
+import { toIntlLocale } from '@/i18n/config';
 
 /**
  * Audit Logs Page ("Lịch sử thao tác")
@@ -64,6 +65,7 @@ export default async function ActivityPage({
 }) {
   const sp = await searchParams;
   const t = await getTranslations('activityPage');
+  const dateLocale = toIntlLocale(await getLocale());
   const currentUser = await getCurrentUser();
   const isStaff = isStaffRole(currentUser?.role);
 
@@ -227,9 +229,9 @@ export default async function ActivityPage({
               <tbody>
                 {logs.map((log) => (
                   <tr key={log.log_id}>
-                    {/* CỐ Ý CHƯA dịch: toLocaleString('vi-VN') — thuộc
-                        phạm vi Polish, không xử lý ở đợt Language này. */}
-                    <td className="muted">{new Date(log.created_at).toLocaleString('vi-VN')}</td>
+                    {/* Polish (09/2026): dateLocale theo locale hiện tại
+                        thay vì hard-code 'vi-VN'. */}
+                    <td className="muted">{new Date(log.created_at).toLocaleString(dateLocale)}</td>
                     <td>{log.actor_name || <span className="muted">{t('systemActor')}</span>}</td>
                     <td>{actionTypeLabel(log.action_type, t)}</td>
                     <td>

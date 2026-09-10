@@ -4,11 +4,12 @@ import { getMyApplications, getMySavedJobs } from '@/app/actions/me';
 import { jobStatusChipClass, jobStatusLabel } from '@/lib/jobs/badges';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, getLocale } from 'next-intl/server';
 import DeleteJobButton from '@/components/features/DeleteJobButton';
 import JobApplyActions from '@/components/features/JobApplyActions';
 import JobApplicantsPanel from '@/components/features/JobApplicantsPanel';
 import { isStaffRole } from '@/lib/auth/roles';
+import { toIntlLocale } from '@/i18n/config';
 
 /**
  * Job Detail Page
@@ -24,6 +25,7 @@ export default async function JobDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const t = await getTranslations('jobDetailPage');
+  const dateLocale = toIntlLocale(await getLocale());
   const { id } = await params;
   const job = await getJobById(id);
 
@@ -119,9 +121,9 @@ export default async function JobDetailPage({
                 <>
                   <dt>{t('deadline')}</dt>
                   <dd>
-                    {/* CỐ Ý CHƯA dịch: toLocaleDateString('vi-VN') — thuộc
-                        phạm vi Polish, không xử lý ở đợt Language này. */}
-                    {new Date(job.deadline).toLocaleDateString('vi-VN')}
+                    {/* Polish (09/2026): dateLocale theo locale hiện tại
+                        thay vì hard-code 'vi-VN'. */}
+                    {new Date(job.deadline).toLocaleDateString(dateLocale)}
                     {new Date(job.deadline) < new Date() && (
                       // BUG FIX (audit CSS 09/2026): "badge-error" không
                       // tồn tại — class thật là "badge-danger", LUÔN đi
@@ -195,12 +197,12 @@ export default async function JobDetailPage({
               <dd>{job.job_id}</dd>
 
               <dt>{t('createdAt')}</dt>
-              {/* CỐ Ý CHƯA dịch: toLocaleDateString('vi-VN') — thuộc phạm
-                  vi Polish, không xử lý ở đợt Language này. */}
-              <dd>{new Date(job.created_at).toLocaleDateString('vi-VN')}</dd>
+              {/* Polish (09/2026): dateLocale theo locale hiện tại thay vì
+                  hard-code 'vi-VN'. */}
+              <dd>{new Date(job.created_at).toLocaleDateString(dateLocale)}</dd>
 
               <dt>{t('updatedAt')}</dt>
-              <dd>{new Date(job.updated_at).toLocaleDateString('vi-VN')}</dd>
+              <dd>{new Date(job.updated_at).toLocaleDateString(dateLocale)}</dd>
 
               {job.company_id && (
                 <>

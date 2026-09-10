@@ -2,9 +2,10 @@ import { getMyApplications } from '@/app/actions/me';
 import { getCurrentUser } from '@/app/actions/auth';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, getLocale } from 'next-intl/server';
 import WithdrawApplicationButton from '@/components/features/WithdrawApplicationButton';
 import { jobStatusChipClass, jobStatusLabel } from '@/lib/jobs/badges';
+import { toIntlLocale } from '@/i18n/config';
 
 /**
  * My Applications Page (Đơn ứng tuyển của tôi)
@@ -30,6 +31,7 @@ import { jobStatusChipClass, jobStatusLabel } from '@/lib/jobs/badges';
 
 export default async function MyApplicationsPage() {
   const t = await getTranslations('myApplicationsPage');
+  const dateLocale = toIntlLocale(await getLocale());
   const user = await getCurrentUser();
   if (!user) {
     redirect('/login');
@@ -93,9 +95,9 @@ export default async function MyApplicationsPage() {
                       </>
                     )}
                     <dt>{t('appliedAt')}</dt>
-                    {/* CỐ Ý CHƯA dịch: toLocaleDateString('vi-VN') — thuộc
-                        phạm vi Polish, không xử lý ở đợt Language này. */}
-                    <dd>{new Date(app.applied_at).toLocaleDateString('vi-VN')}</dd>
+                    {/* Polish (09/2026): dateLocale theo locale hiện tại
+                        thay vì hard-code 'vi-VN'. */}
+                    <dd>{new Date(app.applied_at).toLocaleDateString(dateLocale)}</dd>
                     {app.note && (
                       <>
                         <dt>{t('note')}</dt>

@@ -1,8 +1,9 @@
 import { getStudentById } from '@/app/actions/students';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, getLocale } from 'next-intl/server';
 import CvDownloadButton from '@/components/features/CvDownloadButton';
+import { toIntlLocale } from '@/i18n/config';
 
 /**
  * Student Detail Page — hồ sơ học viên + đơn ứng tuyển + job đã lưu.
@@ -24,6 +25,7 @@ export default async function StudentDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const t = await getTranslations('studentDetailPage');
+  const dateLocale = toIntlLocale(await getLocale());
   const { id } = await params;
   const data = await getStudentById(id);
 
@@ -67,9 +69,9 @@ export default async function StudentDetailPage({
           </div>
           <div>
             <dt className="muted">{t('lastLogin')}</dt>
-            {/* CỐ Ý CHƯA dịch: toLocaleString('vi-VN') — thuộc phạm vi
-                Polish, không xử lý ở đợt Language này. */}
-            <dd>{student.last_login_at ? new Date(student.last_login_at).toLocaleString('vi-VN') : t('neverLoggedIn')}</dd>
+            {/* Polish (09/2026): dateLocale theo locale hiện tại thay vì
+                hard-code 'vi-VN'. */}
+            <dd>{student.last_login_at ? new Date(student.last_login_at).toLocaleString(dateLocale) : t('neverLoggedIn')}</dd>
           </div>
         </dl>
       </div>
@@ -95,7 +97,7 @@ export default async function StudentDetailPage({
                   </td>
                   <td className="muted">{a.company_name}</td>
                   <td className="muted">{a.job_status || '—'}</td>
-                  <td className="muted">{new Date(a.applied_at).toLocaleDateString('vi-VN')}</td>
+                  <td className="muted">{new Date(a.applied_at).toLocaleDateString(dateLocale)}</td>
                   <td>{a.cv_url ? <CvDownloadButton applicationId={a.application_id} /> : <span className="muted">—</span>}</td>
                 </tr>
               ))}
@@ -126,7 +128,7 @@ export default async function StudentDetailPage({
                   </td>
                   <td className="muted">{sj.company_name}</td>
                   <td className="muted">{sj.job_status || '—'}</td>
-                  <td className="muted">{new Date(sj.created_at).toLocaleDateString('vi-VN')}</td>
+                  <td className="muted">{new Date(sj.created_at).toLocaleDateString(dateLocale)}</td>
                 </tr>
               ))}
             </tbody>

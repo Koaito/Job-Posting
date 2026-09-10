@@ -1,8 +1,9 @@
 import Link from 'next/link';
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, getLocale } from 'next-intl/server';
 import type { PaginatedCrawlRuns, PaginatedMaintenanceRuns } from '@/types/crawl';
 import { crawlStatusBadgeClass, crawlStatusLabel } from '@/lib/crawl/badges';
 import { maintenanceJobLabel } from '@/lib/maintenance/jobs';
+import { toIntlLocale } from '@/i18n/config';
 
 /**
  * Tab "Lịch sử vận hành" ở /crawl — 2 bảng lịch sử (crawl + bảo trì)
@@ -20,7 +21,8 @@ import { maintenanceJobLabel } from '@/lib/maintenance/jobs';
  * `crawlStatus` — cùng đợt refactor với lib/crawl/badges.ts.
  * CỐ Ý CHƯA dịch: `maintenanceJobLabel()` (lib/maintenance/jobs.ts —
  * nhãn/mô tả 5 job bảo trì, nằm ngoài phạm vi 3 hàm được yêu cầu refactor
- * đợt này) và `toLocaleString('vi-VN')` (thuộc phạm vi Polish).
+ * đợt này). `toLocaleString()` giờ dùng `dateLocale` theo locale hiện
+ * tại (Polish, 09/2026) thay vì hard-code `'vi-VN'`.
  */
 
 const STATUS_OPTIONS = ['queued', 'running', 'done', 'error'];
@@ -56,6 +58,7 @@ export default async function HistoryView({
 }: HistoryViewProps) {
   const t = await getTranslations('historyView');
   const tCrawlStatus = await getTranslations('crawlStatus');
+  const dateLocale = toIntlLocale(await getLocale());
   const crawlTotalPages = Math.max(1, Math.ceil(crawlRuns.total / crawlLimit));
   const maintTotalPages = Math.max(1, Math.ceil(maintenanceRuns.total / maintenanceLimit));
 
@@ -106,7 +109,7 @@ export default async function HistoryView({
                         <span className={`badge ${crawlStatusBadgeClass(run.status)}`}>{crawlStatusLabel(run.status, tCrawlStatus)}</span>
                       </td>
                       <td className="muted">{run.triggered_by_name || t('autoTriggered')}</td>
-                      <td className="muted">{new Date(run.started_at).toLocaleString('vi-VN')}</td>
+                      <td className="muted">{new Date(run.started_at).toLocaleString(dateLocale)}</td>
                       <td className="muted crawl-result-main">
                         {run.error ? (
                           <span className="crawl-error-text">{run.error}</span>
@@ -184,7 +187,7 @@ export default async function HistoryView({
                         <span className={`badge ${crawlStatusBadgeClass(run.status)}`}>{crawlStatusLabel(run.status, tCrawlStatus)}</span>
                       </td>
                       <td className="muted">{run.triggered_by_name || t('autoTriggered')}</td>
-                      <td className="muted">{new Date(run.started_at).toLocaleString('vi-VN')}</td>
+                      <td className="muted">{new Date(run.started_at).toLocaleString(dateLocale)}</td>
                       <td className="muted crawl-result-main">
                         {run.error ? (
                           <span className="crawl-error-text">{run.error}</span>

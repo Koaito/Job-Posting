@@ -1,10 +1,11 @@
 import { redirect } from 'next/navigation';
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, getLocale } from 'next-intl/server';
 import { getCurrentUser } from '@/app/actions/auth';
 import { roleLabel, isStaffRole } from '@/lib/auth/roles';
 import ProfileSubnav from '@/components/features/ProfileSubnav';
 import ProfileOverviewForm from '@/components/features/ProfileOverviewForm';
 import ThemeToggle from '@/components/features/ThemeToggle';
+import { toIntlLocale } from '@/i18n/config';
 
 /**
  * Trang cá nhân — Thông tin chung. Khớp profile.index() (GET) bên
@@ -40,6 +41,7 @@ import ThemeToggle from '@/components/features/ThemeToggle';
 export default async function ProfilePage() {
   const t = await getTranslations('profilePage');
   const tRole = await getTranslations('roles');
+  const dateLocale = toIntlLocale(await getLocale());
   const user = await getCurrentUser();
   if (!user) {
     redirect('/login');
@@ -67,9 +69,9 @@ export default async function ProfilePage() {
           <div>
             <dt className="profile-info-label">{t('joinedAt')}</dt>
             <dd className="profile-info-value">
-              {/* CỐ Ý CHƯA dịch: toLocaleDateString('vi-VN') — thuộc
-                  phạm vi Polish, không xử lý ở đợt Language này. */}
-              {new Date(user.created_at).toLocaleDateString('vi-VN')}
+              {/* Polish (09/2026): dateLocale theo locale hiện tại thay vì
+                  hard-code 'vi-VN'. */}
+              {new Date(user.created_at).toLocaleDateString(dateLocale)}
             </dd>
           </div>
           {!isStudent && (
@@ -77,7 +79,7 @@ export default async function ProfilePage() {
               <dt className="profile-info-label">{t('lastLogin')}</dt>
               <dd className="profile-info-value">
                 {user.last_login_at
-                  ? new Date(user.last_login_at).toLocaleDateString('vi-VN')
+                  ? new Date(user.last_login_at).toLocaleDateString(dateLocale)
                   : '—'}
               </dd>
             </div>

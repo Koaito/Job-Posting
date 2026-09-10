@@ -1,7 +1,8 @@
 import { getJobs } from '@/app/actions/jobs';
 import { industryClass, jobStatusChipClass, jobStatusLabel } from '@/lib/jobs/badges';
 import Link from 'next/link';
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, getLocale } from 'next-intl/server';
+import { toIntlLocale } from '@/i18n/config';
 
 /**
  * Jobs List Page
@@ -52,6 +53,7 @@ export default async function JobsPage({
   searchParams: Promise<SearchParams>;
 }) {
   const t = await getTranslations('jobsPage');
+  const dateLocale = toIntlLocale(await getLocale());
   const sp = await searchParams;
   const page = parseInt(sp.page || '1');
   const limit = 50;
@@ -195,11 +197,9 @@ export default async function JobsPage({
                       </span>
                     )}
                     {job.deadline && (
-                      // CỐ Ý CHƯA dịch: toLocaleDateString('vi-VN') —
-                      // thuộc phạm vi Polish (còn nhiều chỗ hardcode
-                      // 'vi-VN' tương tự trong repo), không xử lý ở đợt
-                      // Language này.
-                      <span>📅 {t('deadline', { date: new Date(job.deadline).toLocaleDateString('vi-VN') })}</span>
+                      // Polish (09/2026): dateLocale theo locale hiện tại
+                      // thay vì hard-code 'vi-VN'.
+                      <span>📅 {t('deadline', { date: new Date(job.deadline).toLocaleDateString(dateLocale) })}</span>
                     )}
                     {job.source_name && job.source_name !== 'MANUAL' && (
                       <span>{t('source', { source: job.source_name })}</span>

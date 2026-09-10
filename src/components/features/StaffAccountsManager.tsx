@@ -2,9 +2,10 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { createStaff, updateStaffRole, updateStaffActiveStatus } from '@/app/actions/staff';
 import type { User } from '@/types/auth';
+import { toIntlLocale } from '@/i18n/config';
 
 /**
  * Quản lý danh sách nhân viên — mới 09/2026 (xem staff/page.tsx).
@@ -30,6 +31,7 @@ interface StaffAccountsManagerProps {
 
 export function StaffAccountsManager({ initialStaff, currentUserId, isAdmin }: StaffAccountsManagerProps) {
   const t = useTranslations('staffAccountsManager');
+  const dateLocale = toIntlLocale(useLocale());
   const router = useRouter();
   const [staff, setStaff] = useState(initialStaff);
   const [isPending, startTransition] = useTransition();
@@ -171,9 +173,9 @@ export function StaffAccountsManager({ initialStaff, currentUserId, isAdmin }: S
                         thêm class mới không có trong style.css. */}
                     <td>{s.is_active ? t('statusActive') : t('statusLocked')}</td>
                     <td className="muted">
-                      {/* CỐ Ý CHƯA dịch: toLocaleString('vi-VN') — thuộc
-                          phạm vi Polish, không xử lý ở đợt Language này. */}
-                      {s.last_login_at ? new Date(s.last_login_at).toLocaleString('vi-VN') : t('neverLoggedIn')}
+                      {/* Polish (09/2026): dateLocale theo locale hiện tại
+                          thay vì hard-code 'vi-VN'. */}
+                      {s.last_login_at ? new Date(s.last_login_at).toLocaleString(dateLocale) : t('neverLoggedIn')}
                     </td>
                     {isAdmin && (
                       <td>

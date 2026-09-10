@@ -1,6 +1,6 @@
 import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, getLocale } from 'next-intl/server';
 import { getCurrentUser, listUsers } from '@/app/actions/auth';
 import { getStaffById } from '@/app/actions/staff';
 import { isStaffRole, roleLabel } from '@/lib/auth/roles';
@@ -8,6 +8,7 @@ import { getJobs } from '@/app/actions/jobs';
 import { getCompanies } from '@/app/actions/companies';
 import { getContacts } from '@/app/actions/contacts';
 import { ActivitySections } from '@/components/features/ActivitySections';
+import { toIntlLocale } from '@/i18n/config';
 
 /**
  * Staff Activity — chi tiết hoạt động 1 nhân viên (BỔ SUNG 09/2026, rà
@@ -43,6 +44,7 @@ export default async function StaffActivityDetailPage({
 }) {
   const t = await getTranslations('staffActivityDetailPage');
   const tRole = await getTranslations('roles');
+  const dateLocale = toIntlLocale(await getLocale());
   const { userId } = await params;
   const currentUser = await getCurrentUser();
 
@@ -110,9 +112,9 @@ export default async function StaffActivityDetailPage({
         </dl>
         <dl className="kv">
           <dt>{t('accountCreatedAt')}</dt>
-          {/* CỐ Ý CHƯA dịch: toLocaleDateString('vi-VN') — thuộc phạm vi
-              Polish, không xử lý ở đợt Language này. */}
-          <dd>{new Date(staffMember.created_at).toLocaleDateString('vi-VN')}</dd>
+          {/* Polish (09/2026): dateLocale theo locale hiện tại thay vì
+              hard-code 'vi-VN'. */}
+          <dd>{new Date(staffMember.created_at).toLocaleDateString(dateLocale)}</dd>
         </dl>
       </div>
 

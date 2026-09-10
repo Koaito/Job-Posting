@@ -1,9 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { getCvSignedUrl } from '@/app/actions/me';
 import type { JobApplicant, JobSaver } from '@/types/auth';
+import { toIntlLocale } from '@/i18n/config';
 
 /**
  * Tab "Người đã ứng tuyển / Đã lưu" trên trang chi tiết job, dành cho
@@ -21,6 +22,7 @@ interface JobApplicantsPanelProps {
 
 export default function JobApplicantsPanel({ applicants, savers }: JobApplicantsPanelProps) {
   const t = useTranslations('jobApplicantsPanel');
+  const dateLocale = toIntlLocale(useLocale());
   const [tab, setTab] = useState<'applicants' | 'savers'>('applicants');
   const [loadingCvId, setLoadingCvId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -80,9 +82,9 @@ export default function JobApplicantsPanel({ applicants, savers }: JobApplicants
                   <td>{a.email}</td>
                   <td>{a.phone || '—'}</td>
                   <td>{a.note || '—'}</td>
-                  {/* CỐ Ý CHƯA dịch: toLocaleDateString('vi-VN') — thuộc
-                      phạm vi Polish, không xử lý ở đợt Language này. */}
-                  <td>{new Date(a.applied_at).toLocaleDateString('vi-VN')}</td>
+                  {/* Polish (09/2026): dateLocale theo locale hiện tại
+                      thay vì hard-code 'vi-VN'. */}
+                  <td>{new Date(a.applied_at).toLocaleDateString(dateLocale)}</td>
                   <td>
                     {a.cv_url ? (
                       <button
@@ -121,7 +123,7 @@ export default function JobApplicantsPanel({ applicants, savers }: JobApplicants
                   <td>{s.full_name}</td>
                   <td>{s.email}</td>
                   <td>{s.phone || '—'}</td>
-                  <td>{new Date(s.created_at).toLocaleDateString('vi-VN')}</td>
+                  <td>{new Date(s.created_at).toLocaleDateString(dateLocale)}</td>
                 </tr>
               ))}
             </tbody>
