@@ -27,6 +27,7 @@ export default async function CompanyDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const t = await getTranslations('companyDetailPage');
+  const tPotential = await getTranslations('partnershipPotential');
   const { id } = await params;
   const [company, currentUser] = await Promise.all([getCompanyById(id), getCurrentUser()]);
 
@@ -107,7 +108,7 @@ export default async function CompanyDetailPage({
               <dt>{t('potential')}</dt>
               <dd>
                 <span className={`fit-chip ${partnershipPotentialClass(company.partnership_potential)}`}>
-                  {partnershipPotentialLabel(company.partnership_potential)}
+                  {partnershipPotentialLabel(company.partnership_potential, tPotential)}
                 </span>
               </dd>
 

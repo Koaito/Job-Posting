@@ -5,7 +5,7 @@ import type { Company } from '@/types/companies';
 import type { CompanyContactWithCompany } from '@/types/contacts';
 import type { User } from '@/types/auth';
 import { industryClass, jobStatusChipClass, jobStatusLabel } from '@/lib/jobs/badges';
-import { partnershipPotentialClass } from '@/lib/companies/potential';
+import { partnershipPotentialClass, partnershipPotentialLabel } from '@/lib/companies/potential';
 
 /**
  * 4 khối "job/công ty/contact đã tự thêm tay + contact đang phụ trách"
@@ -38,6 +38,7 @@ export async function ActivitySections({
   staffById,
 }: ActivitySectionsProps) {
   const t = await getTranslations('activitySections');
+  const tPotential = await getTranslations('partnershipPotential');
   return (
     <>
       <div className="activity-section-head">
@@ -114,7 +115,7 @@ export async function ActivitySections({
                   <td>{c.province_name || '—'}</td>
                   <td>
                     <span className={`fit-chip ${partnershipPotentialClass(c.partnership_potential)}`}>
-                      {c.partnership_potential}
+                      {partnershipPotentialLabel(c.partnership_potential, tPotential)}
                     </span>
                   </td>
                   <td className="actions-cell">

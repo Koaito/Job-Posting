@@ -20,8 +20,7 @@ import { crawlStatusBadgeClass, crawlStatusLabel } from '@/lib/crawl/badges';
  *
  * i18n (Giai đoạn 2, nhóm 5, 09/2026): dịch label/nút bấm qua
  * `useTranslations('crawlTrigger')`. crawlStatusLabel() (lib/crawl/
- * badges.ts) CỐ Ý CHƯA dịch — nhãn gắn liền tên class CSS suy từ label
- * tiếng Việt, cần tách trước (xem ghi chú lib/companies/potential.ts).
+ * badges.ts) giờ đã dịch theo `t` namespace `crawlStatus` (đợt sau).
  * toLocaleTimeString('vi-VN') CỐ Ý CHƯA đổi — thuộc phạm vi Polish.
  */
 
@@ -36,6 +35,7 @@ const POLL_INTERVAL_MS = 2000;
 
 export default function CrawlTrigger({ isAdmin, sources, initialRun }: CrawlTriggerProps) {
   const t = useTranslations('crawlTrigger');
+  const tCrawlStatus = useTranslations('crawlStatus');
   const router = useRouter();
   const sourceKeys = Object.keys(sources);
 
@@ -236,7 +236,7 @@ export default function CrawlTrigger({ isAdmin, sources, initialRun }: CrawlTrig
                   (crawler_client/crawl.py), cũng hiện nhãn tiếng Việt
                   thay vì in thẳng status tiếng Anh (queued/running/...). */}
               <span className={`badge ${crawlStatusBadgeClass(runStatus.status)}`}>
-                {crawlStatusLabel(runStatus.status)}
+                {crawlStatusLabel(runStatus.status, tCrawlStatus)}
               </span>
             </p>
             {runStatus.progress && (

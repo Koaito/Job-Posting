@@ -24,17 +24,26 @@ export function isAdminRole(role: string | undefined | null): boolean {
 
 /**
  * Khớp constants.py::ROLE_LABELS bên Flask gốc — dùng để hiển thị nhãn
- * tiếng Việt cho role trong module /messages (role-chip ở inbox, trang
- * tìm người, khung chat). Không có ở Next repo trước đây vì chưa module
- * nào cần hiển thị role của NGƯỜI KHÁC (chỉ hiển thị role chính mình).
+ * role trong module /messages (role-chip ở inbox, trang tìm người,
+ * khung chat) + profile/staff-activity. Không có ở Next repo trước đây
+ * vì chưa module nào cần hiển thị role của NGƯỜI KHÁC (chỉ hiển thị
+ * role chính mình).
+ *
+ * i18n (đợt sau, 09/2026): roleLabel() giờ nhận `t` — namespace mới
+ * `roles` (key = role value thật 'user'/'ss_team'/'admin', tra thẳng
+ * không qua bảng trung gian tiếng Việt nữa). Gọi `useTranslations('roles')`
+ * ở Client Component hoặc `getTranslations('roles')` ở Server Component
+ * rồi truyền `t` vào đây — cùng pattern đã áp dụng cho `contactStatus`
+ * (xem CompanyContactsManager.tsx). Đổi cùng đợt với
+ * lib/crawl/badges.ts::crawlStatusLabel() và
+ * lib/companies/potential.ts::partnershipPotentialLabel().
  */
-export const ROLE_LABELS: Record<string, string> = {
-  user: 'Học viên',
-  ss_team: 'Team SS',
-  admin: 'Admin',
-};
+export const ROLE_VALUES = ['user', 'ss_team', 'admin'] as const;
 
-export function roleLabel(role: string | undefined | null): string {
+export function roleLabel(
+  role: string | undefined | null,
+  t: (key: string) => string
+): string {
   if (!role) return '';
-  return ROLE_LABELS[role] ?? role;
+  return (ROLE_VALUES as readonly string[]).includes(role) ? t(role) : role;
 }

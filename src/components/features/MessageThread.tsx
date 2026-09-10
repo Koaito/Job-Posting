@@ -25,7 +25,8 @@ import type { ChatMessage } from '@/types/messages';
  *
  * i18n (Giai đoạn 2, nhóm 5, 09/2026): dịch label/tiêu đề/nút bấm qua
  * `useTranslations('messageThread')`. roleLabel() (lib/auth/roles.ts)
- * CỐ Ý CHƯA dịch — xem ghi chú MessagesInbox.tsx.
+ * giờ đã dịch theo `t` namespace `roles` (đợt sau) — xem ghi chú
+ * MessagesInbox.tsx.
  */
 
 const POLL_INTERVAL_MS = 5000;
@@ -65,6 +66,7 @@ export function MessageThread({
   maxContentLength,
 }: MessageThreadProps) {
   const t = useTranslations('messageThread');
+  const tRole = useTranslations('roles');
   const router = useRouter();
   const [history, setHistory] = useState(initialHistory);
   const [lastMessageId, setLastMessageId] = useState(lastId);
@@ -184,7 +186,7 @@ export function MessageThread({
           </Link>
           <h1>
             {partnerName}
-            {partnerRole && <span className="role-chip">{roleLabel(partnerRole)}</span>}
+            {partnerRole && <span className="role-chip">{roleLabel(partnerRole, tRole)}</span>}
           </h1>
         </div>
         {showBlockControls &&

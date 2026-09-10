@@ -1054,5 +1054,81 @@
     "taxIdShort": "MST",
     "noSimilarCompany": "Không tìm thấy công ty nào gần giống trong hệ thống.",
     "createNewCompany": "+ Tạo công ty mới theo tên trong file"
+  },
+  "roles": {
+    "user": "Học viên",
+    "ss_team": "Team SS",
+    "admin": "Admin"
+  },
+  "crawlStatus": {
+    "queued": "Đang chờ",
+    "running": "Đang chạy",
+    "done": "Hoàn tất",
+    "error": "Lỗi"
+  },
+  "partnershipPotential": {
+    "UNVERIFIED": "Chưa đánh giá",
+    "LOW": "Thấp",
+    "MEDIUM": "Trung bình",
+    "HIGH": "Cao"
+  },
+  "messagesNewPage": {
+    "eyebrow": "Career Hub / Nhắn tin",
+    "title": "Nhắn tin mới",
+    "ledeStudent": "Tìm 1 SS/admin để gửi yêu cầu nhắn tin. Bạn cần được SS chấp nhận trước khi nhắn tiếp.",
+    "ledeStaff": "Tìm học viên hoặc SS/admin khác để bắt đầu hội thoại.",
+    "backLink": "← Quay lại tin nhắn",
+    "searchPlaceholder": "Nhập tên...",
+    "searchButton": "Tìm",
+    "messageCta": "Nhắn tin →",
+    "emptyState": "Không tìm thấy ai khớp với \"{q}\"."
+  },
+  "messageThreadPage": {
+    "defaultPartnerName": "Người dùng"
+  },
+  "dataHealthView": {
+    "noData": "Không có dữ liệu.",
+    "fieldColumn": "Trường dữ liệu",
+    "missingColumn": "Thiếu",
+    "totalColumn": "Tổng",
+    "missingRateColumn": "Tỉ lệ thiếu",
+    "companyMissingTitle": "Company đang thiếu dữ liệu ({total})",
+    "companyNoContactSuffix": "công ty active chưa có contact HR nào.",
+    "jobMissingTitle": "Job đang thiếu dữ liệu ({total})",
+    "missingBySourceTitle": "Thiếu dữ liệu theo nguồn",
+    "expiredOpenJobsTitle": "Job hết hạn nhưng vẫn \"Đang tuyển\" ({count})",
+    "noExpiredJobs": "Không có job nào — dữ liệu sạch.",
+    "positionColumn": "Vị trí",
+    "companyColumn": "Công ty",
+    "deadlineColumn": "Hạn nộp",
+    "sourceColumn": "Nguồn",
+    "duplicateJobsTitle": "Job nghi trùng lặp ({count} nhóm)",
+    "noDuplicateJobs": "Không có nhóm nào nghi trùng.",
+    "suggestionColumn": "Gợi ý",
+    "suggestKeep": "Nên giữ",
+    "suggestClose": "Cân nhắc đóng"
+  },
+  "historyView": {
+    "crawlHistoryTitle": "Lịch sử crawl",
+    "allSources": "Mọi nguồn",
+    "allStatuses": "Mọi trạng thái",
+    "filterButton": "Lọc",
+    "clearFilter": "Xoá lọc",
+    "sourceColumn": "Nguồn",
+    "categoryColumn": "Ngành",
+    "statusColumn": "Trạng thái",
+    "triggeredByColumn": "Người kích hoạt",
+    "startedAtColumn": "Bắt đầu",
+    "resultColumn": "Kết quả",
+    "autoTriggered": "Tự động",
+    "viewDetails": "Xem",
+    "prevPage": "← Trang trước",
+    "nextPage": "Trang sau →",
+    "pageStatus": "Trang {page} / {totalPages}",
+    "noCrawlRuns": "Chưa có lượt crawl nào khớp bộ lọc.",
+    "maintenanceHistoryTitle": "Lịch sử bảo trì",
+    "allJobs": "Mọi job",
+    "jobColumn": "Job",
+    "noMaintenanceRuns": "Chưa có lượt bảo trì nào khớp bộ lọc."
   }
 }

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { updateCompany } from '@/app/actions/companies';
-import { PARTNERSHIP_POTENTIAL_OPTIONS, partnershipPotentialClass, partnershipPotentialLabel } from '@/lib/companies/potential';
+import { PARTNERSHIP_POTENTIAL_VALUES, partnershipPotentialClass, partnershipPotentialLabel } from '@/lib/companies/potential';
 
 /**
  * "Sửa nhanh Tiềm năng" ngay tại bảng danh sách công ty (audit 09/2026 #16)
@@ -20,8 +20,9 @@ import { PARTNERSHIP_POTENTIAL_OPTIONS, partnershipPotentialClass, partnershipPo
  * i18n (Giai đoạn 2, nhóm 5, 09/2026): dịch nút Lưu/lỗi qua
  * useTranslations('potentialQuickEdit') + dùng chung useTranslations
  * ('common').saving cho label lúc đang lưu. Nhãn từng option
- * (partnershipPotentialLabel) CỐ Ý CHƯA dịch — xem ghi chú ở
- * lib/companies/potential.ts (đụng chung class CSS suy từ label).
+ * (partnershipPotentialLabel) giờ đã dịch theo `t` namespace
+ * `partnershipPotential` (đợt sau) — xem ghi chú lib/companies/potential.ts
+ * (class CSS vẫn suy từ label tiếng Việt cố định, không đổi theo locale).
  */
 interface PotentialQuickEditProps {
   companyId: string;
@@ -32,6 +33,7 @@ export default function PotentialQuickEdit({ companyId, value }: PotentialQuickE
   const router = useRouter();
   const t = useTranslations('potentialQuickEdit');
   const tc = useTranslations('common');
+  const tPotential = useTranslations('partnershipPotential');
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState(value);
   const [saving, setSaving] = useState(false);
@@ -58,14 +60,14 @@ export default function PotentialQuickEdit({ companyId, value }: PotentialQuickE
     <details className="potential-edit" open={open} onToggle={(e) => setOpen(e.currentTarget.open)}>
       <summary className="fit-chip-wrap" tabIndex={0}>
         <span className={`fit-chip ${partnershipPotentialClass(value)}`}>
-          {partnershipPotentialLabel(value)}
+          {partnershipPotentialLabel(value, tPotential)}
         </span>
       </summary>
       <form onSubmit={handleSave} className="potential-edit-form">
         {error && <p style={{ color: '#B23A22', fontSize: '12px', margin: 0 }}>{error}</p>}
         <select value={selected} onChange={(e) => setSelected(e.target.value)} disabled={saving}>
-          {PARTNERSHIP_POTENTIAL_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>{o.label}</option>
+          {PARTNERSHIP_POTENTIAL_VALUES.map((v) => (
+            <option key={v} value={v}>{partnershipPotentialLabel(v, tPotential)}</option>
           ))}
         </select>
         <button className="btn btn-text" type="submit" disabled={saving}>

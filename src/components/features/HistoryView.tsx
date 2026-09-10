@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { getTranslations } from 'next-intl/server';
 import type { PaginatedCrawlRuns, PaginatedMaintenanceRuns } from '@/types/crawl';
 import { crawlStatusBadgeClass, crawlStatusLabel } from '@/lib/crawl/badges';
 import { maintenanceJobLabel } from '@/lib/maintenance/jobs';
@@ -11,6 +12,15 @@ import { maintenanceJobLabel } from '@/lib/maintenance/jobs';
  * nav — giờ tách đúng theo kiến trúc 4-tab thật của Flask).
  *
  * THÊM 09/2026 (rà soát #3, chat139).
+ *
+ * i18n (đợt sau, 09/2026 — rà soát lại nhóm 5): module này bị BỎ SÓT ở
+ * đợt dịch component trước. Chuyển thành async function để gọi
+ * `getTranslations('historyView')` (Server Component, không có
+ * `'use client'`). crawlStatusLabel() dùng chung `t` namespace
+ * `crawlStatus` — cùng đợt refactor với lib/crawl/badges.ts.
+ * CỐ Ý CHƯA dịch: `maintenanceJobLabel()` (lib/maintenance/jobs.ts —
+ * nhãn/mô tả 5 job bảo trì, nằm ngoài phạm vi 3 hàm được yêu cầu refactor
+ * đợt này) và `toLocaleString('vi-VN')` (thuộc phạm vi Polish).
  */
 
 const STATUS_OPTIONS = ['queued', 'running', 'done', 'error'];
@@ -39,35 +49,37 @@ function buildQs(base: Record<string, string | number | undefined>): string {
   return `/crawl?${params}`;
 }
 
-export default function HistoryView({
+export default async function HistoryView({
   sources,
   crawlRuns, crawlPage, crawlLimit, crawlSource, crawlStatus,
   maintenanceRuns, maintenancePage, maintenanceLimit, maintenanceJobType, maintenanceStatus,
 }: HistoryViewProps) {
+  const t = await getTranslations('historyView');
+  const tCrawlStatus = await getTranslations('crawlStatus');
   const crawlTotalPages = Math.max(1, Math.ceil(crawlRuns.total / crawlLimit));
   const maintTotalPages = Math.max(1, Math.ceil(maintenanceRuns.total / maintenanceLimit));
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
       <section>
-        <h4>Lịch sử crawl</h4>
+        <h4>{t('crawlHistoryTitle')}</h4>
         <div className="filter-bar" style={{ marginBottom: '16px' }}>
           <form method="get" action="/crawl" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
             <input type="hidden" name="tab" value="history" />
             <select name="c_source" defaultValue={crawlSource || ''}>
-              <option value="">Mọi nguồn</option>
+              <option value="">{t('allSources')}</option>
               {sources.map((s) => (
                 <option key={s} value={s}>{s}</option>
               ))}
             </select>
             <select name="c_status" defaultValue={crawlStatus || ''}>
-              <option value="">Mọi trạng thái</option>
+              <option value="">{t('allStatuses')}</option>
               {STATUS_OPTIONS.map((s) => (
-                <option key={s} value={s}>{crawlStatusLabel(s)}</option>
+                <option key={s} value={s}>{crawlStatusLabel(s, tCrawlStatus)}</option>
               ))}
             </select>
-            <button type="submit" className="btn">Lọc</button>
-            {(crawlSource || crawlStatus) && <Link href="/crawl?tab=history" className="btn">Xoá lọc</Link>}
+            <button type="submit" className="btn">{t('filterButton')}</button>
+            {(crawlSource || crawlStatus) && <Link href="/crawl?tab=history" className="btn">{t('clearFilter')}</Link>}
           </form>
         </div>
 
@@ -77,12 +89,12 @@ export default function HistoryView({
               <table className="contact-table">
                 <thead>
                   <tr>
-                    <th>Nguồn</th>
-                    <th>Ngành</th>
-                    <th>Trạng thái</th>
-                    <th>Người kích hoạt</th>
-                    <th>Bắt đầu</th>
-                    <th>Kết quả</th>
+                    <th>{t('sourceColumn')}</th>
+                    <th>{t('categoryColumn')}</th>
+                    <th>{t('statusColumn')}</th>
+                    <th>{t('triggeredByColumn')}</th>
+                    <th>{t('startedAtColumn')}</th>
+                    <th>{t('resultColumn')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -91,16 +103,16 @@ export default function HistoryView({
                       <td>{run.source}</td>
                       <td className="muted">{run.category}</td>
                       <td>
-                        <span className={`badge ${crawlStatusBadgeClass(run.status)}`}>{crawlStatusLabel(run.status)}</span>
+                        <span className={`badge ${crawlStatusBadgeClass(run.status)}`}>{crawlStatusLabel(run.status, tCrawlStatus)}</span>
                       </td>
-                      <td className="muted">{run.triggered_by_name || 'Tự động'}</td>
+                      <td className="muted">{run.triggered_by_name || t('autoTriggered')}</td>
                       <td className="muted">{new Date(run.started_at).toLocaleString('vi-VN')}</td>
                       <td className="muted crawl-result-main">
                         {run.error ? (
                           <span className="crawl-error-text">{run.error}</span>
                         ) : run.stats ? (
                           <details className="crawl-result-details">
-                            <summary>Xem</summary>
+                            <summary>{t('viewDetails')}</summary>
                             <pre style={{ fontSize: '12px', whiteSpace: 'pre-wrap' }}>{JSON.stringify(run.stats, null, 2)}</pre>
                           </details>
                         ) : (
@@ -115,39 +127,39 @@ export default function HistoryView({
             {crawlTotalPages > 1 && (
               <div className="pagination">
                 {crawlPage > 1 && (
-                  <Link href={buildQs({ c_source: crawlSource, c_status: crawlStatus, c_page: crawlPage - 1 })} className="page-btn">← Trang trước</Link>
+                  <Link href={buildQs({ c_source: crawlSource, c_status: crawlStatus, c_page: crawlPage - 1 })} className="page-btn">{t('prevPage')}</Link>
                 )}
-                <span className="page-status">Trang {crawlPage} / {crawlTotalPages}</span>
+                <span className="page-status">{t('pageStatus', { page: crawlPage, totalPages: crawlTotalPages })}</span>
                 {crawlPage < crawlTotalPages && (
-                  <Link href={buildQs({ c_source: crawlSource, c_status: crawlStatus, c_page: crawlPage + 1 })} className="page-btn">Trang sau →</Link>
+                  <Link href={buildQs({ c_source: crawlSource, c_status: crawlStatus, c_page: crawlPage + 1 })} className="page-btn">{t('nextPage')}</Link>
                 )}
               </div>
             )}
           </>
         ) : (
-          <div className="empty-state"><p>Chưa có lượt crawl nào khớp bộ lọc.</p></div>
+          <div className="empty-state"><p>{t('noCrawlRuns')}</p></div>
         )}
       </section>
 
       <section>
-        <h4>Lịch sử bảo trì</h4>
+        <h4>{t('maintenanceHistoryTitle')}</h4>
         <div className="filter-bar" style={{ marginBottom: '16px' }}>
           <form method="get" action="/crawl" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
             <input type="hidden" name="tab" value="history" />
             <select name="m_job_type" defaultValue={maintenanceJobType || ''}>
-              <option value="">Mọi job</option>
+              <option value="">{t('allJobs')}</option>
               {['backfill_company_profiles', 'enrich_profile_from_website', 'enrich_web_info', 'get_fb_linkedin', 'check_expired_jobs'].map((jt) => (
                 <option key={jt} value={jt}>{maintenanceJobLabel(jt)}</option>
               ))}
             </select>
             <select name="m_status" defaultValue={maintenanceStatus || ''}>
-              <option value="">Mọi trạng thái</option>
+              <option value="">{t('allStatuses')}</option>
               {STATUS_OPTIONS.map((s) => (
-                <option key={s} value={s}>{crawlStatusLabel(s)}</option>
+                <option key={s} value={s}>{crawlStatusLabel(s, tCrawlStatus)}</option>
               ))}
             </select>
-            <button type="submit" className="btn">Lọc</button>
-            {(maintenanceJobType || maintenanceStatus) && <Link href="/crawl?tab=history" className="btn">Xoá lọc</Link>}
+            <button type="submit" className="btn">{t('filterButton')}</button>
+            {(maintenanceJobType || maintenanceStatus) && <Link href="/crawl?tab=history" className="btn">{t('clearFilter')}</Link>}
           </form>
         </div>
 
@@ -157,11 +169,11 @@ export default function HistoryView({
               <table className="contact-table">
                 <thead>
                   <tr>
-                    <th>Job</th>
-                    <th>Trạng thái</th>
-                    <th>Người kích hoạt</th>
-                    <th>Bắt đầu</th>
-                    <th>Kết quả</th>
+                    <th>{t('jobColumn')}</th>
+                    <th>{t('statusColumn')}</th>
+                    <th>{t('triggeredByColumn')}</th>
+                    <th>{t('startedAtColumn')}</th>
+                    <th>{t('resultColumn')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -169,16 +181,16 @@ export default function HistoryView({
                     <tr key={run.run_id}>
                       <td>{maintenanceJobLabel(run.job_type)}</td>
                       <td>
-                        <span className={`badge ${crawlStatusBadgeClass(run.status)}`}>{crawlStatusLabel(run.status)}</span>
+                        <span className={`badge ${crawlStatusBadgeClass(run.status)}`}>{crawlStatusLabel(run.status, tCrawlStatus)}</span>
                       </td>
-                      <td className="muted">{run.triggered_by_name || 'Tự động'}</td>
+                      <td className="muted">{run.triggered_by_name || t('autoTriggered')}</td>
                       <td className="muted">{new Date(run.started_at).toLocaleString('vi-VN')}</td>
                       <td className="muted crawl-result-main">
                         {run.error ? (
                           <span className="crawl-error-text">{run.error}</span>
                         ) : run.stats ? (
                           <details className="crawl-result-details">
-                            <summary>Xem</summary>
+                            <summary>{t('viewDetails')}</summary>
                             <pre style={{ fontSize: '12px', whiteSpace: 'pre-wrap' }}>{JSON.stringify(run.stats, null, 2)}</pre>
                           </details>
                         ) : (
@@ -193,17 +205,17 @@ export default function HistoryView({
             {maintTotalPages > 1 && (
               <div className="pagination">
                 {maintenancePage > 1 && (
-                  <Link href={buildQs({ m_job_type: maintenanceJobType, m_status: maintenanceStatus, m_page: maintenancePage - 1 })} className="page-btn">← Trang trước</Link>
+                  <Link href={buildQs({ m_job_type: maintenanceJobType, m_status: maintenanceStatus, m_page: maintenancePage - 1 })} className="page-btn">{t('prevPage')}</Link>
                 )}
-                <span className="page-status">Trang {maintenancePage} / {maintTotalPages}</span>
+                <span className="page-status">{t('pageStatus', { page: maintenancePage, totalPages: maintTotalPages })}</span>
                 {maintenancePage < maintTotalPages && (
-                  <Link href={buildQs({ m_job_type: maintenanceJobType, m_status: maintenanceStatus, m_page: maintenancePage + 1 })} className="page-btn">Trang sau →</Link>
+                  <Link href={buildQs({ m_job_type: maintenanceJobType, m_status: maintenanceStatus, m_page: maintenancePage + 1 })} className="page-btn">{t('nextPage')}</Link>
                 )}
               </div>
             )}
           </>
         ) : (
-          <div className="empty-state"><p>Chưa có lượt bảo trì nào khớp bộ lọc.</p></div>
+          <div className="empty-state"><p>{t('noMaintenanceRuns')}</p></div>
         )}
       </section>
     </div>

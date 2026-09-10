@@ -14,15 +14,16 @@
  * (crawler_client/crawl.py, dùng để render _crawl_tab.html gốc):
  *   {"queued": "badge-info", "running": "badge-info",
  *    "done": "badge-success", "error": "badge-danger"}
- * Nhãn tiếng Việt lấy từ CRAWL_STATUS_LABELS (cùng file).
+ *
+ * i18n (đợt sau, 09/2026): crawlStatusLabel() giờ nhận `t` — namespace
+ * mới `crawlStatus` (key = status value thật 'queued'/'running'/'done'/
+ * 'error'). Gọi `useTranslations('crawlStatus')` (Client) hoặc
+ * `getTranslations('crawlStatus')` (Server) rồi truyền `t` vào. Class
+ * badge (crawlStatusBadgeClass) KHÔNG đổi theo locale — vẫn giữ nguyên,
+ * chỉ nhãn hiển thị đổi.
  */
 
-const CRAWL_STATUS_LABELS: Record<string, string> = {
-  queued: 'Đang chờ',
-  running: 'Đang chạy',
-  done: 'Hoàn tất',
-  error: 'Lỗi',
-};
+const CRAWL_STATUS_VALUES = ['queued', 'running', 'done', 'error'] as const;
 
 const CRAWL_STATUS_BADGE: Record<string, string> = {
   queued: 'badge-info',
@@ -36,8 +37,11 @@ const CRAWL_STATUS_BADGE: Record<string, string> = {
 // jobs/[id]/page.tsx).
 const CRAWL_STATUS_BADGE_FALLBACK = 'badge-warning';
 
-export function crawlStatusLabel(status: string): string {
-  return CRAWL_STATUS_LABELS[status] ?? status;
+export function crawlStatusLabel(
+  status: string,
+  t: (key: string) => string
+): string {
+  return (CRAWL_STATUS_VALUES as readonly string[]).includes(status) ? t(status) : status;
 }
 
 export function crawlStatusBadgeClass(status: string): string {

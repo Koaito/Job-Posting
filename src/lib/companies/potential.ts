@@ -12,25 +12,34 @@
  * backend vốn đã là tiếng Anh khớp sẵn) thì ở đây sẽ ra
  * `.potential-HIGH` — KHÔNG khớp CSS nào cả, chip mất màu, không lỗi gì
  * hiện ra nên rất dễ bỏ sót khi review. Phải tự map lại thủ công.
+ *
+ * i18n (đợt sau, 09/2026): tách "label hiển thị" (đổi theo locale, qua
+ * `t` — namespace mới `partnershipPotential`) khỏi "label suy ra class
+ * CSS" (LUÔN cố định tiếng Việt, KHÔNG được đổi theo locale — nếu đổi,
+ * `.potential-High` sẽ không khớp CSS thật `.potential-Cao` nữa và chip
+ * mất màu y hệt bug gốc mô tả ở trên). `partnershipPotentialClass()`
+ * vì vậy giữ nguyên hành vi cũ, không nhận `t`.
  */
 
-export const PARTNERSHIP_POTENTIAL_OPTIONS = [
-  { value: 'UNVERIFIED', label: 'Chưa đánh giá' },
-  { value: 'LOW', label: 'Thấp' },
-  { value: 'MEDIUM', label: 'Trung bình' },
-  { value: 'HIGH', label: 'Cao' },
-] as const;
+export const PARTNERSHIP_POTENTIAL_VALUES = ['UNVERIFIED', 'LOW', 'MEDIUM', 'HIGH'] as const;
 
-const LABEL_BY_VALUE: Record<string, string> = Object.fromEntries(
-  PARTNERSHIP_POTENTIAL_OPTIONS.map((o) => [o.value, o.label])
-);
+/** CHỈ dùng nội bộ để suy tên class CSS — không hiển thị trực tiếp cho người dùng. */
+const CSS_CLASS_LABEL_BY_VALUE: Record<string, string> = {
+  UNVERIFIED: 'Chưa đánh giá',
+  LOW: 'Thấp',
+  MEDIUM: 'Trung bình',
+  HIGH: 'Cao',
+};
 
-export function partnershipPotentialLabel(value: string): string {
-  return LABEL_BY_VALUE[value] || value;
+export function partnershipPotentialLabel(
+  value: string,
+  t: (key: string) => string
+): string {
+  return (PARTNERSHIP_POTENTIAL_VALUES as readonly string[]).includes(value) ? t(value) : value;
 }
 
 /** Trả class CSS đúng (`.potential-Cao`, ...) — xem docstring đầu file. */
 export function partnershipPotentialClass(value: string): string {
-  const label = LABEL_BY_VALUE[value] || 'Chưa đánh giá';
+  const label = CSS_CLASS_LABEL_BY_VALUE[value] || 'Chưa đánh giá';
   return `potential-${label.replace(/ /g, '-')}`;
 }

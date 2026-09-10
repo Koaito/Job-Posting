@@ -39,6 +39,7 @@ import ThemeToggle from '@/components/features/ThemeToggle';
  */
 export default async function ProfilePage() {
   const t = await getTranslations('profilePage');
+  const tRole = await getTranslations('roles');
   const user = await getCurrentUser();
   if (!user) {
     redirect('/login');
@@ -60,10 +61,8 @@ export default async function ProfilePage() {
             <dd className="profile-info-value">{user.email}</dd>
           </div>
           <div>
-            {/* CỐ Ý CHƯA dịch: roleLabel() dùng chung ở nhiều file khác
-                chưa dịch — cùng lý do đã ghi ở StaffActivityList.tsx. */}
             <dt className="profile-info-label">{t('role')}</dt>
-            <dd className="profile-info-value">{roleLabel(user.role)}</dd>
+            <dd className="profile-info-value">{roleLabel(user.role, tRole)}</dd>
           </div>
           <div>
             <dt className="profile-info-label">{t('joinedAt')}</dt>

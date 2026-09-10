@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { getTranslations } from 'next-intl/server';
 import type { CompanyDataHealth, JobDataHealth, FieldHealthRow } from '@/types/crawl';
 
 /**
@@ -11,21 +12,37 @@ import type { CompanyDataHealth, JobDataHealth, FieldHealthRow } from '@/types/c
  * Next.js trước đợt này. Dùng CSS đã có sẵn (.status-card-title,
  * 15-crawl.css) + .contact-table-wrap/.contact-table dùng chung nhiều
  * trang khác trong repo (không tự bịa class mới).
+ *
+ * i18n (đợt sau, 09/2026 — rà soát lại nhóm 5): module này bị BỎ SÓT ở
+ * đợt dịch component trước (không nằm trong danh sách 7 component đã
+ * dịch dù cùng thư mục `features/`). Chuyển thành async function để
+ * gọi `getTranslations('dataHealthView')` (Server Component, không có
+ * `'use client'`). `toLocaleDateString('vi-VN')` CỐ Ý CHƯA đổi — thuộc
+ * phạm vi Polish, không xử lý ở đợt Language này (cùng quy ước với các
+ * file khác trong repo).
  */
 
-function FieldHealthTable({ rows, total }: { rows: FieldHealthRow[]; total: number }) {
+function FieldHealthTable({
+  rows,
+  total,
+  t,
+}: {
+  rows: FieldHealthRow[];
+  total: number;
+  t: (key: string, values?: Record<string, string | number>) => string;
+}) {
   if (rows.length === 0) {
-    return <p className="muted">Không có dữ liệu.</p>;
+    return <p className="muted">{t('noData')}</p>;
   }
   return (
     <div className="contact-table-wrap">
       <table className="contact-table">
         <thead>
           <tr>
-            <th>Trường dữ liệu</th>
-            <th>Thiếu</th>
-            <th>Tổng</th>
-            <th>Tỉ lệ thiếu</th>
+            <th>{t('fieldColumn')}</th>
+            <th>{t('missingColumn')}</th>
+            <th>{t('totalColumn')}</th>
+            <th>{t('missingRateColumn')}</th>
           </tr>
         </thead>
         <tbody>
@@ -52,31 +69,35 @@ interface DataHealthViewProps {
   jobHealth: JobDataHealth;
 }
 
-export default function DataHealthView({ companyHealth, jobHealth }: DataHealthViewProps) {
+export default async function DataHealthView({ companyHealth, jobHealth }: DataHealthViewProps) {
+  const t = await getTranslations('dataHealthView');
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
       <div className="card">
-        <h2 className="status-card-title">Company đang thiếu dữ liệu ({companyHealth.company_health_total})</h2>
-        <FieldHealthTable rows={companyHealth.company_health_rows} total={companyHealth.company_health_total} />
+        <h2 className="status-card-title">
+          {t('companyMissingTitle', { total: companyHealth.company_health_total })}
+        </h2>
+        <FieldHealthTable rows={companyHealth.company_health_rows} total={companyHealth.company_health_total} t={t} />
         <p className="muted" style={{ marginTop: '14px', marginBottom: 0 }}>
-          <strong>{companyHealth.company_no_contact_missing}</strong> / {companyHealth.company_no_contact_total} công
-          ty active chưa có contact HR nào.
+          <strong>{companyHealth.company_no_contact_missing}</strong> / {companyHealth.company_no_contact_total}{' '}
+          {t('companyNoContactSuffix')}
         </p>
       </div>
 
       <div className="card">
-        <h2 className="status-card-title">Job đang thiếu dữ liệu ({jobHealth.job_health_total})</h2>
-        <FieldHealthTable rows={jobHealth.job_health_rows} total={jobHealth.job_health_total} />
+        <h2 className="status-card-title">{t('jobMissingTitle', { total: jobHealth.job_health_total })}</h2>
+        <FieldHealthTable rows={jobHealth.job_health_rows} total={jobHealth.job_health_total} t={t} />
       </div>
 
       {jobHealth.job_health_by_source.length > 0 && (
         <div className="card">
-          <h2 className="status-card-title">Thiếu dữ liệu theo nguồn</h2>
+          <h2 className="status-card-title">{t('missingBySourceTitle')}</h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
             {jobHealth.job_health_by_source.map((src) => (
               <div key={src.source}>
                 <h4 style={{ marginBottom: '8px' }}>{src.source} ({src.total})</h4>
-                <FieldHealthTable rows={src.rows} total={src.total} />
+                <FieldHealthTable rows={src.rows} total={src.total} t={t} />
               </div>
             ))}
           </div>
@@ -84,18 +105,20 @@ export default function DataHealthView({ companyHealth, jobHealth }: DataHealthV
       )}
 
       <div className="card">
-        <h2 className="status-card-title">Job hết hạn nhưng vẫn &quot;Đang tuyển&quot; ({jobHealth.expired_open_jobs.length})</h2>
+        <h2 className="status-card-title">
+          {t('expiredOpenJobsTitle', { count: jobHealth.expired_open_jobs.length })}
+        </h2>
         {jobHealth.expired_open_jobs.length === 0 ? (
-          <p className="muted">Không có job nào — dữ liệu sạch.</p>
+          <p className="muted">{t('noExpiredJobs')}</p>
         ) : (
           <div className="contact-table-wrap">
             <table className="contact-table">
               <thead>
                 <tr>
-                  <th>Vị trí</th>
-                  <th>Công ty</th>
-                  <th>Hạn nộp</th>
-                  <th>Nguồn</th>
+                  <th>{t('positionColumn')}</th>
+                  <th>{t('companyColumn')}</th>
+                  <th>{t('deadlineColumn')}</th>
+                  <th>{t('sourceColumn')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -114,9 +137,11 @@ export default function DataHealthView({ companyHealth, jobHealth }: DataHealthV
       </div>
 
       <div className="card">
-        <h2 className="status-card-title">Job nghi trùng lặp ({jobHealth.duplicate_job_groups.length} nhóm)</h2>
+        <h2 className="status-card-title">
+          {t('duplicateJobsTitle', { count: jobHealth.duplicate_job_groups.length })}
+        </h2>
         {jobHealth.duplicate_job_groups.length === 0 ? (
-          <p className="muted">Không có nhóm nào nghi trùng.</p>
+          <p className="muted">{t('noDuplicateJobs')}</p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {jobHealth.duplicate_job_groups.map((group, idx) => (
@@ -126,10 +151,10 @@ export default function DataHealthView({ companyHealth, jobHealth }: DataHealthV
                   <table className="contact-table">
                     <thead>
                       <tr>
-                        <th>Vị trí</th>
-                        <th>Hạn nộp</th>
-                        <th>Nguồn</th>
-                        <th>Gợi ý</th>
+                        <th>{t('positionColumn')}</th>
+                        <th>{t('deadlineColumn')}</th>
+                        <th>{t('sourceColumn')}</th>
+                        <th>{t('suggestionColumn')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -139,8 +164,8 @@ export default function DataHealthView({ companyHealth, jobHealth }: DataHealthV
                           <td className="muted">{j.deadline ? new Date(j.deadline).toLocaleDateString('vi-VN') : '—'}</td>
                           <td className="muted">{j.source}</td>
                           <td>
-                            {j.suggest_keep === true && <span className="badge badge-success">Nên giữ</span>}
-                            {j.suggest_keep === false && <span className="badge badge-warning">Cân nhắc đóng</span>}
+                            {j.suggest_keep === true && <span className="badge badge-success">{t('suggestKeep')}</span>}
+                            {j.suggest_keep === false && <span className="badge badge-warning">{t('suggestClose')}</span>}
                             {(j.suggest_keep === null || j.suggest_keep === undefined) && <span className="muted">—</span>}
                           </td>
                         </tr>

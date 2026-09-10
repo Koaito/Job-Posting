@@ -14,12 +14,11 @@ import { roleLabel } from '@/lib/auth/roles';
  * không cần round-trip server cho mỗi lần gõ.
  *
  * i18n (Giai đoạn 2, nhóm 5, 09/2026): dịch text riêng của component
- * này qua useTranslations('staffActivityList'). CỐ Ý CHƯA dịch:
- * `roleLabel()` (lib/auth/roles.ts — dùng chung ở nhiều file module
- * /messages/staff chưa dịch, cần đợt riêng để không nửa vời) và
- * `toLocaleDateString('vi-VN')` (định dạng ngày theo locale — thuộc
- * phạm vi Polish, chưa bắt đầu, xem 19 chỗ hardcode 'vi-VN' tương tự
- * trong toàn repo).
+ * này qua useTranslations('staffActivityList'). `roleLabel()` (lib/auth/
+ * roles.ts) giờ đã dịch theo `t` namespace `roles` (đợt sau).
+ * CỐ Ý CHƯA dịch: `toLocaleDateString('vi-VN')` (định dạng ngày theo
+ * locale — thuộc phạm vi Polish, chưa bắt đầu, xem 50 chỗ hardcode
+ * 'vi-VN' tương tự trong toàn repo).
  */
 export interface StaffActivityListProps {
   staff: User[];
@@ -28,6 +27,7 @@ export interface StaffActivityListProps {
 
 export function StaffActivityList({ staff, currentUserId }: StaffActivityListProps) {
   const t = useTranslations('staffActivityList');
+  const tRole = useTranslations('roles');
   const [query, setQuery] = useState('');
 
   const filtered = useMemo(() => {
@@ -75,7 +75,7 @@ export function StaffActivityList({ staff, currentUserId }: StaffActivityListPro
                   </td>
                   <td className="muted">{s.email}</td>
                   <td>
-                    <span className="role-chip">{roleLabel(s.role)}</span>
+                    <span className="role-chip">{roleLabel(s.role, tRole)}</span>
                   </td>
                   <td className="muted">{new Date(s.created_at).toLocaleDateString('vi-VN')}</td>
                   <td className="actions-cell">

@@ -42,6 +42,7 @@ export default async function StaffActivityDetailPage({
   params: Promise<{ userId: string }>;
 }) {
   const t = await getTranslations('staffActivityDetailPage');
+  const tRole = await getTranslations('roles');
   const { userId } = await params;
   const currentUser = await getCurrentUser();
 
@@ -91,9 +92,7 @@ export default async function StaffActivityDetailPage({
           <span className="eyebrow">{t('eyebrow')}</span>
           <h1>{staffMember.full_name}</h1>
           <p className="lede">
-            {/* CỐ Ý CHƯA dịch: roleLabel() dùng chung ở nhiều file khác
-                chưa dịch — cùng lý do đã ghi ở StaffActivityList.tsx. */}
-            {staffMember.email} · {roleLabel(staffMember.role)}
+            {staffMember.email} · {roleLabel(staffMember.role, tRole)}
           </p>
         </div>
       </div>

@@ -1054,5 +1054,81 @@
     "taxIdShort": "Tax ID",
     "noSimilarCompany": "No similar company found in the system.",
     "createNewCompany": "+ Create new company from file name"
+  },
+  "roles": {
+    "user": "Student",
+    "ss_team": "SS Team",
+    "admin": "Admin"
+  },
+  "crawlStatus": {
+    "queued": "Queued",
+    "running": "Running",
+    "done": "Done",
+    "error": "Error"
+  },
+  "partnershipPotential": {
+    "UNVERIFIED": "Unverified",
+    "LOW": "Low",
+    "MEDIUM": "Medium",
+    "HIGH": "High"
+  },
+  "messagesNewPage": {
+    "eyebrow": "Career Hub / Messages",
+    "title": "New message",
+    "ledeStudent": "Find an SS/admin to send a message request. You'll need SS approval before you can keep messaging.",
+    "ledeStaff": "Find a student or another SS/admin to start a conversation.",
+    "backLink": "← Back to messages",
+    "searchPlaceholder": "Enter a name...",
+    "searchButton": "Search",
+    "messageCta": "Message →",
+    "emptyState": "No one found matching \"{q}\"."
+  },
+  "messageThreadPage": {
+    "defaultPartnerName": "User"
+  },
+  "dataHealthView": {
+    "noData": "No data.",
+    "fieldColumn": "Field",
+    "missingColumn": "Missing",
+    "totalColumn": "Total",
+    "missingRateColumn": "Missing rate",
+    "companyMissingTitle": "Companies with missing data ({total})",
+    "companyNoContactSuffix": "active companies with no HR contact yet.",
+    "jobMissingTitle": "Jobs with missing data ({total})",
+    "missingBySourceTitle": "Missing data by source",
+    "expiredOpenJobsTitle": "Expired jobs still marked \"Open\" ({count})",
+    "noExpiredJobs": "No jobs — data is clean.",
+    "positionColumn": "Position",
+    "companyColumn": "Company",
+    "deadlineColumn": "Deadline",
+    "sourceColumn": "Source",
+    "duplicateJobsTitle": "Suspected duplicate jobs ({count} groups)",
+    "noDuplicateJobs": "No suspected duplicate groups.",
+    "suggestionColumn": "Suggestion",
+    "suggestKeep": "Keep",
+    "suggestClose": "Consider closing"
+  },
+  "historyView": {
+    "crawlHistoryTitle": "Crawl history",
+    "allSources": "All sources",
+    "allStatuses": "All statuses",
+    "filterButton": "Filter",
+    "clearFilter": "Clear filter",
+    "sourceColumn": "Source",
+    "categoryColumn": "Category",
+    "statusColumn": "Status",
+    "triggeredByColumn": "Triggered by",
+    "startedAtColumn": "Started",
+    "resultColumn": "Result",
+    "autoTriggered": "Automatic",
+    "viewDetails": "View",
+    "prevPage": "← Previous page",
+    "nextPage": "Next page →",
+    "pageStatus": "Page {page} / {totalPages}",
+    "noCrawlRuns": "No crawl runs match the filter.",
+    "maintenanceHistoryTitle": "Maintenance history",
+    "allJobs": "All jobs",
+    "jobColumn": "Job",
+    "noMaintenanceRuns": "No maintenance runs match the filter."
   }
 }

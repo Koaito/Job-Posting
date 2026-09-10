@@ -26,8 +26,8 @@ import type { Conversation, PendingRequest } from '@/types/messages';
  *
  * i18n (Giai đoạn 2, nhóm 5, 09/2026): dịch label/tiêu đề/nút bấm qua
  * `useTranslations('messagesInbox')`. roleLabel() (lib/auth/roles.ts)
- * CỐ Ý CHƯA dịch — dùng chung nhiều file /messages/staff khác chưa
- * dịch, để đợt riêng tránh nửa vời (xem ghi chú StaffActivityList.tsx).
+ * giờ đã dịch theo `t` namespace `roles` (đợt sau, xem ghi chú
+ * StaffActivityList.tsx).
  */
 
 interface MessagesInboxProps {
@@ -52,6 +52,7 @@ export function MessagesInbox({
   isStaff,
 }: MessagesInboxProps) {
   const t = useTranslations('messagesInbox');
+  const tRole = useTranslations('roles');
   const router = useRouter();
   const [conversations, setConversations] = useState(initialConversations);
   const [pendingRequests, setPendingRequests] = useState(initialPendingRequests);
@@ -188,7 +189,7 @@ export function MessagesInbox({
                   <div className="conversation-main">
                     <div className="conversation-top">
                       <strong>{conv.partner_name}</strong>
-                      <span className="role-chip">{roleLabel(conv.partner_role)}</span>
+                      <span className="role-chip">{roleLabel(conv.partner_role, tRole)}</span>
                       {conv.relationship_status && conv.relationship_status !== 'accepted' && (
                         <span className={`status-chip status-${conv.relationship_status}`}>
                           {STATUS_LABELS[conv.relationship_status] || conv.relationship_status}

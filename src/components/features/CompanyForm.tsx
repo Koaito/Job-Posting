@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { createCompany, updateCompany } from '@/app/actions/companies';
-import { PARTNERSHIP_POTENTIAL_OPTIONS } from '@/lib/companies/potential';
+import { PARTNERSHIP_POTENTIAL_VALUES, partnershipPotentialLabel } from '@/lib/companies/potential';
 import type { CompanyDetail } from '@/types/companies';
 
 /**
@@ -40,6 +40,12 @@ import type { CompanyDetail } from '@/types/companies';
  * làm vỡ style badge tiềm năng ở nơi khác đang dùng chung hàm này (vd
  * company card/list). Cần sửa `potential.ts` trước (decouple 2 việc
  * đó), không nên vá tạm trong lúc dịch JobForm/CompanyForm.
+ *
+ * CẬP NHẬT (đợt sau, 09/2026): `potential.ts` đã được tách xong (2 việc
+ * ở trên giờ là 2 hàm riêng: `partnershipPotentialLabel(value, t)` đổi
+ * theo locale, `partnershipPotentialClass(value)` vẫn cố định tiếng
+ * Việt để không vỡ CSS) — nhãn PARTNERSHIP_POTENTIAL_OPTIONS giờ ĐÃ
+ * dịch qua `t` namespace `partnershipPotential`.
  */
 
 const PROVINCE_OPTIONS = ['Hà Nội', 'Hồ Chí Minh', 'Đà Nẵng'] as const;
@@ -54,6 +60,7 @@ export default function CompanyForm({ mode, initialData }: CompanyFormProps) {
   const t = useTranslations('companyForm');
   const tp = useTranslations('provinces');
   const tc = useTranslations('common');
+  const tPotential = useTranslations('partnershipPotential');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -182,8 +189,6 @@ export default function CompanyForm({ mode, initialData }: CompanyFormProps) {
           </select>
         </label>
 
-        {/* PARTNERSHIP_POTENTIAL_OPTIONS: CHƯA dịch, xem comment đầu
-            file — label ở đây vẫn tiếng Việt cố định cho cả 2 locale. */}
         <label className="span-2" htmlFor="partnership_potential">
           {t('potentialLabel')}
           <select
@@ -191,8 +196,8 @@ export default function CompanyForm({ mode, initialData }: CompanyFormProps) {
             name="partnership_potential"
             defaultValue={initialData?.partnership_potential || 'UNVERIFIED'}
           >
-            {PARTNERSHIP_POTENTIAL_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
+            {PARTNERSHIP_POTENTIAL_VALUES.map((v) => (
+              <option key={v} value={v}>{partnershipPotentialLabel(v, tPotential)}</option>
             ))}
           </select>
         </label>

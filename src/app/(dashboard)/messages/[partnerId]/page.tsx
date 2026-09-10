@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import { getTranslations } from 'next-intl/server';
 import {
   getMessageHistory,
   getConversations,
@@ -17,6 +18,11 @@ import { MessageThread } from '@/components/features/MessageThread';
  * (client) chỉ lo phần tin ĐẾN SAU lúc trang đã tải xong (polling) +
  * gửi tin + chặn/bỏ chặn + huỷ yêu cầu, giống chia việc SSR/JS bên
  * Flask gốc (public/app.js chỉ lo phần polling).
+ *
+ * i18n (đợt sau, 09/2026 — rà soát lại nhóm 5): trang này bị BỎ SÓT ở
+ * đợt dịch 12 trang dashboard trước. Bản thân trang chỉ có 1 chuỗi
+ * hiển thị (fallback tên đối phương) — phần UI còn lại nằm trong
+ * MessageThread.tsx (đã dịch từ trước, namespace `messageThread`).
  */
 interface SearchParams {
   name?: string;
@@ -32,6 +38,7 @@ export default async function MessageThreadPage({
 }) {
   const { partnerId } = await params;
   const { name = '', role = '' } = await searchParams;
+  const t = await getTranslations('messageThreadPage');
 
   const currentUser = await getCurrentUser();
   if (!currentUser) notFound();
@@ -64,7 +71,7 @@ export default async function MessageThreadPage({
     relationshipStatus = matchedConv.relationship_status ?? null;
     relationshipId = matchedConv.relationship_id ?? null;
   }
-  partnerName = partnerName || 'Người dùng';
+  partnerName = partnerName || t('defaultPartnerName');
 
   // Không đáng làm hỏng cả trang chỉ vì đánh dấu đã đọc thất bại —
   // markMessagesRead() đã tự nuốt lỗi bên trong action.

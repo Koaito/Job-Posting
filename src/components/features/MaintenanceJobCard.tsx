@@ -55,6 +55,7 @@ export default function MaintenanceJobCard({
   initialRun,
 }: MaintenanceJobCardProps) {
   const t = useTranslations('maintenanceJobCard');
+  const tCrawlStatus = useTranslations('crawlStatus');
   const router = useRouter();
 
   const [limit, setLimit] = useState('');
@@ -199,7 +200,7 @@ export default function MaintenanceJobCard({
         <div className="crawl-progress">
           <p className="crawl-progress-line">
             <span className={`badge ${crawlStatusBadgeClass(runStatus.status)}`}>
-              {crawlStatusLabel(runStatus.status)}
+              {crawlStatusLabel(runStatus.status, tCrawlStatus)}
             </span>{' '}
             {runStatus.triggered_by_name && <span className="muted">— {runStatus.triggered_by_name}</span>}
           </p>

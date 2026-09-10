@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { logout } from '@/app/actions/auth';
 import { getUnreadCount } from '@/app/actions/messages';
-import { isStaffRole, ROLE_LABELS } from '@/lib/auth/roles';
+import { isStaffRole, roleLabel } from '@/lib/auth/roles';
 import { LanguageToggle } from '@/components/ui/i18n/LanguageToggle';
 
 // Poll ~25-30s (xem public/app.js gốc) — badge chỉ cần gần đúng, không
@@ -33,6 +33,7 @@ export function Sidebar({ user }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const t = useTranslations('sidebar');
+  const tRole = useTranslations('roles');
   const isStaff = isStaffRole(user?.role);
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -218,7 +219,7 @@ export function Sidebar({ user }: SidebarProps) {
               <div className="auth-avatar">{user.full_name?.[0]?.toUpperCase() ?? '?'}</div>
               <div className="auth-info">
                 <strong>{user.full_name}</strong>
-                <span>{isStaff ? ROLE_LABELS[user.role] ?? user.email : user.email}</span>
+                <span>{isStaff ? roleLabel(user.role, tRole) : user.email}</span>
               </div>
             </Link>
             <Link className="btn btn-ghost btn-block" href="/profile" title={t('profileTitle')}>

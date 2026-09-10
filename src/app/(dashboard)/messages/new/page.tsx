@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { getTranslations } from 'next-intl/server';
 import { searchPeople } from '@/app/actions/messages';
 import { getCurrentUser } from '@/app/actions/auth';
 import { roleLabel } from '@/lib/auth/roles';
@@ -11,6 +12,13 @@ import { roleLabel } from '@/lib/auth/roles';
  * Form GET thường (không cần client component) — backend tự lọc kết
  * quả theo role người tìm, không lọc lại ở tầng FE (tránh 2 nơi cùng
  * chứa 1 luật nghiệp vụ dễ lệch nhau, giống comment gốc bên Flask).
+ *
+ * i18n (đợt sau, 09/2026 — rà soát lại nhóm 5): trang này bị BỎ SÓT ở
+ * đợt dịch 12 trang dashboard trước (không nằm trong danh sách đã dịch
+ * dù nằm chung route group `/messages`). Dịch qua
+ * `getTranslations('messagesNewPage')` (Server Component). roleLabel()
+ * dùng chung `t` namespace `roles` — cùng đợt refactor với
+ * lib/auth/roles.ts.
  */
 interface SearchParams {
   q?: string;
@@ -21,6 +29,8 @@ export default async function NewMessagePage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
+  const t = await getTranslations('messagesNewPage');
+  const tRole = await getTranslations('roles');
   const { q = '' } = await searchParams;
   const currentUser = await getCurrentUser();
   const isStudent = currentUser?.role === 'user';
@@ -32,16 +42,14 @@ export default async function NewMessagePage({
     <>
       <header className="page-head">
         <div>
-          <span className="eyebrow">Career Hub / Nhắn tin</span>
-          <h1>Nhắn tin mới</h1>
+          <span className="eyebrow">{t('eyebrow')}</span>
+          <h1>{t('title')}</h1>
           <p className="lede">
-            {isStudent
-              ? 'Tìm 1 SS/admin để gửi yêu cầu nhắn tin. Bạn cần được SS chấp nhận trước khi nhắn tiếp.'
-              : 'Tìm học viên hoặc SS/admin khác để bắt đầu hội thoại.'}
+            {isStudent ? t('ledeStudent') : t('ledeStaff')}
           </p>
         </div>
         <Link className="btn btn-ghost" href="/messages">
-          ← Quay lại tin nhắn
+          {t('backLink')}
         </Link>
       </header>
 
@@ -50,12 +58,12 @@ export default async function NewMessagePage({
           type="text"
           name="q"
           defaultValue={q}
-          placeholder="Nhập tên..."
+          placeholder={t('searchPlaceholder')}
           autoFocus
           autoComplete="off"
         />
         <button type="submit" className="btn btn-primary">
-          Tìm
+          {t('searchButton')}
         </button>
       </form>
 
@@ -73,15 +81,15 @@ export default async function NewMessagePage({
                 <div className="conversation-avatar">{person.full_name?.[0]?.toUpperCase() || '?'}</div>
                 <div className="conversation-main">
                   <strong>{person.full_name}</strong>
-                  <span className="role-chip">{roleLabel(person.role)}</span>
+                  <span className="role-chip">{roleLabel(person.role, tRole)}</span>
                 </div>
-                <span className="people-result-cta">Nhắn tin →</span>
+                <span className="people-result-cta">{t('messageCta')}</span>
               </Link>
             ))}
           </div>
         ) : (
           <div className="empty-state">
-            <p>Không tìm thấy ai khớp với &quot;{q}&quot;.</p>
+            <p>{t('emptyState', { q })}</p>
           </div>
         )
       )}
