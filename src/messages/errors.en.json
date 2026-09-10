@@ -84,5 +84,6 @@
   "message_relationship_not_found": "This relationship was not found, or does not belong to you.",
   "message_student_not_found": "Student not found.",
   "message_ss_admin_moi_quyen_bo": "Only SS/admin can unblock.",
-  "message_relationship_not_found_2": "Cannot unblock — the relationship does not exist, does not belong to you, or is not currently blocked."
+  "message_relationship_not_found_2": "Cannot unblock — the relationship does not exist, does not belong to you, or is not currently blocked.",
+  "import_internal_error": "Import failed due to a database error."
 }

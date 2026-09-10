@@ -328,10 +328,18 @@ const DYNAMIC_ERROR_HANDLERS: DynamicErrorHandler[] = [
    * ép cứng đúng 1 tham số string như mảng ở trên).
    *
    * Việc dịch xong batch này đưa Giai đoạn 3 lên 130/135 (85 tĩnh + 45
-   * động qua template) — 5 mã còn lại KHÔNG dịch được bằng cơ chế này vì
-   * `message` = `str(exc)` (text lỗi Python thô, không có khuôn cố
-   * định) hoặc đã là tiếng Anh sẵn ở backend (`import_internal_error`,
-   * bug riêng, xem ghi chú Đợt 3) — xem plan_language_polish.md.
+   * động qua template) tại thời điểm đó — 5 mã còn lại lúc này bị đánh
+   * giá KHÔNG dịch được vì `message` = `str(exc)` (text lỗi Python thô,
+   * không có khuôn cố định) hoặc đã là tiếng Anh sẵn ở backend
+   * (`import_internal_error`, bug riêng). ĐÍNH CHÍNH (Đợt 7, 09/2026):
+   * nhận định "str(exc) = không có khuôn cố định" chỉ ĐÚNG cho 1/5 mã
+   * sau khi rà lại trực tiếp source backend — 3/5 mã còn lại thật ra có
+   * khuôn câu cố định (đếm được 1-3 f-string/hàm), đã dịch ở Đợt 7 bên
+   * dưới; `import_internal_error` đã sửa tận gốc ở backend, chuyển
+   * thành mã tĩnh (xem `errors.en.json`). Giai đoạn 3 hiện đạt 134/135
+   * — chỉ còn đúng `import_row_resolution_failed` (17 khuôn câu, có
+   * lồng message tự do từ tầng validate khác) là thật sự bất khả thi an
+   * toàn — xem plan_language_polish.md.
    */
   ...(
     [
@@ -415,6 +423,78 @@ const DYNAMIC_ERROR_HANDLERS: DynamicErrorHandler[] = [
       return match ? template(match) : null;
     },
   })),
+  /**
+   * Đợt 7 (09/2026) — 3/5 mã "KHÔNG dịch được" còn lại ở Đợt 6 (xem
+   * comment phía trên, "5 mã KHÔNG dịch được bằng cơ chế này"). Rà lại
+   * TRỰC TIẾP source thật ở backend (repo Scrap_JD, không phải Next.js
+   * này) cho từng mã — hoá ra `message = str(exc)` KHÔNG có nghĩa "text
+   * tuỳ ý không đoán trước được" như nhận định ban đầu trong
+   * plan_language_polish.md, mà với 3/5 mã dưới đây, hàm raise ra
+   * `exc` chỉ có ĐÚNG 1-3 f-string CỐ ĐỊNH trong code (đếm được, không
+   * phải input người dùng tự do) — viết regex an toàn y hệt các mã khác
+   * ở Đợt 4-6. 2 mã còn lại (`import_row_resolution_failed` — 17 f-string
+   * khác nhau, 2 trong số đó LỒNG message tự do từ tầng validate field
+   * riêng biệt; `import_internal_error` — ĐÃ sửa ở backend, chuyển sang
+   * mã tĩnh, xem `errors.en.json`) — xem ghi chú Đợt 6, thật sự không có
+   * khuôn cố định, không đổi ở đợt này.
+   */
+  {
+    // api/services/preview_manager.py::apply_field_fix() — CHỈ 1 raise
+    // ValueError duy nhất trong hàm này (row_index không có trong
+    // preview) — cùng shape message với `import_row_index_preview`
+    // (route /rows/{row_index}/resolve-company) nhưng KHÁC error_code
+    // (route /rows/{row_index}/verify-field), nên cần khai riêng ở đây
+    // dù regex giống hệt.
+    appliesTo: (errorCode) => errorCode === 'import_field_verify_failed',
+    translate: (message) => {
+      const match = /^row_index (\d+) không có trong preview này\.$/.exec(message);
+      if (!match) return null;
+      return `row_index ${match[1]} is not in this preview.`;
+    },
+  },
+  {
+    // api/services/preview_manager.py::resolve_company_selection() —
+    // ĐÚNG 3 raise ValueError trong hàm này (2 check phòng thủ lặp lại
+    // check đã có ở router — router validate trước khi gọi hàm này nên
+    // hiếm khi thật sự bay tới đây — + 1 case thật "company vừa bị xoá
+    // giữa chừng"). Thử lần lượt cả 3 pattern, pattern nào khớp dùng
+    // pattern đó.
+    appliesTo: (errorCode) => errorCode === 'import_resolve_company_failed',
+    translate: (message) => {
+      const entityTypeMatch =
+        /^entity_type '(.*)' không có bước chọn công ty — chỉ job\/contact\.$/.exec(message);
+      if (entityTypeMatch) {
+        return `entity_type: '${entityTypeMatch[1]}' has no company-selection step — only job/contact support it.`;
+      }
+      const rowIndexMatch = /^row_index (\d+) không có trong preview này\.$/.exec(message);
+      if (rowIndexMatch) {
+        return `row_index ${rowIndexMatch[1]} is not in this preview.`;
+      }
+      // company_id chèn qua repr Python (!r) — luôn có nháy đơn quanh
+      // giá trị vì company_id là str.
+      const companyIdMatch = /^company_id '(.*)' không tồn tại\.$/.exec(message);
+      if (companyIdMatch) {
+        return `company_id: '${companyIdMatch[1]}' does not exist.`;
+      }
+      return null;
+    },
+  },
+  {
+    // api/storage.py::upload_cv() — ĐÚNG 2 raise RuntimeError trong hàm
+    // này: (1) thiếu cấu hình Supabase (KHÔNG có biến động, message tĩnh
+    // 100%), (2) Supabase trả lỗi HTTP (1 biến: status code).
+    appliesTo: (errorCode) => errorCode === 'profile_cv_upload_failed',
+    translate: (message) => {
+      if (message === 'Chưa cấu hình SUPABASE_URL hoặc SUPABASE_SERVICE_ROLE_KEY trên server.') {
+        return 'The server is not configured with SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.';
+      }
+      const httpMatch = /^Lỗi tải file lên storage \(HTTP (\d+)\)$/.exec(message);
+      if (httpMatch) {
+        return `Error uploading the file to storage (HTTP ${httpMatch[1]}).`;
+      }
+      return null;
+    },
+  },
 ];
 
 

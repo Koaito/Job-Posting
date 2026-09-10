@@ -155,6 +155,17 @@ describe('formatErrorDetail()', () => {
       expect(await formatErrorDetail(detail)).toBe('Crawl vẫn đang chạy, không thể xoá.');
     });
 
+    it('locale=en + import_internal_error (mã tĩnh mới, sau khi sửa bug backend hard-code tiếng Anh) -> trả bản dịch', async () => {
+      mockCookieGet.mockImplementation((name: string) =>
+        name === 'locale' ? { value: 'en' } : undefined
+      );
+      const detail = {
+        error_code: 'import_internal_error',
+        message: 'Import thất bại do lỗi cơ sở dữ liệu.',
+      };
+      expect(await formatErrorDetail(detail)).toBe('Import failed due to a database error.');
+    });
+
     it('locale=en + error_code nhóm not_found tĩnh (đợt 2, job/company/contact) -> trả bản dịch', async () => {
       mockCookieGet.mockImplementation((name: string) =>
         name === 'locale' ? { value: 'en' } : undefined
@@ -311,17 +322,71 @@ describe('formatErrorDetail()', () => {
       ).toBe('Your previous request was declined — please try again 7 days after it was declined.');
     });
 
-    it('locale=en + error_code có message = str(exc) (không có khuôn cố định) -> KHÔNG có handler, luôn fallback về vi gốc', async () => {
+    it('locale=en + Đợt 7 (rà lại source backend thật) — 3/5 mã tưởng "str(exc) tuỳ ý" hoá ra có khuôn cố định -> dịch động', async () => {
       mockCookieGet.mockImplementation((name: string) =>
         name === 'locale' ? { value: 'en' } : undefined
       );
-      // 4 mã cố ý không dịch: import_field_verify_failed,
-      // import_resolve_company_failed, import_row_resolution_failed,
-      // profile_cv_upload_failed — message là str(exc) tuỳ ý, không có
-      // pattern để bóc. Test 1 mã đại diện.
+      // import_field_verify_failed — preview_manager.py::apply_field_fix(),
+      // CHỈ 1 raise ValueError trong hàm, cùng shape message với
+      // import_row_index_preview nhưng khác error_code (route khác).
+      expect(
+        await formatErrorDetail({
+          error_code: 'import_field_verify_failed',
+          message: 'row_index 7 không có trong preview này.',
+        })
+      ).toBe('row_index 7 is not in this preview.');
+      // import_resolve_company_failed — preview_manager.py::
+      // resolve_company_selection(), 3 pattern khác nhau, thử lần lượt.
+      expect(
+        await formatErrorDetail({
+          error_code: 'import_resolve_company_failed',
+          message: "entity_type 'company' không có bước chọn công ty — chỉ job/contact.",
+        })
+      ).toBe(
+        "entity_type: 'company' has no company-selection step — only job/contact support it."
+      );
+      expect(
+        await formatErrorDetail({
+          error_code: 'import_resolve_company_failed',
+          message: 'row_index 3 không có trong preview này.',
+        })
+      ).toBe('row_index 3 is not in this preview.');
+      expect(
+        await formatErrorDetail({
+          error_code: 'import_resolve_company_failed',
+          message: "company_id 'abc-123' không tồn tại.",
+        })
+      ).toBe("company_id: 'abc-123' does not exist.");
+      // profile_cv_upload_failed — api/storage.py::upload_cv(), ĐÚNG 2
+      // raise RuntimeError trong hàm: (1) thiếu config, tĩnh 100% không
+      // biến; (2) HTTP status từ Supabase, 1 biến.
+      expect(
+        await formatErrorDetail({
+          error_code: 'profile_cv_upload_failed',
+          message: 'Chưa cấu hình SUPABASE_URL hoặc SUPABASE_SERVICE_ROLE_KEY trên server.',
+        })
+      ).toBe('The server is not configured with SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.');
+      expect(
+        await formatErrorDetail({
+          error_code: 'profile_cv_upload_failed',
+          message: 'Lỗi tải file lên storage (HTTP 503)',
+        })
+      ).toBe('Error uploading the file to storage (HTTP 503).');
+    });
+
+    it('locale=en + error_code có message = str(exc) THẬT (lồng message tự do từ tầng khác) -> KHÔNG có handler, luôn fallback về vi gốc', async () => {
+      mockCookieGet.mockImplementation((name: string) =>
+        name === 'locale' ? { value: 'en' } : undefined
+      );
+      // Sau Đợt 7, CHỈ còn đúng 1 mã thật sự bất khả thi:
+      // import_row_resolution_failed (import_executor.py) — 17 f-string
+      // khác nhau trong hàm, 2 trong số đó LỒNG message tự do từ tầng
+      // validate field riêng (không phải enum cố định, có thể là bất kỳ
+      // rule nào tuỳ field) -> viết regex ở đây rủi ro dịch sai âm thầm,
+      // cố tình KHÔNG viết handler.
       const detail = {
-        error_code: 'profile_cv_upload_failed',
-        message: 'Lỗi kết nối Supabase Storage: timeout sau 30s.',
+        error_code: 'import_row_resolution_failed',
+        message: "Trường 'salary_max' không hợp lệ: phải >= salary_min.",
       };
       expect(await formatErrorDetail(detail)).toBe(detail.message);
     });

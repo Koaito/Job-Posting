@@ -84,5 +84,6 @@
   "message_relationship_not_found": "Không tìm thấy quan hệ này, hoặc không thuộc về bạn.",
   "message_student_not_found": "Không tìm thấy học viên này.",
   "message_ss_admin_moi_quyen_bo": "Chỉ SS/admin mới có quyền bỏ chặn.",
-  "message_relationship_not_found_2": "Không thể bỏ chặn — quan hệ không tồn tại, không thuộc về bạn, hoặc hiện không ở trạng thái đang chặn."
+  "message_relationship_not_found_2": "Không thể bỏ chặn — quan hệ không tồn tại, không thuộc về bạn, hoặc hiện không ở trạng thái đang chặn.",
+  "import_internal_error": "Import thất bại do lỗi cơ sở dữ liệu."
 }
