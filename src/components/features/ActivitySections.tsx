@@ -40,6 +40,7 @@ export async function ActivitySections({
 }: ActivitySectionsProps) {
   const t = await getTranslations('activitySections');
   const tPotential = await getTranslations('partnershipPotential');
+  const tJobStatus = await getTranslations('jobStatus');
   const dateLocale = toIntlLocale(await getLocale());
   return (
     <>
@@ -65,7 +66,7 @@ export async function ActivitySections({
                     <Link href={`/jobs/${job.job_id}`}>{job.job_title}</Link>
                   </h3>
                   <span className={`status-chip ${jobStatusChipClass(job.job_status)}`}>
-                    {jobStatusLabel(job.job_status)}
+                    {jobStatusLabel(job.job_status, tJobStatus)}
                   </span>
                 </div>
                 <p className="ticket-company">

@@ -53,6 +53,7 @@ export default async function JobsPage({
   searchParams: Promise<SearchParams>;
 }) {
   const t = await getTranslations('jobsPage');
+  const tJobStatus = await getTranslations('jobStatus');
   const dateLocale = toIntlLocale(await getLocale());
   const sp = await searchParams;
   const page = parseInt(sp.page || '1');
@@ -180,7 +181,7 @@ export default async function JobsPage({
                       <Link href={`/jobs/${job.job_id}`}>{job.job_title}</Link>
                     </h3>
                     <span className={`status-chip ${jobStatusChipClass(job.job_status)}`}>
-                      {jobStatusLabel(job.job_status)}
+                      {jobStatusLabel(job.job_status, tJobStatus)}
                     </span>
                   </div>
 

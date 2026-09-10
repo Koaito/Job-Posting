@@ -25,6 +25,7 @@ export default async function JobDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const t = await getTranslations('jobDetailPage');
+  const tJobStatus = await getTranslations('jobStatus');
   const dateLocale = toIntlLocale(await getLocale());
   const { id } = await params;
   const job = await getJobById(id);
@@ -82,7 +83,7 @@ export default async function JobDetailPage({
               <dt>{t('status')}</dt>
               <dd>
                 <span className={`status-chip ${jobStatusChipClass(job.job_status)}`}>
-                  {jobStatusLabel(job.job_status)}
+                  {jobStatusLabel(job.job_status, tJobStatus)}
                 </span>
               </dd>
 

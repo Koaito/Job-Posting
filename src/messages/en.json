@@ -1072,6 +1072,10 @@
     "MEDIUM": "Medium",
     "HIGH": "High"
   },
+  "jobStatus": {
+    "OPEN": "Open",
+    "CLOSED": "Closed"
+  },
   "messagesNewPage": {
     "eyebrow": "Career Hub / Messages",
     "title": "New message",

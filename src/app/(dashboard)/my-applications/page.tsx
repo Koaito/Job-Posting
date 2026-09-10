@@ -31,6 +31,7 @@ import { toIntlLocale } from '@/i18n/config';
 
 export default async function MyApplicationsPage() {
   const t = await getTranslations('myApplicationsPage');
+  const tJobStatus = await getTranslations('jobStatus');
   const dateLocale = toIntlLocale(await getLocale());
   const user = await getCurrentUser();
   if (!user) {
@@ -89,7 +90,7 @@ export default async function MyApplicationsPage() {
                         <dt>{t('jobStatus')}</dt>
                         <dd>
                           <span className={`status-chip ${jobStatusChipClass(app.job_status)}`}>
-                            {jobStatusLabel(app.job_status)}
+                            {jobStatusLabel(app.job_status, tJobStatus)}
                           </span>
                         </dd>
                       </>

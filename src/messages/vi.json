@@ -1072,6 +1072,10 @@
     "MEDIUM": "Trung bình",
     "HIGH": "Cao"
   },
+  "jobStatus": {
+    "OPEN": "Đang tuyển",
+    "CLOSED": "Đã đóng"
+  },
   "messagesNewPage": {
     "eyebrow": "Career Hub / Nhắn tin",
     "title": "Nhắn tin mới",

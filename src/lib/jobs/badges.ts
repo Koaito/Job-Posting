@@ -15,6 +15,14 @@
  * không khớp bất kỳ selector nào nên chip mất màu hoàn toàn (chỉ còn
  * đúng phần khung/font-size chung của .status-chip). Map thủ công 2
  * giá trị ở đây thay vì lowercase trực tiếp.
+ *
+ * i18n (Giai đoạn 2 Phần 3, 09/2026): TÁCH RIÊNG `jobStatusLabel()` (label
+ * hiển thị, đổi theo locale qua `t`, namespace `jobStatus`) khỏi
+ * `jobStatusChipClass()` (class CSS, LUÔN cố định tiếng Việt, KHÔNG được
+ * đổi theo locale — nếu đổi, `.status-Open` sẽ không khớp CSS thật
+ * `.status-Đang-tuyển` nữa và chip mất màu y hệt bug gốc mô tả ở trên).
+ * Cùng pattern đã dùng ở `partnershipPotentialLabel()`/
+ * `partnershipPotentialClass()` (src/lib/companies/potential.ts).
  */
 
 const INDUSTRY_CLASS_MAP: Record<string, string> = {
@@ -35,8 +43,10 @@ export function industryClass(value: string | null | undefined): string {
   return INDUSTRY_CLASS_MAP[value] ?? INDUSTRY_CLASS_FALLBACK;
 }
 
-export function jobStatusLabel(status: string): string {
-  return status === 'OPEN' ? 'Đang tuyển' : 'Đã đóng';
+const JOB_STATUS_LABEL_VALUES = ['OPEN', 'CLOSED'] as const;
+
+export function jobStatusLabel(status: string, t: (key: string) => string): string {
+  return (JOB_STATUS_LABEL_VALUES as readonly string[]).includes(status) ? t(status) : status;
 }
 
 export function jobStatusChipClass(status: string): string {

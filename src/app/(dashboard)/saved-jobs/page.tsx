@@ -22,6 +22,7 @@ import { toIntlLocale } from '@/i18n/config';
 
 export default async function SavedJobsPage() {
   const t = await getTranslations('savedJobsPage');
+  const tJobStatus = await getTranslations('jobStatus');
   const dateLocale = toIntlLocale(await getLocale());
   const user = await getCurrentUser();
   if (!user) {
@@ -77,7 +78,7 @@ export default async function SavedJobsPage() {
                         <dt>{t('jobStatus')}</dt>
                         <dd>
                           <span className={`status-chip ${jobStatusChipClass(sj.job_status)}`}>
-                            {jobStatusLabel(sj.job_status)}
+                            {jobStatusLabel(sj.job_status, tJobStatus)}
                           </span>
                         </dd>
                       </>
