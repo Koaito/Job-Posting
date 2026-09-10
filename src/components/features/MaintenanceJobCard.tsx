@@ -2,11 +2,12 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { triggerMaintenance, getMaintenanceStatus, getMaintenanceLogs } from '@/app/actions/crawl';
 import type { MaintenanceStatus, MaintenanceLog } from '@/types/crawl';
 import { crawlStatusBadgeClass, crawlStatusLabel } from '@/lib/crawl/badges';
 import { MAINTENANCE_CHECK_EXPIRED_JOB_TYPE } from '@/lib/maintenance/jobs';
+import { toIntlLocale } from '@/i18n/config';
 
 /**
  * 1 card kích hoạt + log live cho 1 job bảo trì dữ liệu — mirror
@@ -34,11 +35,11 @@ import { MAINTENANCE_CHECK_EXPIRED_JOB_TYPE } from '@/lib/maintenance/jobs';
  * xuống đây, component này (Client Component) chỉ hiển thị nguyên văn,
  * không tự tra bảng dịch.
  *
- * `toLocaleTimeString('vi-VN')` (log live) CỐ Ý CHƯA đổi — khác
- * `toLocaleDateString`/`toLocaleString('vi-VN')` đã xử lý ở đợt Polish
- * "định dạng ngày/giờ theo locale" (commit `00cdf67`) vì đó là quét theo
- * đúng 2 method đó; `toLocaleTimeString` là method thứ 3 chưa nằm trong
- * phạm vi lần quét đó — vẫn treo lại cho Polish.
+ * `toLocaleTimeString('vi-VN')` (log live) — đã đổi sang `dateLocale`
+ * (qua `useLocale()`, Client Component) ở đợt Polish sau (09/2026),
+ * cùng `toIntlLocale()` dùng chung với `toLocaleDateString`/
+ * `toLocaleString` (commit `00cdf67`) — method thứ 3 bị bỏ sót lần quét
+ * trước, nay đã đồng bộ.
  */
 
 interface MaintenanceJobCardProps {
@@ -65,6 +66,7 @@ export default function MaintenanceJobCard({
   initialRun,
 }: MaintenanceJobCardProps) {
   const t = useTranslations('maintenanceJobCard');
+  const dateLocale = toIntlLocale(useLocale());
   const tCrawlStatus = useTranslations('crawlStatus');
   const router = useRouter();
 
@@ -234,7 +236,7 @@ export default function MaintenanceJobCard({
           {logs.length > 0 ? (
             logs.map((log) => (
               <div key={log.id} className={`crawl-log-line ${log.level === 'ERROR' ? 'is-error' : log.level === 'WARNING' ? 'is-warning' : ''}`}>
-                <span style={{ opacity: 0.6 }}>[{new Date(log.created_at).toLocaleTimeString('vi-VN')}]</span> {log.message}
+                <span style={{ opacity: 0.6 }}>[{new Date(log.created_at).toLocaleTimeString(dateLocale)}]</span> {log.message}
               </div>
             ))
           ) : (

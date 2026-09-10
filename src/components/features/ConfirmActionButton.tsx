@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
+import { useToast } from '@/components/ui/toast/ToastProvider';
 
 /**
  * State machine "xác nhận hành động" dùng chung — trước đây cài lặp lại
@@ -23,6 +24,11 @@ import { useTranslations } from 'next-intl';
  * (DeleteJobButton/DeleteCompanyButton/WithdrawApplicationButton) đều đã
  * truyền tường minh nên fallback này chỉ có tác dụng cho caller mới sau này
  * lỡ quên truyền.
+ *
+ * B.1 Polish (09/2026): đổi flash inline sang `toast.error()` — card xác
+ * nhận (`showConfirm=true`) vẫn ở nguyên trên màn hình sau khi lỗi (kể
+ * cả note bắt buộc bị bỏ trống), user thấy toast + thử lại ngay được,
+ * không cần giữ lỗi persistent trong card.
  */
 
 export interface ConfirmActionButtonProps {
@@ -84,6 +90,7 @@ export default function ConfirmActionButton({
   defaultErrorMessage,
 }: ConfirmActionButtonProps) {
   const t = useTranslations('confirmActionButton');
+  const toast = useToast();
   const resolvedConfirmTitle = confirmTitle ?? t('defaultConfirmTitle');
   const resolvedNoteLabel = noteLabel ?? t('defaultNoteLabel');
   const resolvedNoteRequiredError = noteRequiredError ?? t('defaultNoteRequiredError');
@@ -92,18 +99,16 @@ export default function ConfirmActionButton({
   const [showConfirm, setShowConfirm] = useState(false);
   const [note, setNote] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const handleConfirm = async () => {
     const trimmedNote = note.trim();
 
     if (showNote && requireNote && !trimmedNote) {
-      setError(resolvedNoteRequiredError);
+      toast.error(resolvedNoteRequiredError);
       return;
     }
 
     setIsProcessing(true);
-    setError(null);
 
     const noteArg = showNote ? (trimmedNote || undefined) : undefined;
     const result = await onConfirm(noteArg);
@@ -114,14 +119,13 @@ export default function ConfirmActionButton({
       // hướng đi (push) hoặc refresh, giữ nút ở trạng thái loading cho
       // tới khi unmount/re-render là hành vi cũ của cả 3 component gốc.
     } else {
-      setError(result.error || defaultErrorMessage);
+      toast.error(result.error || defaultErrorMessage);
       setIsProcessing(false);
     }
   };
 
   const handleCancel = () => {
     setShowConfirm(false);
-    setError(null);
   };
 
   if (!showConfirm) {
@@ -159,12 +163,6 @@ export default function ConfirmActionButton({
           style={{ width: '100%', marginBottom: '12px' }}
         />
       ))}
-
-      {error && (
-        <div className="flash flash-error" style={{ marginBottom: '12px' }}>
-          {error}
-        </div>
-      )}
 
       <div style={{ display: 'flex', gap: '8px' }}>
         <button onClick={handleConfirm} disabled={isProcessing} className="btn btn-danger" style={{ flex: 1 }}>

@@ -5,6 +5,7 @@ import { useTranslations, useLocale } from 'next-intl';
 import { getCvSignedUrl } from '@/app/actions/me';
 import type { JobApplicant, JobSaver } from '@/types/auth';
 import { toIntlLocale } from '@/i18n/config';
+import { useToast } from '@/components/ui/toast/ToastProvider';
 
 /**
  * Tab "Người đã ứng tuyển / Đã lưu" trên trang chi tiết job, dành cho
@@ -13,6 +14,10 @@ import { toIntlLocale } from '@/i18n/config';
  * getJobSavers()) — component này chỉ render + xử lý nút tải CV (cần gọi
  * action lấy signed URL tại thời điểm bấm, không fetch trước vì signed
  * URL có hạn dùng ngắn).
+ *
+ * B.1 Polish (09/2026): lỗi "Xem CV" đổi flash inline sang
+ * `toast.error()` — đúng use case gốc showToast() (action bấm-nút-xong-
+ * liền, không phải submit form).
  */
 
 interface JobApplicantsPanelProps {
@@ -22,13 +27,12 @@ interface JobApplicantsPanelProps {
 
 export default function JobApplicantsPanel({ applicants, savers }: JobApplicantsPanelProps) {
   const t = useTranslations('jobApplicantsPanel');
+  const toast = useToast();
   const dateLocale = toIntlLocale(useLocale());
   const [tab, setTab] = useState<'applicants' | 'savers'>('applicants');
   const [loadingCvId, setLoadingCvId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
   async function handleViewCv(applicationId: string) {
-    setError(null);
     setLoadingCvId(applicationId);
     const result = await getCvSignedUrl(applicationId);
     setLoadingCvId(null);
@@ -36,7 +40,7 @@ export default function JobApplicantsPanel({ applicants, savers }: JobApplicants
     if (result.success && result.signedUrl) {
       window.open(result.signedUrl, '_blank', 'noopener,noreferrer');
     } else {
-      setError(result.error || t('cvLoadFailed'));
+      toast.error(result.error || t('cvLoadFailed'));
     }
   }
 
@@ -56,8 +60,6 @@ export default function JobApplicantsPanel({ applicants, savers }: JobApplicants
           {t('saversTab', { count: savers.length })}
         </button>
       </div>
-
-      {error && <div className="flash flash-error" style={{ marginBottom: '12px' }}>{error}</div>}
 
       {tab === 'applicants' ? (
         applicants.length === 0 ? (

@@ -4,6 +4,7 @@ import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { applyToJob, withdrawApplication, saveJob, unsaveJob } from '@/app/actions/me';
+import { useToast } from '@/components/ui/toast/ToastProvider';
 
 /**
  * Nút "Ứng tuyển" + "Lưu job" trên trang chi tiết job, dành cho học viên
@@ -18,6 +19,14 @@ import { applyToJob, withdrawApplication, saveJob, unsaveJob } from '@/app/actio
  *
  * i18n (Giai đoạn 2, nhóm 5, 09/2026): dịch label/nút bấm qua
  * `useTranslations('jobApplyActions')`.
+ *
+ * B.1 Polish (09/2026): đổi flash inline sang `toast.error()`. Riêng
+ * `cvFileRequired` (chưa chọn file CV, form ứng tuyển vẫn đang mở) khác
+ * bản chất với 2 case còn lại (applyFailed/withdrawFailed/
+ * saveToggleFailed — action bấm-nút-xong-liền) — nhưng vì đây chỉ 1
+ * message đơn giản và form vẫn còn nguyên trên màn hình để thử lại
+ * ngay (không như form nhiều field kiểu login), toast 3.2s vẫn chấp
+ * nhận được, không cần giữ inline riêng.
  */
 
 interface JobApplyActionsProps {
@@ -34,6 +43,7 @@ export default function JobApplyActions({
   initiallySaved,
 }: JobApplyActionsProps) {
   const t = useTranslations('jobApplyActions');
+  const toast = useToast();
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -44,17 +54,15 @@ export default function JobApplyActions({
   const [isApplying, setIsApplying] = useState(false);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const isOpen = jobStatus === 'OPEN';
 
   async function handleApplySubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError(null);
 
     const file = fileInputRef.current?.files?.[0];
     if (!file) {
-      setError(t('cvFileRequired'));
+      toast.error(t('cvFileRequired'));
       return;
     }
 
@@ -68,12 +76,11 @@ export default function JobApplyActions({
       setNote('');
       router.refresh();
     } else {
-      setError(result.error || t('applyFailed'));
+      toast.error(result.error || t('applyFailed'));
     }
   }
 
   async function handleWithdraw() {
-    setError(null);
     setIsWithdrawing(true);
     const result = await withdrawApplication(jobId);
     setIsWithdrawing(false);
@@ -82,12 +89,11 @@ export default function JobApplyActions({
       setApplied(false);
       router.refresh();
     } else {
-      setError(result.error || t('withdrawFailed'));
+      toast.error(result.error || t('withdrawFailed'));
     }
   }
 
   async function handleToggleSave() {
-    setError(null);
     setIsSaving(true);
     const result = saved ? await unsaveJob(jobId) : await saveJob(jobId);
     setIsSaving(false);
@@ -95,18 +101,12 @@ export default function JobApplyActions({
     if (result.success) {
       setSaved(!saved);
     } else {
-      setError(result.error || t('saveToggleFailed'));
+      toast.error(result.error || t('saveToggleFailed'));
     }
   }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-      {error && (
-        <div className="flash flash-error" style={{ marginBottom: '4px' }}>
-          {error}
-        </div>
-      )}
-
       {/* Ứng tuyển / Rút hồ sơ */}
       {applied ? (
         <button

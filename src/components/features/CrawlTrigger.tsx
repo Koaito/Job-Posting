@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { startCrawl, getCrawlStatus, getCrawlLogs } from '@/app/actions/crawl';
 import type { CrawlStatus, CrawlLog } from '@/types/crawl';
 import { crawlStatusBadgeClass, crawlStatusLabel } from '@/lib/crawl/badges';
+import { toIntlLocale } from '@/i18n/config';
 
 /**
  * Form kích hoạt crawl đơn lẻ + khung "Log live" — dùng ở trang /crawl.
@@ -21,7 +22,9 @@ import { crawlStatusBadgeClass, crawlStatusLabel } from '@/lib/crawl/badges';
  * i18n (Giai đoạn 2, nhóm 5, 09/2026): dịch label/nút bấm qua
  * `useTranslations('crawlTrigger')`. crawlStatusLabel() (lib/crawl/
  * badges.ts) giờ đã dịch theo `t` namespace `crawlStatus` (đợt sau).
- * toLocaleTimeString('vi-VN') CỐ Ý CHƯA đổi — thuộc phạm vi Polish.
+ * `toLocaleTimeString('vi-VN')` — đã đổi sang `dateLocale` (qua
+ * `useLocale()`) ở đợt Polish sau (09/2026), method thứ 3 bị bỏ sót lần
+ * quét trước (commit `00cdf67`), nay đã đồng bộ.
  */
 
 interface CrawlTriggerProps {
@@ -36,6 +39,7 @@ const POLL_INTERVAL_MS = 2000;
 export default function CrawlTrigger({ isAdmin, sources, initialRun }: CrawlTriggerProps) {
   const t = useTranslations('crawlTrigger');
   const tCrawlStatus = useTranslations('crawlStatus');
+  const dateLocale = toIntlLocale(useLocale());
   const router = useRouter();
   const sourceKeys = Object.keys(sources);
 
@@ -244,7 +248,7 @@ export default function CrawlTrigger({ isAdmin, sources, initialRun }: CrawlTrig
                 {t('progressLine', {
                   fetched: runStatus.progress.fetched,
                   inserted: runStatus.progress.inserted,
-                  time: new Date(runStatus.progress.last_update).toLocaleTimeString('vi-VN'),
+                  time: new Date(runStatus.progress.last_update).toLocaleTimeString(dateLocale),
                 })}
               </p>
             )}
@@ -271,7 +275,7 @@ export default function CrawlTrigger({ isAdmin, sources, initialRun }: CrawlTrig
           {logs.length > 0 ? (
             logs.map((log) => (
               <div key={log.id}>
-                <span style={{ opacity: 0.6 }}>[{new Date(log.created_at).toLocaleTimeString('vi-VN')}]</span>{' '}
+                <span style={{ opacity: 0.6 }}>[{new Date(log.created_at).toLocaleTimeString(dateLocale)}]</span>{' '}
                 <span style={{ color: log.level === 'ERROR' ? '#f48771' : log.level === 'WARNING' ? '#dcdcaa' : '#d4d4d4' }}>
                   {log.message}
                 </span>

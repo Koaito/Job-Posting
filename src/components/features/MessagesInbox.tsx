@@ -12,6 +12,7 @@ import {
 } from '@/app/actions/messages';
 import { roleLabel } from '@/lib/auth/roles';
 import type { Conversation, PendingRequest } from '@/types/messages';
+import { useToast } from '@/components/ui/toast/ToastProvider';
 
 /**
  * Phần tương tác của trang /messages (inbox) — page.tsx chỉ fetch dữ
@@ -28,6 +29,12 @@ import type { Conversation, PendingRequest } from '@/types/messages';
  * `useTranslations('messagesInbox')`. roleLabel() (lib/auth/roles.ts)
  * giờ đã dịch theo `t` namespace `roles` (đợt sau, xem ghi chú
  * StaffActivityList.tsx).
+ *
+ * B.1 Polish (09/2026): cả 4 hành động (accept/decline/block/unblock)
+ * đều là bấm-nút-xong-liền, KHÔNG mixed với form submit nào trong file
+ * này (khác StaffAccountsManager.tsx/CompanyContactsManager.tsx/
+ * MessageThread.tsx — cố ý CHƯA đụng, còn lẫn lỗi validate form) — đổi
+ * thẳng flash inline sang `toast.error()`.
  */
 
 interface MessagesInboxProps {
@@ -54,10 +61,10 @@ export function MessagesInbox({
   const t = useTranslations('messagesInbox');
   const tRole = useTranslations('roles');
   const router = useRouter();
+  const toast = useToast();
   const [conversations, setConversations] = useState(initialConversations);
   const [pendingRequests, setPendingRequests] = useState(initialPendingRequests);
   const [isPending, startTransition] = useTransition();
-  const [error, setError] = useState('');
 
   const STATUS_LABELS: Record<string, string> = {
     pending: t('statusPending'),
@@ -66,34 +73,31 @@ export function MessagesInbox({
   };
 
   const handleAccept = (relationshipId: string) => {
-    setError('');
     startTransition(async () => {
       const result = await acceptMessageRequest(relationshipId);
       if (result.success) {
         setPendingRequests((prev) => prev.filter((r) => r.relationship_id !== relationshipId));
         router.refresh();
       } else {
-        setError(result.error || t('acceptFailed'));
+        toast.error(result.error || t('acceptFailed'));
       }
     });
   };
 
   const handleDecline = (relationshipId: string) => {
-    setError('');
     startTransition(async () => {
       const result = await declineMessageRequest(relationshipId);
       if (result.success) {
         setPendingRequests((prev) => prev.filter((r) => r.relationship_id !== relationshipId));
         router.refresh();
       } else {
-        setError(result.error || t('declineFailed'));
+        toast.error(result.error || t('declineFailed'));
       }
     });
   };
 
   const handleBlock = (studentId: string, partnerName: string) => {
     if (!confirm(t('confirmBlock', { name: partnerName }))) return;
-    setError('');
     startTransition(async () => {
       const result = await blockStudent(studentId);
       if (result.success) {
@@ -102,13 +106,12 @@ export function MessagesInbox({
         );
         router.refresh();
       } else {
-        setError(result.error || t('blockFailed'));
+        toast.error(result.error || t('blockFailed'));
       }
     });
   };
 
   const handleUnblock = (relationshipId: string) => {
-    setError('');
     startTransition(async () => {
       const result = await unblockRelationship(relationshipId);
       if (result.success) {
@@ -119,7 +122,7 @@ export function MessagesInbox({
         );
         router.refresh();
       } else {
-        setError(result.error || t('unblockFailed'));
+        toast.error(result.error || t('unblockFailed'));
       }
     });
   };
@@ -128,11 +131,6 @@ export function MessagesInbox({
 
   return (
     <>
-      {error && (
-        <div className="flash flash-error" style={{ marginBottom: '16px' }}>
-          {error}
-        </div>
-      )}
 
       {hasPendingSection && (
         <section className="msg-section">

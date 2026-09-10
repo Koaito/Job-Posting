@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale } from "next-intl/server";
 import { Sidebar } from "@/components/ui/layout/Sidebar";
+import { ToastProvider } from "@/components/ui/toast/ToastProvider";
 import { getCurrentUser } from "@/app/actions/auth";
 import "./globals.css";
 
@@ -77,10 +78,12 @@ export default async function RootLayout({
       </head>
       <body>
         <NextIntlClientProvider>
-          <div className="shell">
-            <Sidebar user={user} />
-            <main className="content">{children}</main>
-          </div>
+          <ToastProvider>
+            <div className="shell">
+              <Sidebar user={user} />
+              <main className="content">{children}</main>
+            </div>
+          </ToastProvider>
         </NextIntlClientProvider>
       </body>
     </html>
