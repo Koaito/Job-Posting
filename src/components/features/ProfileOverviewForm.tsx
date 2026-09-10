@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { updateProfile } from '@/app/actions/auth';
 import type { User } from '@/types/auth';
 
@@ -16,6 +17,7 @@ import type { User } from '@/types/auth';
  * nghĩa gây hiểu lầm "sao staff không sửa được".
  */
 export default function ProfileOverviewForm({ user }: { user: User }) {
+  const t = useTranslations('profileOverviewForm');
   const router = useRouter();
   const isStudent = user.role === 'user';
 
@@ -32,7 +34,7 @@ export default function ProfileOverviewForm({ user }: { user: User }) {
     setSuccess('');
 
     if (!fullName.trim()) {
-      setError('Vui lòng nhập họ và tên.');
+      setError(t('nameRequired'));
       return;
     }
 
@@ -45,16 +47,16 @@ export default function ProfileOverviewForm({ user }: { user: User }) {
       });
 
       if (result.success) {
-        setSuccess('Đã cập nhật thông tin cá nhân.');
+        setSuccess(t('updateSuccess'));
         // Sidebar đọc user_data từ cookie (đã được updateProfile() ghi
         // lại) — router.refresh() để re-render server components (vd
         // Sidebar) với dữ liệu mới ngay, không cần F5 tay.
         router.refresh();
       } else {
-        setError(result.error || 'Không thể cập nhật thông tin.');
+        setError(result.error || t('updateFailed'));
       }
     } catch {
-      setError('Đã xảy ra lỗi. Vui lòng thử lại.');
+      setError(t('genericError'));
     } finally {
       setLoading(false);
     }
@@ -66,7 +68,7 @@ export default function ProfileOverviewForm({ user }: { user: User }) {
       {success && <div className="flash flash-success">{success}</div>}
 
       <label>
-        Họ và tên
+        {t('fullName')}
         <input
           type="text"
           value={fullName}
@@ -79,23 +81,23 @@ export default function ProfileOverviewForm({ user }: { user: User }) {
       {isStudent && (
         <>
           <label>
-            Số điện thoại
+            {t('phone')}
             <input
               type="tel"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              placeholder="Không bắt buộc"
+              placeholder={t('optional')}
               disabled={loading}
             />
           </label>
 
           <label>
-            Lớp / Track
+            {t('track')}
             <input
               type="text"
               value={track}
               onChange={(e) => setTrack(e.target.value)}
-              placeholder="Không bắt buộc"
+              placeholder={t('optional')}
               disabled={loading}
             />
           </label>
@@ -103,7 +105,7 @@ export default function ProfileOverviewForm({ user }: { user: User }) {
       )}
 
       <button type="submit" className="btn btn-primary" disabled={loading}>
-        {loading ? 'Đang lưu...' : 'Lưu thay đổi'}
+        {loading ? t('saving') : t('saveChanges')}
       </button>
     </form>
   );

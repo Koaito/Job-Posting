@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { getTranslations } from 'next-intl/server';
 import type { Job } from '@/types/jobs';
 import type { Company } from '@/types/companies';
 import type { CompanyContactWithCompany } from '@/types/contacts';
@@ -29,17 +30,18 @@ export interface ActivitySectionsProps {
   staffById: Map<string, User>;
 }
 
-export function ActivitySections({
+export async function ActivitySections({
   jobsCreated,
   companiesCreated,
   contactsCreated,
   contactsAssigned,
   staffById,
 }: ActivitySectionsProps) {
+  const t = await getTranslations('activitySections');
   return (
     <>
       <div className="activity-section-head">
-        <h2>💼 Job đã tạo ({jobsCreated.length})</h2>
+        <h2>💼 {t('jobsCreated', { count: jobsCreated.length })}</h2>
       </div>
       {jobsCreated.length > 0 ? (
         <div className="job-grid">
@@ -69,7 +71,9 @@ export function ActivitySections({
                 </p>
                 <div className="ticket-meta">
                   <span>
-                    📅 Hạn:{' '}
+                    📅 {t('deadline')}:{' '}
+                    {/* CỐ Ý CHƯA dịch: toLocaleDateString('vi-VN') — thuộc
+                        phạm vi Polish, không xử lý ở đợt Language này. */}
                     {job.deadline ? new Date(job.deadline).toLocaleDateString('vi-VN') : '—'}
                   </span>
                 </div>
@@ -79,22 +83,22 @@ export function ActivitySections({
         </div>
       ) : (
         <div className="empty-state">
-          <p>Chưa tự thêm job nào.</p>
+          <p>{t('noJobsCreated')}</p>
         </div>
       )}
 
       <div className="activity-section-head">
-        <h2>🏢 Công ty đã tạo ({companiesCreated.length})</h2>
+        <h2>🏢 {t('companiesCreated', { count: companiesCreated.length })}</h2>
       </div>
       {companiesCreated.length > 0 ? (
         <div className="contact-table-wrap">
           <table className="contact-table">
             <thead>
               <tr>
-                <th>Công ty</th>
-                <th>Lĩnh vực</th>
-                <th>Tỉnh/thành</th>
-                <th className="col-potential">Tiềm năng</th>
+                <th>{t('colCompany')}</th>
+                <th>{t('colIndustry')}</th>
+                <th>{t('colProvince')}</th>
+                <th className="col-potential">{t('colPotential')}</th>
                 <th></th>
               </tr>
             </thead>
@@ -115,7 +119,7 @@ export function ActivitySections({
                   </td>
                   <td className="actions-cell">
                     <Link className="btn btn-text" href={`/companies/${c.company_id}`}>
-                      Xem →
+                      {t('view')}
                     </Link>
                   </td>
                 </tr>
@@ -125,23 +129,23 @@ export function ActivitySections({
         </div>
       ) : (
         <div className="empty-state">
-          <p>Chưa tự thêm công ty nào.</p>
+          <p>{t('noCompaniesCreated')}</p>
         </div>
       )}
 
       <div className="activity-section-head">
-        <h2>☎ Contact đã tạo ({contactsCreated.length})</h2>
+        <h2>☎ {t('contactsCreated', { count: contactsCreated.length })}</h2>
       </div>
       {contactsCreated.length > 0 ? (
         <div className="contact-table-wrap">
           <table className="contact-table">
             <thead>
               <tr>
-                <th>Tên</th>
-                <th>Công ty</th>
-                <th>Email</th>
-                <th>Trạng thái</th>
-                <th>Đang phụ trách</th>
+                <th>{t('colName')}</th>
+                <th>{t('colCompany')}</th>
+                <th>{t('colEmail')}</th>
+                <th>{t('colStatus')}</th>
+                <th>{t('colAssignedTo')}</th>
               </tr>
             </thead>
             <tbody>
@@ -157,7 +161,7 @@ export function ActivitySections({
                   <td className="muted">{c.contact_status}</td>
                   <td className="muted">
                     {(c.assigned_ss_user && staffById.get(c.assigned_ss_user)?.full_name) ||
-                      '— Chưa gán —'}
+                      t('unassigned')}
                   </td>
                 </tr>
               ))}
@@ -166,23 +170,23 @@ export function ActivitySections({
         </div>
       ) : (
         <div className="empty-state">
-          <p>Chưa tự thêm contact nào.</p>
+          <p>{t('noContactsCreated')}</p>
         </div>
       )}
 
       <div className="activity-section-head">
-        <h2>🗂️ Contact đang phụ trách ({contactsAssigned.length})</h2>
+        <h2>🗂️ {t('contactsAssigned', { count: contactsAssigned.length })}</h2>
       </div>
       {contactsAssigned.length > 0 ? (
         <div className="contact-table-wrap">
           <table className="contact-table">
             <thead>
               <tr>
-                <th>Tên</th>
-                <th>Công ty</th>
-                <th>Email</th>
-                <th>Người tạo</th>
-                <th>Trạng thái</th>
+                <th>{t('colName')}</th>
+                <th>{t('colCompany')}</th>
+                <th>{t('colEmail')}</th>
+                <th>{t('colCreatedBy')}</th>
+                <th>{t('colStatus')}</th>
               </tr>
             </thead>
             <tbody>
@@ -206,7 +210,7 @@ export function ActivitySections({
         </div>
       ) : (
         <div className="empty-state">
-          <p>Chưa được giao phụ trách contact nào.</p>
+          <p>{t('noContactsAssigned')}</p>
         </div>
       )}
     </>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   uploadImportFile,
   confirmImport,
@@ -39,12 +40,12 @@ import type {
  * có lựa chọn "bỏ qua" cho riêng case này.
  */
 
-const STATUS_LABEL: Record<ImportRowConflictStatus, { text: string; tagClass: string }> = {
-  no_conflict: { text: 'Mới', tagClass: 'dm-tag-new' },
-  conflict: { text: 'Trùng dữ liệu đã có', tagClass: 'dm-tag-conflict' },
-  conflict_inactive: { text: 'Trùng (bản ghi đã ngừng hoạt động)', tagClass: 'dm-tag-inactive' },
-  pending_company_resolution: { text: 'Cần chọn công ty', tagClass: 'dm-tag-resolve' },
-  conflict_in_batch: { text: 'Trùng với dòng khác trong file', tagClass: 'dm-tag-dup-warn' },
+const STATUS_KEYS: Record<ImportRowConflictStatus, { key: string; tagClass: string }> = {
+  no_conflict: { key: 'statusNew', tagClass: 'dm-tag-new' },
+  conflict: { key: 'statusConflict', tagClass: 'dm-tag-conflict' },
+  conflict_inactive: { key: 'statusConflictInactive', tagClass: 'dm-tag-inactive' },
+  pending_company_resolution: { key: 'statusPendingCompany', tagClass: 'dm-tag-resolve' },
+  conflict_in_batch: { key: 'statusConflictInBatch', tagClass: 'dm-tag-dup-warn' },
 };
 
 const LEVEL_CODE_VALUES = ['Intern', 'Fresher', 'Junior', 'Middle', 'Senior', 'Lead', 'Manager'];
@@ -90,6 +91,7 @@ interface ImportPanelProps {
 }
 
 export default function ImportPanel({ entityType }: ImportPanelProps) {
+  const t = useTranslations('importPanel');
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -139,7 +141,7 @@ export default function ImportPanel({ entityType }: ImportPanelProps) {
     if (result.success && result.preview) {
       setPreview(result.preview);
     } else {
-      setUploadError(result.error || 'Không thể xử lý file import');
+      setUploadError(result.error || t('uploadFailed'));
       setFileErrors(result.fileErrors);
     }
   }
@@ -198,7 +200,7 @@ export default function ImportPanel({ entityType }: ImportPanelProps) {
     if (!result.success) {
       setFieldFixes((prev) => ({
         ...prev,
-        [key]: { draft, submitting: false, error: result.error || 'Không thể xác nhận' },
+        [key]: { draft, submitting: false, error: result.error || t('cannotConfirm') },
       }));
       return;
     }
@@ -241,7 +243,7 @@ export default function ImportPanel({ entityType }: ImportPanelProps) {
     setResolvingCompany(false);
 
     if (!result.success) {
-      setCompanyModal((prev) => (prev ? { ...prev, error: result.error || 'Không thể gán công ty' } : prev));
+      setCompanyModal((prev) => (prev ? { ...prev, error: result.error || t('assignCompanyFailed') } : prev));
       return;
     }
     if (result.row) replaceRow(result.row);
@@ -321,7 +323,7 @@ export default function ImportPanel({ entityType }: ImportPanelProps) {
   async function handleConfirm() {
     if (!preview) return;
     if (!note.trim()) {
-      setConfirmError('Ghi chú là bắt buộc (dùng cho audit log).');
+      setConfirmError(t('noteRequired'));
       return;
     }
     setConfirming(true);
@@ -334,7 +336,7 @@ export default function ImportPanel({ entityType }: ImportPanelProps) {
     if (result.success && result.result) {
       setConfirmResult(result.result);
     } else {
-      setConfirmError(result.error || 'Không thể xác nhận import');
+      setConfirmError(result.error || t('confirmFailed'));
     }
   }
 
@@ -342,14 +344,13 @@ export default function ImportPanel({ entityType }: ImportPanelProps) {
     return (
       <div>
         <div className="dm-import-upload-card">
-          <h2>Upload file để import</h2>
+          <h2>{t('uploadTitle')}</h2>
           <p className="dm-hint">
-            Chấp nhận CSV/XLSX, tối đa 5000 dòng. Cột phải khớp đúng tên trường trong DB — tải thử 1
-            file export cùng entity này ở tab Export để biết đúng định dạng cột.
+            {t('uploadHint')}
           </p>
 
           <label className="dm-file-label">
-            Chọn file
+            {t('chooseFile')}
             <input
               type="file"
               accept=".csv,.xlsx"
@@ -365,16 +366,16 @@ export default function ImportPanel({ entityType }: ImportPanelProps) {
             <ul className="dm-hint-list" style={{ marginBottom: '14px' }}>
               {fileErrors.slice(0, 20).map((err, idx) => (
                 <li key={idx}>
-                  Dòng {err.row_number}, cột &quot;{err.field_name}&quot;: {err.message}
+                  {t('fileErrorLine', { row: err.row_number, field: err.field_name, message: err.message })}
                 </li>
               ))}
-              {fileErrors.length > 20 && <li>… và {fileErrors.length - 20} lỗi khác trong file.</li>}
+              {fileErrors.length > 20 && <li>{t('andMoreErrors', { count: fileErrors.length - 20 })}</li>}
             </ul>
           )}
 
           <div className="form-actions">
             <button type="button" className="btn btn-primary" onClick={handleUpload} disabled={!file || uploading}>
-              {uploading ? 'Đang xử lý…' : 'Tải lên & xem trước'}
+              {uploading ? t('processing') : t('uploadAndPreview')}
             </button>
           </div>
         </div>
@@ -385,15 +386,15 @@ export default function ImportPanel({ entityType }: ImportPanelProps) {
   if (confirmResult) {
     return (
       <div className="dm-import-upload-card">
-        <h2>Import xong</h2>
+        <h2>{t('importDone')}</h2>
         <p className="dm-hint">
-          Đã tạo mới <strong>{confirmResult.created}</strong> bản ghi
-          {confirmResult.updated > 0 && <> — ghi đè {confirmResult.updated} bản ghi</>}
-          {confirmResult.skipped > 0 && <> — bỏ qua {confirmResult.skipped} dòng</>}.
+          {t('createdCount', { count: confirmResult.created })}
+          {confirmResult.updated > 0 && <> — {t('updatedCount', { count: confirmResult.updated })}</>}
+          {confirmResult.skipped > 0 && <> — {t('skippedCount', { count: confirmResult.skipped })}</>}.
         </p>
         <div className="form-actions">
           <button type="button" className="btn btn-primary" onClick={resetAll}>
-            Import file khác
+            {t('importAnotherFile')}
           </button>
         </div>
       </div>
@@ -405,8 +406,8 @@ export default function ImportPanel({ entityType }: ImportPanelProps) {
   const missingBatchRows = missingBatchChoiceRows(preview.rows);
   const pendingCompany = pendingCompanyRows(preview.rows);
   const blockedReasons: string[] = [];
-  if (pendingCompany.length > 0) blockedReasons.push(`${pendingCompany.length} dòng chưa chọn công ty`);
-  if (missingBatchRows.length > 0) blockedReasons.push(`${missingBatchRows.length} dòng trùng trong file chưa chọn xử lý`);
+  if (pendingCompany.length > 0) blockedReasons.push(t('blockedPendingCompany', { count: pendingCompany.length }));
+  if (missingBatchRows.length > 0) blockedReasons.push(t('blockedMissingBatch', { count: missingBatchRows.length }));
   const confirmBlocked = blockedReasons.length > 0;
 
   return (
@@ -414,38 +415,38 @@ export default function ImportPanel({ entityType }: ImportPanelProps) {
       <div className="dm-preview-summary">
         <div className="dm-stat">
           <strong>{preview.summary.total_rows}</strong>
-          <span>Tổng số dòng</span>
+          <span>{t('totalRows')}</span>
         </div>
         <div className="dm-stat dm-stat-new">
           <strong>{cleanCount}</strong>
-          <span>Sẽ tạo mới ngay</span>
+          <span>{t('willCreateNow')}</span>
         </div>
         <div className="dm-stat dm-stat-conflict">
           <strong>{preview.summary.conflicts}</strong>
-          <span>Trùng dữ liệu</span>
+          <span>{t('conflicts')}</span>
         </div>
         <div className="dm-stat dm-stat-inactive">
           <strong>{preview.summary.conflicts_inactive}</strong>
-          <span>Trùng (đã ngừng)</span>
+          <span>{t('conflictsInactive')}</span>
         </div>
         <div className="dm-stat dm-stat-resolve">
           <strong>{preview.summary.pending_company_resolution}</strong>
-          <span>Cần chọn công ty</span>
+          <span>{t('needsCompany')}</span>
         </div>
         <div className="dm-stat dm-stat-level-resolve">
           <strong>{preview.summary.pending_level_resolution}</strong>
-          <span>Cần chọn level</span>
+          <span>{t('needsLevel')}</span>
         </div>
         <div className="dm-stat dm-stat-fix">
           <strong>{preview.summary.pending_field_fix}</strong>
-          <span>Lỗi định dạng</span>
+          <span>{t('formatErrors')}</span>
         </div>
       </div>
 
       {flaggedCount > 0 && (
         <p className="dm-hint">
-          {flaggedCount} dòng cần xử lý tay — sửa/chọn ngay tại bảng bên dưới, không cần sửa file gốc.
-          {refreshing && ' (đang tải lại preview…)'}
+          {t('flaggedRowsHint', { count: flaggedCount })}
+          {refreshing && ` ${t('refreshingPreview')}`}
         </p>
       )}
 
@@ -454,33 +455,33 @@ export default function ImportPanel({ entityType }: ImportPanelProps) {
           <thead>
             <tr>
               <th>#</th>
-              <th>Trạng thái</th>
+              <th>{t('colStatus')}</th>
               {DISPLAY_FIELDS[entityType].map((f) => (
                 <th key={f}>{f}</th>
               ))}
-              <th>Xử lý</th>
+              <th>{t('colHandle')}</th>
             </tr>
           </thead>
           <tbody>
             {preview.rows.map((row) => {
               const clean = isRowFullyClean(row);
-              const statusInfo = STATUS_LABEL[row.conflict_status];
+              const statusInfo = STATUS_KEYS[row.conflict_status];
               const choice = rowChoices[row.row_index];
 
               return (
                 <tr key={row.row_index} className={clean ? '' : 'dm-row-flag'}>
                   <td>{row.row_index + 1}</td>
                   <td>
-                    <span className={`dm-tag ${statusInfo.tagClass}`}>{statusInfo.text}</span>
+                    <span className={`dm-tag ${statusInfo.tagClass}`}>{t(statusInfo.key)}</span>
                     {row.needs_field_fix && (
                       <div>
-                        <span className="dm-tag dm-tag-fix">Lỗi định dạng</span>
+                        <span className="dm-tag dm-tag-fix">{t('formatErrors')}</span>
                       </div>
                     )}
                     {row.needs_level_resolve && (
                       <div>
                         <span className={`dm-tag ${choice?.levelCode ? 'dm-tag-level-ok' : 'dm-tag-level'}`}>
-                          {choice?.levelCode ? `Level: ${choice.levelCode}` : 'Cần chọn level'}
+                          {choice?.levelCode ? t('levelChosen', { level: choice.levelCode }) : t('needsLevel')}
                         </span>
                       </div>
                     )}
@@ -505,7 +506,7 @@ export default function ImportPanel({ entityType }: ImportPanelProps) {
                                 value={draft}
                                 onChange={(e) => setFieldDraft(row.row_index, f, e.target.value)}
                               >
-                                <option value="">— chọn —</option>
+                                <option value="">{t('chooseEllipsis')}</option>
                                 {fieldError.options.map((opt) => (
                                   <option key={opt} value={opt}>
                                     {opt}
@@ -527,7 +528,7 @@ export default function ImportPanel({ entityType }: ImportPanelProps) {
                               disabled={fixState?.submitting}
                               onClick={() => handleVerifyField(row, f)}
                             >
-                              {fixState?.submitting ? '…' : 'Xác nhận'}
+                              {fixState?.submitting ? '…' : t('confirm')}
                             </button>
                           </div>
                           {fixState?.error && (
@@ -540,28 +541,30 @@ export default function ImportPanel({ entityType }: ImportPanelProps) {
 
                   <td>
                     {clean ? (
-                      <span style={{ color: '#2E8B57', fontWeight: 500 }}>Sẽ tạo mới</span>
+                      <span style={{ color: '#2E8B57', fontWeight: 500 }}>{t('willCreate')}</span>
                     ) : row.conflict_status === 'pending_company_resolution' ? (
                       <div className="dm-resolve-block">
-                        <span className="dm-resolve-current dm-resolve-pending">Chưa chọn công ty</span>
-                        <span className="dm-resolve-raw">Trong file: {String(row.data.company_name ?? '')}</span>
+                        <span className="dm-resolve-current dm-resolve-pending">{t('companyNotChosen')}</span>
+                        <span className="dm-resolve-raw">{t('inFile')}: {String(row.data.company_name ?? '')}</span>
                         <button type="button" className="btn btn-ghost dm-btn-choose-company" onClick={() => openCompanyModal(row)}>
-                          Chọn công ty…
+                          {t('chooseCompanyEllipsis')}
                         </button>
                       </div>
                     ) : row.conflict_status === 'conflict_in_batch' ? (
                       <div className="dm-action-radios">
                         <span className="dm-dup-detail">
-                          Trùng với dòng {(row.duplicate_in_batch?.other_row_index ?? -1) + 1} trong file
-                          ({Math.round((row.duplicate_in_batch?.match_score ?? 0) * 100)}% khớp:{' '}
-                          {row.duplicate_in_batch?.matched_fields.join(', ')})
+                          {t('duplicateWithRow', {
+                            row: (row.duplicate_in_batch?.other_row_index ?? -1) + 1,
+                            percent: Math.round((row.duplicate_in_batch?.match_score ?? 0) * 100),
+                            fields: row.duplicate_in_batch?.matched_fields.join(', ') ?? '',
+                          })}
                         </span>
                         {[
-                          ['skip', 'Bỏ qua dòng này'],
-                          ['create', 'Vẫn tạo dòng này'],
-                          ['keep_this', 'Giữ dòng này, bỏ dòng kia'],
-                          ['keep_other', 'Giữ dòng kia, bỏ dòng này'],
-                          ['import_both', 'Cả 2 đều đúng — giữ cả 2'],
+                          ['skip', t('skipRow')],
+                          ['create', t('stillCreateRow')],
+                          ['keep_this', t('keepThisRow')],
+                          ['keep_other', t('keepOtherRow')],
+                          ['import_both', t('bothCorrect')],
                         ].map(([value, label]) => (
                           <label key={value} className="dm-radio-opt">
                             <input
@@ -583,7 +586,7 @@ export default function ImportPanel({ entityType }: ImportPanelProps) {
                             checked={(choice?.action ?? 'skip') === 'skip'}
                             onChange={() => updateRowChoice(row.row_index, { action: 'skip' })}
                           />
-                          Bỏ qua dòng này
+                          {t('skipRow')}
                         </label>
                         <label className="dm-radio-opt">
                           <input
@@ -592,27 +595,27 @@ export default function ImportPanel({ entityType }: ImportPanelProps) {
                             checked={choice?.action === 'update'}
                             onChange={() => updateRowChoice(row.row_index, { action: 'update' })}
                           />
-                          Ghi đè bản ghi đã có
+                          {t('overwriteExisting')}
                         </label>
                         {row.conflict_status === 'conflict_inactive' && choice?.action === 'update' && (
                           <div className="dm-inactive-confirm">
-                            <span className="dm-inactive-warn">Bản ghi đã ngừng hoạt động — ghi đè sẽ kích hoạt lại.</span>
+                            <span className="dm-inactive-warn">{t('inactiveWarning')}</span>
                             <div className="dm-inactive-btns">
                               <button
                                 type="button"
                                 className={`btn ${choice?.confirmReactivate ? 'active' : ''}`}
                                 onClick={() => updateRowChoice(row.row_index, { confirmReactivate: true })}
                               >
-                                Xác nhận kích hoạt lại
+                                {t('confirmReactivate')}
                               </button>
                             </div>
                           </div>
                         )}
                       </div>
                     ) : row.needs_level_resolve ? (
-                      <span className="dm-action-fixed">Chọn level ở cột bên trái để tạo mới</span>
+                      <span className="dm-action-fixed">{t('chooseLevelHint')}</span>
                     ) : (
-                      <span className="dm-action-fixed">Sửa ô lỗi ở trên để tạo mới</span>
+                      <span className="dm-action-fixed">{t('fixErrorHint')}</span>
                     )}
 
                     {row.needs_level_resolve && (
@@ -622,7 +625,7 @@ export default function ImportPanel({ entityType }: ImportPanelProps) {
                         onChange={(e) => updateRowChoice(row.row_index, { levelCode: e.target.value || undefined })}
                         style={{ marginTop: '6px' }}
                       >
-                        <option value="">— chọn level —</option>
+                        <option value="">{t('chooseLevelOption')}</option>
                         {LEVEL_CODE_VALUES.map((lvl) => (
                           <option key={lvl} value={lvl}>
                             {lvl}
@@ -641,17 +644,17 @@ export default function ImportPanel({ entityType }: ImportPanelProps) {
       <div id="dm-confirm-form">
         {confirmBlocked && (
           <p id="dm-confirm-blocked-hint" style={{ display: 'block' }}>
-            Chưa thể xác nhận — còn {blockedReasons.join(' và ')}.
+            {t('confirmBlockedHint', { reasons: blockedReasons.join(t('and')) })}
           </p>
         )}
 
         <label className="dm-note-label">
-          Ghi chú lần import này <span className="dm-required">*</span>
+          {t('importNoteLabel')} <span className="dm-required">*</span>
           <textarea
             value={note}
             onChange={(e) => setNote(e.target.value)}
             rows={3}
-            placeholder="Bắt buộc — lưu vào audit log, vd: 'Import job từ đợt crawl tháng 9'"
+            placeholder={t('importNotePlaceholder')}
           />
         </label>
 
@@ -661,7 +664,7 @@ export default function ImportPanel({ entityType }: ImportPanelProps) {
 
         <div className="form-actions">
           <button type="button" className="btn btn-ghost" onClick={resetAll} disabled={confirming}>
-            Huỷ, chọn file khác
+            {t('cancelChooseAnother')}
           </button>
           <button
             type="button"
@@ -669,7 +672,7 @@ export default function ImportPanel({ entityType }: ImportPanelProps) {
             onClick={handleConfirm}
             disabled={confirming || confirmBlocked}
           >
-            {confirming ? 'Đang xác nhận…' : 'Xác nhận import'}
+            {confirming ? t('confirming') : t('confirmImport')}
           </button>
         </div>
       </div>
@@ -679,14 +682,14 @@ export default function ImportPanel({ entityType }: ImportPanelProps) {
         {companyModal && (
           <div className="dm-modal">
             <div className="dm-modal-head">
-              <h3>Chọn công ty</h3>
+              <h3>{t('chooseCompanyTitle')}</h3>
               <button type="button" className="dm-modal-close" onClick={() => setCompanyModal(null)}>
                 ×
               </button>
             </div>
             <div className="dm-modal-body">
               <p className="dm-modal-hint">
-                Dòng {companyModal.rowIndex + 1} — công ty trong file:{' '}
+                {t('modalRowLabel', { row: companyModal.rowIndex + 1 })}{' '}
                 {String(preview.rows.find((r) => r.row_index === companyModal.rowIndex)?.data.company_name ?? '')}
               </p>
               {companyModal.error && <p className="dm-modal-error">{companyModal.error}</p>}
@@ -702,16 +705,16 @@ export default function ImportPanel({ entityType }: ImportPanelProps) {
                       >
                         <span className="dm-modal-suggestion-name">
                           {s.company_name}
-                          {!s.is_active && ' (đã ngừng hoạt động)'}
+                          {!s.is_active && ` ${t('inactiveSuffix')}`}
                         </span>
-                        {s.tax_id && <span className="dm-modal-suggestion-tax">MST: {s.tax_id}</span>}
+                        {s.tax_id && <span className="dm-modal-suggestion-tax">{t('taxIdShort')}: {s.tax_id}</span>}
                         <span className="dm-modal-suggestion-score">{Math.round(s.similarity * 100)}%</span>
                       </button>
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p className="dm-modal-hint">Không tìm thấy công ty nào gần giống trong hệ thống.</p>
+                <p className="dm-modal-hint">{t('noSimilarCompany')}</p>
               )}
               <button
                 type="button"
@@ -719,7 +722,7 @@ export default function ImportPanel({ entityType }: ImportPanelProps) {
                 disabled={resolvingCompany}
                 onClick={() => handleChooseCompany(null)}
               >
-                {resolvingCompany ? 'Đang xử lý…' : '+ Tạo công ty mới theo tên trong file'}
+                {resolvingCompany ? t('processing') : t('createNewCompany')}
               </button>
             </div>
           </div>

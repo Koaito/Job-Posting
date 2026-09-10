@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { changePassword } from '@/app/actions/auth';
 
 /**
@@ -17,6 +18,7 @@ import { changePassword } from '@/app/actions/auth';
  * không có cách nào "ở lại trang" sau khi đổi thành công.
  */
 export default function ProfileSecurityForm({ mustChangePassword }: { mustChangePassword: boolean }) {
+  const t = useTranslations('profileSecurityForm');
   const router = useRouter();
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -29,15 +31,15 @@ export default function ProfileSecurityForm({ mustChangePassword }: { mustChange
     setError('');
 
     if (newPassword.length < 8) {
-      setError('Mật khẩu mới phải có ít nhất 8 ký tự.');
+      setError(t('tooShort'));
       return;
     }
     if (newPassword !== confirmPassword) {
-      setError('Xác nhận mật khẩu không khớp.');
+      setError(t('mismatch'));
       return;
     }
     if (!mustChangePassword && !oldPassword) {
-      setError('Vui lòng nhập mật khẩu hiện tại.');
+      setError(t('oldPasswordRequired'));
       return;
     }
 
@@ -49,10 +51,10 @@ export default function ProfileSecurityForm({ mustChangePassword }: { mustChange
         router.push('/login');
         router.refresh();
       } else {
-        setError(result.error || 'Đổi mật khẩu thất bại.');
+        setError(result.error || t('changeFailed'));
       }
     } catch {
-      setError('Đã xảy ra lỗi. Vui lòng thử lại.');
+      setError(t('genericError'));
     } finally {
       setLoading(false);
     }
@@ -63,7 +65,7 @@ export default function ProfileSecurityForm({ mustChangePassword }: { mustChange
       {error && <div className="flash flash-error">{error}</div>}
 
       <label>
-        Mật khẩu hiện tại{mustChangePassword ? ' (bỏ trống nếu là mật khẩu tạm)' : ''}
+        {t('oldPassword')}{mustChangePassword ? ` ${t('oldPasswordHint')}` : ''}
         <input
           type="password"
           value={oldPassword}
@@ -75,12 +77,12 @@ export default function ProfileSecurityForm({ mustChangePassword }: { mustChange
       </label>
 
       <label>
-        Mật khẩu mới
+        {t('newPassword')}
         <input
           type="password"
           value={newPassword}
           onChange={(e) => setNewPassword(e.target.value)}
-          placeholder="Tối thiểu 8 ký tự"
+          placeholder={t('minChars')}
           required
           minLength={8}
           disabled={loading}
@@ -89,12 +91,12 @@ export default function ProfileSecurityForm({ mustChangePassword }: { mustChange
       </label>
 
       <label>
-        Xác nhận mật khẩu mới
+        {t('confirmPassword')}
         <input
           type="password"
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
-          placeholder="Nhập lại mật khẩu mới"
+          placeholder={t('confirmPlaceholder')}
           required
           minLength={8}
           disabled={loading}
@@ -103,7 +105,7 @@ export default function ProfileSecurityForm({ mustChangePassword }: { mustChange
       </label>
 
       <button type="submit" className="btn btn-primary" disabled={loading}>
-        {loading ? 'Đang đổi mật khẩu...' : 'Đổi mật khẩu'}
+        {loading ? t('changing') : t('changePassword')}
       </button>
     </form>
   );

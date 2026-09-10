@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { getExportPreview, exportEntity } from '@/app/actions/import-export';
 import type {
   ImportExportEntityType,
@@ -54,6 +55,7 @@ interface ExportPanelProps {
 }
 
 export default function ExportPanel({ entityType }: ExportPanelProps) {
+  const t = useTranslations('exportPanel');
   const [status, setStatus] = useState('');
   const [isActive, setIsActive] = useState<'any' | 'true' | 'false'>('any');
   const [companyId, setCompanyId] = useState('');
@@ -88,7 +90,7 @@ export default function ExportPanel({ entityType }: ExportPanelProps) {
       setPreview(result.preview);
     } else {
       setPreview(null);
-      setError(result.error || 'Không thể xem trước dữ liệu export');
+      setError(result.error || t('previewFailed'));
     }
   }
 
@@ -99,7 +101,7 @@ export default function ExportPanel({ entityType }: ExportPanelProps) {
     setDownloading(false);
 
     if (!result.success || !result.base64 || !result.filename) {
-      setError(result.error || 'Không thể tải file export');
+      setError(result.error || t('downloadFailed'));
       return;
     }
 
@@ -116,19 +118,18 @@ export default function ExportPanel({ entityType }: ExportPanelProps) {
 
   return (
     <div className="dm-export-card">
-      <h2>Xem trước & tải file export</h2>
+      <h2>{t('title')}</h2>
       <p className="dm-hint">
-        Chọn điều kiện lọc rồi bấm &quot;Xem trước&quot; để biết sẽ xuất bao nhiêu dòng, hoặc bấm
-        thẳng &quot;Tải file&quot; nếu đã chắc chắn (không lọc gì = lấy toàn bộ).
+        {t('hint')}
       </p>
 
       <div className="dm-export-filters">
         <div className="form-grid">
           {hasStatusFilter(entityType) && (
             <label className="span-1">
-              Trạng thái
+              {t('status')}
               <select value={status} onChange={(e) => setStatus(e.target.value)}>
-                <option value="">Tất cả</option>
+                <option value="">{t('allStatuses')}</option>
                 {(STATUS_OPTIONS[entityType] || []).map((opt) => (
                   <option key={opt.value} value={opt.value}>
                     {opt.label}
@@ -140,64 +141,64 @@ export default function ExportPanel({ entityType }: ExportPanelProps) {
 
           {hasIsActiveFilter(entityType) && (
             <label className="span-1">
-              Còn hoạt động
+              {t('isActive')}
               <select
                 value={isActive}
                 onChange={(e) => setIsActive(e.target.value as 'any' | 'true' | 'false')}
               >
-                <option value="any">Cả 2</option>
-                <option value="true">Đang hoạt động</option>
-                <option value="false">Đã ngừng</option>
+                <option value="any">{t('both')}</option>
+                <option value="true">{t('active')}</option>
+                <option value="false">{t('inactive')}</option>
               </select>
             </label>
           )}
 
           {hasCompanyIdFilter(entityType) && (
             <label className="span-2">
-              Company ID (UUID, tuỳ chọn)
+              {t('companyIdLabel')}
               <input
                 type="text"
                 value={companyId}
                 onChange={(e) => setCompanyId(e.target.value)}
-                placeholder="dán company_id nếu chỉ muốn xuất theo 1 công ty"
+                placeholder={t('companyIdPlaceholder')}
               />
             </label>
           )}
 
           <label className="span-1">
-            Lọc theo ngày
+            {t('dateField')}
             <select
               value={dateField}
               onChange={(e) => setDateField(e.target.value as 'created_at' | 'updated_at')}
             >
-              <option value="created_at">Ngày tạo</option>
-              <option value="updated_at">Ngày cập nhật</option>
+              <option value="created_at">{t('createdAt')}</option>
+              <option value="updated_at">{t('updatedAt')}</option>
             </select>
           </label>
 
           <label className="span-1">
-            Từ ngày
+            {t('fromDate')}
             <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
           </label>
 
           <label className="span-1">
-            Đến ngày
+            {t('toDate')}
             <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
           </label>
 
           <label className="span-1">
-            Chỉ lấy N dòng mới nhất
+            {t('limitLabel')}
             <input
               type="number"
               min={1}
               value={limit}
               onChange={(e) => setLimit(e.target.value)}
-              placeholder="để trống = không giới hạn"
+              placeholder={t('limitPlaceholder')}
             />
           </label>
 
           <label className="span-1">
-            Định dạng file
+            {t('formatLabel')}
             <select value={format} onChange={(e) => setFormat(e.target.value as 'csv' | 'xlsx')}>
               <option value="csv">CSV</option>
               <option value="xlsx">XLSX</option>
@@ -207,7 +208,7 @@ export default function ExportPanel({ entityType }: ExportPanelProps) {
 
         <div className="form-actions">
           <button type="button" className="btn btn-ghost" onClick={handlePreview} disabled={loadingPreview}>
-            {loadingPreview ? 'Đang xem trước…' : 'Xem trước'}
+            {loadingPreview ? t('previewing') : t('preview')}
           </button>
         </div>
       </div>
@@ -219,11 +220,11 @@ export default function ExportPanel({ entityType }: ExportPanelProps) {
           <div className="dm-preview-summary">
             <div className="dm-stat">
               <strong>{preview.total_matching}</strong>
-              <span>Khớp filter</span>
+              <span>{t('matchingFilter')}</span>
             </div>
             <div className="dm-stat dm-stat-new">
               <strong>{preview.will_export}</strong>
-              <span>Sẽ có trong file</span>
+              <span>{t('willExport')}</span>
             </div>
           </div>
 
@@ -249,13 +250,13 @@ export default function ExportPanel({ entityType }: ExportPanelProps) {
               </table>
             </div>
           )}
-          <p className="dm-hint-muted">Mẫu tối đa 20 dòng đầu (theo ngày tạo mới nhất).</p>
+          <p className="dm-hint-muted">{t('sampleHint')}</p>
         </div>
       )}
 
       <div className="dm-export-actions">
         <button type="button" className="btn btn-primary" onClick={handleDownload} disabled={downloading}>
-          {downloading ? 'Đang tải…' : `Tải file (.${format})`}
+          {downloading ? t('downloading') : t('downloadFile', { format })}
         </button>
       </div>
     </div>

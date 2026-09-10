@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { createStaff, updateStaffRole, updateStaffActiveStatus } from '@/app/actions/staff';
 import type { User } from '@/types/auth';
 
@@ -28,6 +29,7 @@ interface StaffAccountsManagerProps {
 }
 
 export function StaffAccountsManager({ initialStaff, currentUserId, isAdmin }: StaffAccountsManagerProps) {
+  const t = useTranslations('staffAccountsManager');
   const router = useRouter();
   const [staff, setStaff] = useState(initialStaff);
   const [isPending, startTransition] = useTransition();
@@ -50,7 +52,7 @@ export function StaffAccountsManager({ initialStaff, currentUserId, isAdmin }: S
         setStaff((prev) => [...prev, result.user!]);
         router.refresh();
       } else {
-        setError(result.error || 'Không thể tạo tài khoản');
+        setError(result.error || t('createFailed'));
       }
     });
   };
@@ -62,7 +64,7 @@ export function StaffAccountsManager({ initialStaff, currentUserId, isAdmin }: S
       if (result.success && result.user) {
         setStaff((prev) => prev.map((s) => (s.ss_user_id === ssUserId ? result.user! : s)));
       } else {
-        setError(result.error || 'Không thể đổi vai trò');
+        setError(result.error || t('roleChangeFailed'));
       }
     });
   };
@@ -74,7 +76,7 @@ export function StaffAccountsManager({ initialStaff, currentUserId, isAdmin }: S
       if (result.success && result.user) {
         setStaff((prev) => prev.map((s) => (s.ss_user_id === ssUserId ? result.user! : s)));
       } else {
-        setError(result.error || 'Không thể đổi trạng thái tài khoản');
+        setError(result.error || t('statusChangeFailed'));
       }
     });
   };
@@ -85,12 +87,10 @@ export function StaffAccountsManager({ initialStaff, currentUserId, isAdmin }: S
 
       {createdAccount && (
         <div className="flash flash-success" style={{ marginBottom: '16px' }}>
-          <strong>Đã tạo tài khoản {createdAccount.email}.</strong> Mật khẩu tạm (chỉ hiện{' '}
-          <u>đúng 1 lần</u>, hãy copy ngay và gửi cho người dùng qua kênh riêng — Slack/nói miệng,
-          không gửi qua email):{' '}
+          <strong>{t('accountCreated', { email: createdAccount.email })}</strong> {t('tempPasswordNotice')}{' '}
           <code style={{ userSelect: 'all' }}>{createdAccount.temp_password}</code>{' '}
           <button type="button" className="btn" onClick={() => setCreatedAccount(null)}>
-            Đóng
+            {t('close')}
           </button>
         </div>
       )}
@@ -99,7 +99,7 @@ export function StaffAccountsManager({ initialStaff, currentUserId, isAdmin }: S
         <div style={{ marginBottom: '22px' }}>
           {!showCreateForm ? (
             <button type="button" className="btn btn-primary" onClick={() => setShowCreateForm(true)}>
-              + Thêm tài khoản nhân viên
+              {t('addAccount')}
             </button>
           ) : (
             <form
@@ -108,7 +108,7 @@ export function StaffAccountsManager({ initialStaff, currentUserId, isAdmin }: S
               style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'flex-end' }}
             >
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label htmlFor="full_name">Họ tên</label>
+                <label htmlFor="full_name">{t('fullName')}</label>
                 <input id="full_name" name="full_name" type="text" required disabled={isPending} />
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -116,17 +116,17 @@ export function StaffAccountsManager({ initialStaff, currentUserId, isAdmin }: S
                 <input id="email" name="email" type="email" required disabled={isPending} />
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label htmlFor="role">Vai trò</label>
+                <label htmlFor="role">{t('role')}</label>
                 <select id="role" name="role" defaultValue="ss_team" disabled={isPending}>
                   <option value="ss_team">ss_team</option>
                   <option value="admin">admin</option>
                 </select>
               </div>
               <button type="submit" className="btn btn-primary" disabled={isPending}>
-                {isPending ? 'Đang tạo...' : 'Tạo tài khoản'}
+                {isPending ? t('creating') : t('createAccount')}
               </button>
               <button type="button" className="btn" onClick={() => setShowCreateForm(false)} disabled={isPending}>
-                Huỷ
+                {t('cancel')}
               </button>
             </form>
           )}
@@ -138,12 +138,12 @@ export function StaffAccountsManager({ initialStaff, currentUserId, isAdmin }: S
           <table className="contact-table">
             <thead>
               <tr>
-                <th>Họ tên</th>
+                <th>{t('colFullName')}</th>
                 <th>Email</th>
-                <th>Vai trò</th>
-                <th>Trạng thái</th>
-                <th>Đăng nhập gần nhất</th>
-                {isAdmin && <th>Thao tác</th>}
+                <th>{t('colRole')}</th>
+                <th>{t('colStatus')}</th>
+                <th>{t('colLastLogin')}</th>
+                {isAdmin && <th>{t('colActions')}</th>}
               </tr>
             </thead>
             <tbody>
@@ -153,7 +153,7 @@ export function StaffAccountsManager({ initialStaff, currentUserId, isAdmin }: S
                   <tr key={s.ss_user_id}>
                     <td>
                       <strong>{s.full_name}</strong>
-                      {isSelf && <span className="you-badge">Bạn</span>}
+                      {isSelf && <span className="you-badge">{t('you')}</span>}
                     </td>
                     <td className="muted">{s.email}</td>
                     <td>
@@ -169,9 +169,11 @@ export function StaffAccountsManager({ initialStaff, currentUserId, isAdmin }: S
                         riêng cho domain "tài khoản hoạt động/khoá" này,
                         nên fix đúng là bỏ chip mượn nhầm, không tự chế
                         thêm class mới không có trong style.css. */}
-                    <td>{s.is_active ? 'Hoạt động' : 'Đã khoá'}</td>
+                    <td>{s.is_active ? t('statusActive') : t('statusLocked')}</td>
                     <td className="muted">
-                      {s.last_login_at ? new Date(s.last_login_at).toLocaleString('vi-VN') : 'Chưa đăng nhập'}
+                      {/* CỐ Ý CHƯA dịch: toLocaleString('vi-VN') — thuộc
+                          phạm vi Polish, không xử lý ở đợt Language này. */}
+                      {s.last_login_at ? new Date(s.last_login_at).toLocaleString('vi-VN') : t('neverLoggedIn')}
                     </td>
                     {isAdmin && (
                       <td>
@@ -195,7 +197,7 @@ export function StaffAccountsManager({ initialStaff, currentUserId, isAdmin }: S
                               disabled={isPending}
                               onClick={() => handleToggleActive(s.ss_user_id, s.is_active)}
                             >
-                              {s.is_active ? 'Khoá' : 'Mở khoá'}
+                              {s.is_active ? t('lock') : t('unlock')}
                             </button>
                           </div>
                         )}
@@ -208,7 +210,7 @@ export function StaffAccountsManager({ initialStaff, currentUserId, isAdmin }: S
           </table>
         </div>
       ) : (
-        <div className="empty-state">Không có tài khoản nhân viên nào.</div>
+        <div className="empty-state">{t('empty')}</div>
       )}
     </div>
   );

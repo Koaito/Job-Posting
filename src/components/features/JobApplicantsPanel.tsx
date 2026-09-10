@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { getCvSignedUrl } from '@/app/actions/me';
 import type { JobApplicant, JobSaver } from '@/types/auth';
 
@@ -19,6 +20,7 @@ interface JobApplicantsPanelProps {
 }
 
 export default function JobApplicantsPanel({ applicants, savers }: JobApplicantsPanelProps) {
+  const t = useTranslations('jobApplicantsPanel');
   const [tab, setTab] = useState<'applicants' | 'savers'>('applicants');
   const [loadingCvId, setLoadingCvId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -32,7 +34,7 @@ export default function JobApplicantsPanel({ applicants, savers }: JobApplicants
     if (result.success && result.signedUrl) {
       window.open(result.signedUrl, '_blank', 'noopener,noreferrer');
     } else {
-      setError(result.error || 'Không thể tải CV lúc này');
+      setError(result.error || t('cvLoadFailed'));
     }
   }
 
@@ -43,13 +45,13 @@ export default function JobApplicantsPanel({ applicants, savers }: JobApplicants
           onClick={() => setTab('applicants')}
           className={tab === 'applicants' ? 'btn btn-primary' : 'btn btn-ghost'}
         >
-          Người đã ứng tuyển ({applicants.length})
+          {t('applicantsTab', { count: applicants.length })}
         </button>
         <button
           onClick={() => setTab('savers')}
           className={tab === 'savers' ? 'btn btn-primary' : 'btn btn-ghost'}
         >
-          Người đã lưu ({savers.length})
+          {t('saversTab', { count: savers.length })}
         </button>
       </div>
 
@@ -57,18 +59,18 @@ export default function JobApplicantsPanel({ applicants, savers }: JobApplicants
 
       {tab === 'applicants' ? (
         applicants.length === 0 ? (
-          <p className="muted">Chưa có ai ứng tuyển job này.</p>
+          <p className="muted">{t('noApplicants')}</p>
         ) : (
           <div className="contact-table-wrap">
             <table className="contact-table">
             <thead>
               <tr>
-                <th>Họ tên</th>
-                <th>Email</th>
-                <th>SĐT</th>
-                <th>Ghi chú</th>
-                <th>Ngày ứng tuyển</th>
-                <th>CV</th>
+                <th>{t('colName')}</th>
+                <th>{t('colEmail')}</th>
+                <th>{t('colPhone')}</th>
+                <th>{t('colNote')}</th>
+                <th>{t('colAppliedAt')}</th>
+                <th>{t('colCv')}</th>
               </tr>
             </thead>
             <tbody>
@@ -78,6 +80,8 @@ export default function JobApplicantsPanel({ applicants, savers }: JobApplicants
                   <td>{a.email}</td>
                   <td>{a.phone || '—'}</td>
                   <td>{a.note || '—'}</td>
+                  {/* CỐ Ý CHƯA dịch: toLocaleDateString('vi-VN') — thuộc
+                      phạm vi Polish, không xử lý ở đợt Language này. */}
                   <td>{new Date(a.applied_at).toLocaleDateString('vi-VN')}</td>
                   <td>
                     {a.cv_url ? (
@@ -86,7 +90,7 @@ export default function JobApplicantsPanel({ applicants, savers }: JobApplicants
                         disabled={loadingCvId === a.application_id}
                         className="btn btn-ghost"
                       >
-                        {loadingCvId === a.application_id ? 'Đang tải...' : 'Xem CV'}
+                        {loadingCvId === a.application_id ? t('loadingCv') : t('viewCv')}
                       </button>
                     ) : (
                       <span className="muted">—</span>
@@ -99,16 +103,16 @@ export default function JobApplicantsPanel({ applicants, savers }: JobApplicants
           </div>
         )
       ) : savers.length === 0 ? (
-        <p className="muted">Chưa có ai lưu job này.</p>
+        <p className="muted">{t('noSavers')}</p>
       ) : (
         <div className="contact-table-wrap">
           <table className="contact-table">
             <thead>
               <tr>
-                <th>Họ tên</th>
-                <th>Email</th>
-                <th>SĐT</th>
-                <th>Ngày lưu</th>
+                <th>{t('colName')}</th>
+                <th>{t('colEmail')}</th>
+                <th>{t('colPhone')}</th>
+                <th>{t('colSavedAt')}</th>
               </tr>
             </thead>
             <tbody>
