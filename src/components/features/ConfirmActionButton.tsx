@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
 import { useToast } from '@/components/ui/toast/ToastProvider';
+import { useKeyboardShortcut } from '@/lib/hooks/useKeyboardShortcut';
 
 /**
  * State machine "xác nhận hành động" dùng chung — trước đây cài lặp lại
@@ -127,6 +128,17 @@ export default function ConfirmActionButton({
   const handleCancel = () => {
     setShowConfirm(false);
   };
+
+  // B.4 Polish (09/2026): Esc đóng card xác nhận đang mở, giống hệt bấm
+  // nút "Hủy". `enabled: showConfirm && !isProcessing` — vừa để listener
+  // chỉ tồn tại lúc card thật sự đang mở (không tốn addEventListener khi
+  // ở trạng thái nút trigger ban đầu), vừa khớp đúng lý do nút "Hủy" bên
+  // dưới cũng bị disabled khi isProcessing: không cho đóng ngang lúc
+  // request đang chạy dở (tránh bug tưởng đã huỷ nhưng request vẫn tiếp
+  // tục xử lý ở nền). Đây cũng là ví dụ tận dụng cơ chế "đổi `enabled`
+  // theo state" đã ghi chú trong useKeyboardShortcut.ts, thay vì tự kiểm
+  // tra `showConfirm` bên trong callback (sẽ dính closure cũ).
+  useKeyboardShortcut('Escape', handleCancel, { enabled: showConfirm && !isProcessing });
 
   if (!showConfirm) {
     return (

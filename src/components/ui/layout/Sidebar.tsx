@@ -54,6 +54,42 @@ export function Sidebar({ user }: SidebarProps) {
     return document.documentElement.classList.contains('sidebar-collapsed');
   });
 
+  // B.3 Polish (mobile responsive, 09/2026): ở khoảng tablet (901–1200px
+  // — đủ hẹp để sidebar full-text 248px chiếm quá nhiều chỗ nội dung,
+  // nhưng CHƯA hẹp tới ngưỡng 900px khiến `.shell` phải stack 1 cột, xem
+  // @media (max-width: 900px) dùng chung ở 10-pagination-responsive.css),
+  // tự thu gọn sidebar về icon-rail — TÁI DÙNG NGUYÊN cơ chế
+  // `sidebar-collapsed` (class + localStorage) đã có sẵn cho nút bấm thủ
+  // công, không viết thêm CSS/class mới nào.
+  //
+  // CHỈ áp dụng khi người dùng CHƯA từng tự bấm nút thu gọn (không có
+  // key `sidebarCollapsed` trong localStorage) — đã bấm rồi thì tôn
+  // trọng đúng lựa chọn thủ công đó ở MỌI kích thước màn hình, kể cả khi
+  // resize qua lại ngưỡng tablet này (không tự ý ghi đè lựa chọn người
+  // dùng đã lưu).
+  useEffect(() => {
+    const query = window.matchMedia('(max-width: 1200px)');
+
+    const applyAuto = (matches: boolean) => {
+      let hasManualPref = false;
+      try {
+        hasManualPref = localStorage.getItem('sidebarCollapsed') !== null;
+      } catch {
+        // localStorage bị chặn (chế độ ẩn danh nghiêm ngặt...) — coi như
+        // chưa có lựa chọn thủ công, vẫn auto theo viewport bình thường
+        // trong phiên hiện tại, chỉ không nhớ được qua lần tải sau.
+      }
+      if (hasManualPref) return;
+      document.documentElement.classList.toggle('sidebar-collapsed', matches);
+      setCollapsed(matches);
+    };
+
+    applyAuto(query.matches);
+    const handleChange = (event: MediaQueryListEvent) => applyAuto(event.matches);
+    query.addEventListener('change', handleChange);
+    return () => query.removeEventListener('change', handleChange);
+  }, []);
+
   useEffect(() => {
     if (!user) return; // guest: chưa đăng nhập, không có gì để poll
     let cancelled = false;

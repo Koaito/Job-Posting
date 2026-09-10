@@ -3,6 +3,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { getLocale } from "next-intl/server";
 import { Sidebar } from "@/components/ui/layout/Sidebar";
 import { ToastProvider } from "@/components/ui/toast/ToastProvider";
+import { KeyboardShortcuts } from "@/components/ui/shortcuts/KeyboardShortcuts";
 import { getCurrentUser } from "@/app/actions/auth";
 import "./globals.css";
 
@@ -80,6 +81,7 @@ export default async function RootLayout({
       <body>
         <NextIntlClientProvider>
           <ToastProvider>
+            <KeyboardShortcuts />
             <div className="shell">
               <Sidebar user={user} />
               <main className="content">{children}</main>

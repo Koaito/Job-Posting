@@ -110,4 +110,34 @@
      narrower mobile .content padding (24px above) — scale it down
      rather than let 3 digits fight for space under ~400px. */
   .error-code { font-size: 72px; }
+
+  /* B.3 Polish (mobile responsive, 09/2026) — added below, same rule as
+     everything above this comment: one shared breakpoint, no per-file
+     @media duplicates. */
+
+  /* .contact-table (05-contact-table.css) is a fixed 6-column layout
+     inside .contact-table-wrap { overflow: hidden }. Below this
+     breakpoint the columns don't fit — `overflow: hidden` was silently
+     CLIPPING the rightmost columns instead of ever showing them, rather
+     than a readable table. Switch to horizontal scroll (keep the table
+     at its natural width via min-width) so every column stays reachable
+     by swiping, instead of some being permanently cut off. */
+  .contact-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .contact-table { min-width: 640px; }
+
+  /* .page-head (03-layout.css) is `display:flex; justify-content:
+     space-between` with no wrap — a long h1 next to action button(s)
+     (e.g. "+ Thêm mới") has no room to coexist on a ~320-400px phone
+     and pushes the button off-screen instead of wrapping under the
+     title. */
+  .page-head { flex-wrap: wrap; }
+
+  /* .sidebar-toggle (01-sidebar.css) drives the desktop/tablet
+     icon-rail collapse — moot once `.shell` above is forced to a single
+     stacked column and `.nav-label`/`.nav-text`/etc. are forced back to
+     `display: initial` (see the sidebar-collapsed override a few rules
+     up in this same block): the button would still render but do
+     nothing visually, a dead control sitting at the top of the stacked
+     nav. Hide it rather than leave inert chrome on screen. */
+  .sidebar-toggle { display: none; }
 }
