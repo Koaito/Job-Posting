@@ -1,6 +1,6 @@
 'use server';
 
-import { getApiKey } from '@/lib/api/client';
+import { getApiKey, getApiBase } from '@/lib/api/client';
 import { getAuditLogs } from '@/app/actions/audit';
 import type { AuditLog } from '@/types/audit';
 
@@ -9,7 +9,9 @@ import type { AuditLog } from '@/types/audit';
  * Corresponds to Flask blueprint: blueprints/dashboard.py
  */
 
-const API_BASE = process.env.FASTAPI_URL;
+// REFACTOR (09/2026, "Đánh giá kiến trúc" #2): const API_BASE cấp module
+// (không validate) đã bị xoá — dùng getApiBase() dùng chung từ
+// lib/api/client.ts.
 
 interface DashboardStats {
   total_jobs: number;
@@ -28,7 +30,7 @@ interface DashboardStats {
  */
 export async function getDashboardStats(): Promise<DashboardStats> {
   try {
-    const response = await fetch(`${API_BASE}/stats`, {
+    const response = await fetch(`${getApiBase()}/stats`, {
       headers: { 'X-API-Key': getApiKey() },
       cache: 'no-store',
       signal: AbortSignal.timeout(30000), // 30s timeout cho cold start

@@ -46,6 +46,36 @@ export function getApiKey(): string {
 }
 
 /**
+ * REFACTOR (09/2026, "Đánh giá kiến trúc" #2): "process.env.FASTAPI_URL"
+ * (không check) từng bị khai riêng ở 3 chỗ khác nhau — client.ts, đây,
+ * VÀ actions/dashboard.ts — mỗi nơi tự đặt tên biến API_BASE, KHÔNG có
+ * bước validate như getApiKey() ở trên. Thiếu biến môi trường FASTAPI_URL
+ * không hề báo lỗi rõ ràng ngay: `${API_BASE}/auth/login` âm thầm build
+ * ra URL `undefined/auth/login`, fetch() vẫn chạy (ném lỗi mạng khó hiểu
+ * dạng "Failed to parse URL" hoặc DNS lookup fail cho host "undefined")
+ * thay vì báo thẳng "thiếu FASTAPI_URL" — đúng loại bug mà getApiKey()
+ * từng được viết ra để tránh, nhưng chưa áp dụng nhất quán cho biến môi
+ * trường quan trọng không kém này.
+ *
+ * Cùng nguyên tắc CHỦ Ý check ở RUNTIME (gọi bên trong hàm, không phải
+ * hằng số cấp module) như getApiKey() — "next build" cũng import các
+ * Server Action module để phân tích route ngay cả khi build server chưa
+ * set biến môi trường thật, check ở thời điểm import sẽ làm "next build"
+ * crash oan.
+ */
+export function getApiBase(): string {
+  const apiBase = process.env.FASTAPI_URL;
+
+  if (!apiBase) {
+    throw new Error(
+      'Server chưa cấu hình FASTAPI_URL (biến môi trường) nên không thể gọi backend.'
+    );
+  }
+
+  return apiBase;
+}
+
+/**
  * REFACTOR (09/2026): gom về 1 chỗ dùng chung — trước đây hàm này bị
  * copy-paste y hệt ở 7 file khác nhau trong app/actions/ (audit.ts,
  * companies.ts, contacts.ts, crawl.ts, jobs.ts, me.ts, messages.ts).
@@ -121,7 +151,10 @@ export async function getAuthHeadersForUpload(): Promise<Record<string, string>>
  *     hơn thiếu tính năng, xem TODO mục 4 trong plan_nextjs.md).
  */
 
-const API_BASE = process.env.FASTAPI_URL;
+// REFACTOR (09/2026, "Đánh giá kiến trúc" #2): const API_BASE cấp module
+// đã bị xoá — dùng getApiBase() (khai ở trên, cạnh getApiKey()) để có
+// validate runtime rõ ràng thay vì âm thầm interpolate "undefined" vào
+// URL khi thiếu biến môi trường FASTAPI_URL.
 
 /**
  * Chuẩn hoá "detail" lỗi từ FastAPI về 1 chuỗi dễ đọc — 3 dạng thật có thể
@@ -637,7 +670,7 @@ export type RefreshResult =
 export async function refreshAccessToken(refreshToken: string): Promise<RefreshResult> {
   let response: Response;
   try {
-    response = await fetch(`${API_BASE}/auth/refresh`, {
+    response = await fetch(`${getApiBase()}/auth/refresh`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -729,7 +762,7 @@ export interface ApiFetchOptions {
 export async function apiFetchRaw(path: string, options: ApiFetchOptions = {}): Promise<Response> {
   const { method = 'GET', body, auth = true, isUpload = false, cache, timeoutMs = 30000 } = options;
 
-  const url = `${API_BASE}${path}`;
+  const url = `${getApiBase()}${path}`;
 
   const buildHeaders = (): Promise<Record<string, string>> => {
     if (!auth) return Promise.resolve({ 'X-API-Key': getApiKey() });

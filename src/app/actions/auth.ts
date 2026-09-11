@@ -3,7 +3,7 @@
 import { cache } from 'react';
 import { cookies } from 'next/headers';
 import { getTranslations } from 'next-intl/server';
-import { getApiKey, refreshAccessToken, setAuthCookies, apiFetch } from '@/lib/api/client';
+import { getApiKey, getApiBase, refreshAccessToken, setAuthCookies, apiFetch } from '@/lib/api/client';
 import type { User, UserCreatePayload, UserCreated, JobApplication, SavedJob } from '@/types/auth';
 
 /**
@@ -11,7 +11,13 @@ import type { User, UserCreatePayload, UserCreated, JobApplication, SavedJob } f
  * Corresponds to Flask blueprint: blueprints/auth.py
  */
 
-const API_BASE = process.env.FASTAPI_URL;
+// REFACTOR (09/2026, "Đánh giá kiến trúc" #2): const API_BASE cấp module
+// (không validate) đã bị xoá — dùng getApiBase() dùng chung từ
+// lib/api/client.ts (throw lỗi rõ ràng nếu thiếu FASTAPI_URL, thay vì
+// âm thầm gọi ra "undefined/auth/login"). login()/logout()/
+// getCurrentUser() vẫn tự viết fetch() thô (lý do đã giải thích ở các
+// đoạn refactor #1 phía dưới), nhưng ít nhất dùng chung đúng 1 nguồn
+// FASTAPI_URL đã validate với mọi action khác trong app.
 
 interface LoginResponse {
   access_token: string;
@@ -89,7 +95,7 @@ export async function login(email: string, password: string) {
   const t = await getTranslations('actions.auth');
   try {
     // Step 1: Call FastAPI /auth/login endpoint
-    const tokenResponse = await fetch(`${API_BASE}/auth/login`, {
+    const tokenResponse = await fetch(`${getApiBase()}/auth/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -109,7 +115,7 @@ export async function login(email: string, password: string) {
     const tokenData: LoginResponse = await tokenResponse.json();
 
     // Step 2: Get user info
-    const userResponse = await fetch(`${API_BASE}/auth/me`, {
+    const userResponse = await fetch(`${getApiBase()}/auth/me`, {
       headers: {
         Authorization: `Bearer ${tokenData.access_token}`,
         'X-API-Key': getApiKey(),
@@ -159,7 +165,7 @@ export async function logout() {
     // lặng) khiến refresh_token KHÔNG BAO GIỜ bị thu hồi ở server khi
     // người dùng bấm "Đăng xuất".
     if (refreshToken) {
-      await fetch(`${API_BASE}/auth/logout`, {
+      await fetch(`${getApiBase()}/auth/logout`, {
         method: 'POST',
         headers: {
           'X-API-Key': getApiKey(),
@@ -221,7 +227,7 @@ export const getCurrentUser = cache(async function getCurrentUser() {
       return null;
     }
 
-    let response = await fetch(`${API_BASE}/auth/me`, {
+    let response = await fetch(`${getApiBase()}/auth/me`, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
         'X-API-Key': getApiKey(),
@@ -300,7 +306,7 @@ export const getCurrentUser = cache(async function getCurrentUser() {
       // cắp -> backend tự thu hồi toàn bộ token, buộc đăng nhập lại.
       await setAuthCookies(newTokens.access_token, newTokens.refresh_token);
 
-      response = await fetch(`${API_BASE}/auth/me`, {
+      response = await fetch(`${getApiBase()}/auth/me`, {
         headers: {
           Authorization: `Bearer ${newTokens.access_token}`,
           'X-API-Key': getApiKey(),
