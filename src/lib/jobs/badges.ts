@@ -43,23 +43,30 @@ export function industryClass(value: string | null | undefined): string {
   return INDUSTRY_CLASS_MAP[value] ?? INDUSTRY_CLASS_FALLBACK;
 }
 
-// i18n (Giai đoạn 2 Phần 3, 09/2026): `matching_industry` thực tế đang
-// lưu 1 trong 5 giá trị tiếng Việt của INDUSTRY_OPTIONS (JobForm.tsx/
-// jobs/page.tsx, namespace dịch chung "industries") — KHÁC HẲN 6 giá
-// trị INDUSTRY_CLASS_MAP ở trên (Code/Business Analysis/...). Đây là 2
-// bộ giá trị không khớp nhau cho CÙNG 1 field — có vẻ là bug dữ liệu
-// tồn tại từ trước (industryClass() nhiều khả năng luôn rơi về
-// INDUSTRY_CLASS_FALLBACK cho job thật), nhưng KHÔNG thuộc phạm vi đợt
-// dịch text này — chỉ ghi chú lại, không tự sửa logic class ở đây.
+// BUG FIX (09/2026, phát hiện lúc dịch text — xem chat, "xử lý luôn"):
+// INDUSTRY_OPTIONS ở JobForm.tsx/jobs/page.tsx trước đây dùng 5 giá trị
+// TỰ BỊA ("CNTT - Phần mềm", "Marketing - PR"...) — hoàn toàn KHÔNG khớp
+// INDUSTRY_CLASS_MAP ở trên lẫn matching_industry THẬT mà backend lưu.
+// Đối chiếu ĐÚNG nguồn sự thật (Scrap JD/config.py::JOB_CATEGORIES +
+// mindx-jobs/constants.py::INDUSTRIES bên Flask gốc — cả 2 đều thống
+// nhất) xác nhận CHỈ có đúng 6 giá trị hợp lệ, chính là 6 key của
+// INDUSTRY_CLASS_MAP. Vì dropdown tạo/sửa job trước đây ghi giá trị
+// KHÔNG nằm trong 6 giá trị này, mọi job tạo thủ công qua form (không
+// phải crawl) đều: (1) không bao giờ lên đúng màu badge ngành (luôn
+// rơi vào INDUSTRY_CLASS_FALLBACK phía trên), (2) không match được vào
+// bất kỳ filter/logic nào dựa theo matching_industry thật.
 //
-// industryLabel(): giống jobStatusLabel(), giá trị lạ ngoài 5 giá trị
-// biết trước (dữ liệu cũ/nhập tay lệch) trả nguyên văn thay vì lỗi.
+// industryLabel(): giống jobStatusLabel(), giá trị lạ ngoài 6 giá trị
+// biết trước (dữ liệu cũ trước bugfix này/nhập tay lệch) trả nguyên văn
+// thay vì lỗi — KHÔNG đổi INDUSTRY_CLASS_MAP hay industryClass() ở trên,
+// 2 hàm đó đã đúng từ đầu.
 const INDUSTRY_LABEL_KEY: Record<string, string> = {
-  'CNTT - Phần mềm': 'it',
-  'Marketing - PR': 'marketing',
-  'Kinh doanh - Bán hàng': 'sales',
-  'Thiết kế - Mỹ thuật': 'design',
-  Khác: 'other',
+  Code: 'code',
+  'Data Analysis': 'dataAnalysis',
+  'Data Engineer': 'dataEngineer',
+  'Data Scientist': 'dataScientist',
+  'Business Analysis': 'businessAnalysis',
+  'UI/UX Design': 'uiUxDesign',
 };
 
 export function industryLabel(value: string, t: (key: string) => string): string {

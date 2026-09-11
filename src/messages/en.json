@@ -146,11 +146,12 @@
     "danang": "Da Nang"
   },
   "industries": {
-    "it": "IT - Software",
-    "marketing": "Marketing - PR",
-    "sales": "Business - Sales",
-    "design": "Design - Fine Arts",
-    "other": "Other"
+    "code": "Software Engineering",
+    "dataAnalysis": "Data Analysis",
+    "dataEngineer": "Data Engineer",
+    "dataScientist": "Data Scientist",
+    "businessAnalysis": "Business Analysis",
+    "uiUxDesign": "UI/UX Design"
   },
   "jobForm": {
     "titleCreate": "New Job Details",

@@ -146,11 +146,12 @@
     "danang": "Đà Nẵng"
   },
   "industries": {
-    "it": "CNTT - Phần mềm",
-    "marketing": "Marketing - PR",
-    "sales": "Kinh doanh - Bán hàng",
-    "design": "Thiết kế - Mỹ thuật",
-    "other": "Khác"
+    "code": "Lập trình",
+    "dataAnalysis": "Phân tích dữ liệu",
+    "dataEngineer": "Kỹ sư dữ liệu",
+    "dataScientist": "Khoa học dữ liệu",
+    "businessAnalysis": "Phân tích nghiệp vụ",
+    "uiUxDesign": "Thiết kế UI/UX"
   },
   "jobForm": {
     "titleCreate": "Thông tin Job mới",

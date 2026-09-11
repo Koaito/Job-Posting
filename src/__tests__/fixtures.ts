@@ -15,7 +15,7 @@ export const mockJob = {
   job_title: 'Backend Developer',
   company_id: 'company-1',
   company_name: 'ACME Corp',
-  matching_industry: 'CNTT - Phần mềm',
+  matching_industry: 'Code',
   level_code: 'Middle',
   province_name: 'Hà Nội',
   salary_min: 15000000,

@@ -25,12 +25,18 @@ import { toIntlLocale } from '@/i18n/config';
 // Trùng khớp có chủ ý với JobForm.tsx (matching_industry/level_code/
 // province_name) — backend hiện chưa có endpoint /enums thật (xem TODO
 // trong JobForm.tsx), nên cả 2 nơi đều tạm hard-code cùng 1 bộ giá trị.
+// BUG FIX (09/2026): "Trùng khớp có chủ ý với JobForm.tsx" ở trên vẫn
+// đúng tinh thần, nhưng bộ giá trị CŨ ở đây ("CNTT - Phần mềm"...) là
+// giá trị TỰ BỊA, không khớp matching_industry thật (xem badges.ts) —
+// đổi đúng 6 giá trị thật, khớp lại JobForm.tsx sau khi file đó cũng
+// được sửa cùng đợt.
 const INDUSTRY_OPTIONS = [
-  'CNTT - Phần mềm',
-  'Marketing - PR',
-  'Kinh doanh - Bán hàng',
-  'Thiết kế - Mỹ thuật',
-  'Khác',
+  'Code',
+  'Data Analysis',
+  'Data Engineer',
+  'Data Scientist',
+  'Business Analysis',
+  'UI/UX Design',
 ];
 const LEVEL_OPTIONS = ['Intern', 'Fresher', 'Junior', 'Middle', 'Senior', 'Lead', 'Manager'];
 const PROVINCE_OPTIONS = ['Hà Nội', 'Hồ Chí Minh', 'Đà Nẵng'] as const;

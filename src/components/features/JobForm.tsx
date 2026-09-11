@@ -165,13 +165,19 @@ export default function JobForm({ mode, initialData }: JobFormProps) {
             defaultValue={initialData?.matching_industry || ''}
           >
             <option value="">{t('selectIndustryOption')}</option>
-            {/* value giữ nguyên tiếng Việt — khớp đúng chuỗi backend
-                lưu/lọc theo matching_industry, chỉ TEXT hiển thị được dịch */}
-            <option value="CNTT - Phần mềm">{ti('it')}</option>
-            <option value="Marketing - PR">{ti('marketing')}</option>
-            <option value="Kinh doanh - Bán hàng">{ti('sales')}</option>
-            <option value="Thiết kế - Mỹ thuật">{ti('design')}</option>
-            <option value="Khác">{ti('other')}</option>
+            {/* BUG FIX (09/2026): 5 option cũ ("CNTT - Phần mềm"...) là
+                giá trị TỰ BỊA, không khớp bất kỳ matching_industry thật
+                nào backend lưu (đối chiếu Scrap JD/config.py::
+                JOB_CATEGORIES + mindx-jobs/constants.py::INDUSTRIES —
+                xem badges.ts). Đổi đúng 6 giá trị thật, value giữ
+                nguyên tiếng Anh khớp backend, chỉ TEXT hiển thị dịch
+                theo locale qua namespace "industries" dùng chung. */}
+            <option value="Code">{ti('code')}</option>
+            <option value="Data Analysis">{ti('dataAnalysis')}</option>
+            <option value="Data Engineer">{ti('dataEngineer')}</option>
+            <option value="Data Scientist">{ti('dataScientist')}</option>
+            <option value="Business Analysis">{ti('businessAnalysis')}</option>
+            <option value="UI/UX Design">{ti('uiUxDesign')}</option>
           </select>
         </label>
 
