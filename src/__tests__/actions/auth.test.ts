@@ -627,13 +627,33 @@ describe('Auth Server Actions', () => {
       expect(body.new_password).toBe('newStrongPass123');
     });
 
-    it('should return error without calling API when no access_token cookie exists', async () => {
+    // REFACTOR (09/2026, "Đánh giá kiến trúc" #1): changePassword() giờ
+    // dùng chung apiFetch() — KHÔNG còn tự check "if (!accessToken)"
+    // thủ công trước khi gọi API nữa (đồng nhất với mọi action khác
+    // trong app, vd jobs.ts/companies.ts, đều để backend tự trả lỗi rõ
+    // ràng qua error_code thay vì FE tự đoán trước). Thiếu access_token
+    // -> request vẫn gọi ra backend nhưng KHÔNG có header Authorization
+    // -> backend tự trả 401 (missing_auth_header) như mọi request thiếu
+    // token khác.
+    it('should call API without Authorization header when no access_token cookie exists, and surface the 401', async () => {
       mockCookieGet.mockImplementation(() => undefined);
+      (global.fetch as jest.Mock).mockImplementationOnce(() =>
+        Promise.resolve({
+          ok: false,
+          status: 401,
+          json: async () => ({ detail: { error_code: 'missing_auth_header', message: 'Thiếu thông tin xác thực.' } }),
+        } as Response)
+      );
 
       const result = await changePassword('newStrongPass123');
 
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/auth/change-password'),
+        expect.objectContaining({
+          headers: expect.not.objectContaining({ Authorization: expect.anything() }),
+        })
+      );
       expect(result.success).toBe(false);
-      expect(global.fetch).not.toHaveBeenCalled();
     });
 
     it('should return backend error message on 401 (wrong old_password)', async () => {
@@ -695,13 +715,26 @@ describe('Auth Server Actions', () => {
       expect(mockCookieSet).toHaveBeenCalledWith('user_data', expect.any(String), expect.anything());
     });
 
-    it('should return error without calling API when no access_token cookie exists', async () => {
+    // REFACTOR (09/2026, xem chú thích tương tự ở changePassword() bên trên).
+    it('should call API without Authorization header when no access_token cookie exists, and surface the 401', async () => {
       mockCookieGet.mockImplementation(() => undefined);
+      (global.fetch as jest.Mock).mockImplementationOnce(() =>
+        Promise.resolve({
+          ok: false,
+          status: 401,
+          json: async () => ({ detail: { error_code: 'missing_auth_header', message: 'Thiếu thông tin xác thực.' } }),
+        } as Response)
+      );
 
       const result = await updateProfile({ full_name: 'X' });
 
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/auth/me'),
+        expect.objectContaining({
+          headers: expect.not.objectContaining({ Authorization: expect.anything() }),
+        })
+      );
       expect(result.success).toBe(false);
-      expect(global.fetch).not.toHaveBeenCalled();
     });
 
     it('BUG FIX: should surface detail.message when backend returns object detail, not "Có lỗi xảy ra"', async () => {
@@ -735,13 +768,26 @@ describe('Auth Server Actions', () => {
       expect(result.user).toEqual(mockUserCreated);
     });
 
-    it('should return error without calling API when no access_token cookie exists', async () => {
+    // REFACTOR (09/2026, xem chú thích tương tự ở changePassword() bên trên).
+    it('should call API without Authorization header when no access_token cookie exists, and surface the 401', async () => {
       mockCookieGet.mockImplementation(() => undefined);
+      (global.fetch as jest.Mock).mockImplementationOnce(() =>
+        Promise.resolve({
+          ok: false,
+          status: 401,
+          json: async () => ({ detail: { error_code: 'missing_auth_header', message: 'Thiếu thông tin xác thực.' } }),
+        } as Response)
+      );
 
       const result = await createUser({ full_name: 'X', email: 'x@example.com', role: 'user' });
 
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/auth/users'),
+        expect.objectContaining({
+          headers: expect.not.objectContaining({ Authorization: expect.anything() }),
+        })
+      );
       expect(result.success).toBe(false);
-      expect(global.fetch).not.toHaveBeenCalled();
     });
 
     it('BUG FIX: should surface detail.message on object-shaped error (e.g. duplicate email)', async () => {

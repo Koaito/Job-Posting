@@ -3,7 +3,7 @@
 import { cache } from 'react';
 import { cookies } from 'next/headers';
 import { getTranslations } from 'next-intl/server';
-import { getApiKey, refreshAccessToken, setAuthCookies, formatErrorDetail } from '@/lib/api/client';
+import { getApiKey, refreshAccessToken, setAuthCookies, apiFetch } from '@/lib/api/client';
 import type { User, UserCreatePayload, UserCreated, JobApplication, SavedJob } from '@/types/auth';
 
 /**
@@ -374,57 +374,55 @@ export async function isAuthenticated(): Promise<boolean> {
  * dưới) — nếu bị 429 sẽ rơi vào formatErrorDetail dạng string thường,
  * không phải mảng 422 như validate field.
  */
+// REFACTOR (09/2026, "Đánh giá kiến trúc" #1): hàm này (và 10 hàm bên
+// dưới — changePassword, listUsers, createUser, updateUserRole,
+// updateUserActiveStatus, getUserApplications, getUserSavedJobs,
+// register, forgotPassword, resetPassword) trước đây tự viết lại y hệt
+// khối header/timeout/error-parsing bằng fetch() thô — bị bỏ sót ngoài
+// đợt refactor apiFetch()/apiFetchRaw() dùng chung đã áp dụng cho 8 file
+// action khác (jobs, companies, contacts, crawl, me, messages, audit,
+// import-export). Hậu quả thật: 9-11 hàm này KHÔNG được hưởng
+// auto-refresh access_token khi gặp 401 token_expired — nếu access_token
+// hết hạn giữa lúc admin đang đổi role user khác chẳng hạn, request cũ
+// fail thẳng 401 thay vì tự refresh rồi thử lại êm như mọi action khác
+// trong app.
+//
+// Đổi sang apiFetch() dùng chung. Nhân tiện bỏ luôn bước tự kiểm tra
+// "if (!accessToken) return notLoggedIn" thủ công ở đây — đối chiếu
+// jobs.ts/companies.ts/contacts.ts (đã refactor từ đợt trước): KHÔNG
+// file action nào khác tự check trước như vậy, tất cả để backend tự
+// trả 401/403 rõ ràng qua error_code (đúng 1 nguồn sự thật duy nhất),
+// giữ đồng nhất hành vi giữa các action thay vì auth.ts tự có luật
+// riêng.
 export async function updateProfile(data: {
   full_name: string;
   phone?: string;
   track?: string;
 }): Promise<{ success: boolean; user?: User; error?: string }> {
   const t = await getTranslations('actions.auth');
-  try {
-    const cookieStore = await cookies();
-    const accessToken = cookieStore.get('access_token')?.value;
+  const result = await apiFetch<User>('/auth/me', {
+    method: 'PATCH',
+    body: {
+      full_name: data.full_name,
+      phone: data.phone ?? '',
+      track: data.track ?? '',
+    },
+    cache: 'no-store',
+    fallbackError: t('updateProfileFailed'),
+  });
 
-    if (!accessToken) {
-      return { success: false, error: t('notLoggedIn') };
-    }
-
-    const response = await fetch(`${API_BASE}/auth/me`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${accessToken}`,
-        'X-API-Key': getApiKey(),
-      },
-      body: JSON.stringify({
-        full_name: data.full_name,
-        phone: data.phone ?? '',
-        track: data.track ?? '',
-      }),
-      cache: 'no-store',
-      signal: AbortSignal.timeout(30000),
-    });
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: response.statusText }));
-      return {
-        success: false,
-        error: error.detail != null ? await formatErrorDetail(error.detail) : t('updateProfileFailed'),
-      };
-    }
-
-    const user: User = await response.json();
-
-    // Đồng bộ lại cookie "user_data" ngay — sidebar/layout đọc cookie
-    // này để hiển thị full_name, không đợi tới lần getCurrentUser() kế
-    // tiếp mới cập nhật (tránh hiện tên cũ dù đã lưu thành công, cùng
-    // lý do đã sửa ở setUserDataCookie() trong getCurrentUser()).
-    await setUserDataCookie(user);
-
-    return { success: true, user };
-  } catch (error) {
-    console.error('Error updating profile:', error);
-    return { success: false, error: t('genericError') };
+  if (!result.success) {
+    console.error('Error updating profile:', result.status, result.error);
+    return { success: false, error: result.error };
   }
+
+  // Đồng bộ lại cookie "user_data" ngay — sidebar/layout đọc cookie
+  // này để hiển thị full_name, không đợi tới lần getCurrentUser() kế
+  // tiếp mới cập nhật (tránh hiện tên cũ dù đã lưu thành công, cùng
+  // lý do đã sửa ở setUserDataCookie() trong getCurrentUser()).
+  await setUserDataCookie(result.data);
+
+  return { success: true, user: result.data };
 }
 
 /**
@@ -453,49 +451,36 @@ export async function updateProfile(data: {
  */
 export async function changePassword(newPassword: string, oldPassword?: string) {
   const t = await getTranslations('actions.auth');
-  try {
-    const cookieStore = await cookies();
-    const accessToken = cookieStore.get('access_token')?.value;
+  // REFACTOR (09/2026, xem chú thích đầu updateProfile()): trước đây tự
+  // đọc "error.detail?.message" thô, KHÔNG tra error_code qua bảng dịch
+  // (resolveErrorMessage) như mọi lỗi khác trong app — nghĩa là lỗi đổi
+  // mật khẩu (vd "mật khẩu cũ sai") luôn hiện tiếng Việt bất kể locale
+  // đang chọn là "en". apiFetch() dùng formatErrorDetail() đầy đủ, tự
+  // sửa luôn gap i18n này.
+  const result = await apiFetch<{ message?: string }>('/auth/change-password', {
+    method: 'POST',
+    body: {
+      old_password: oldPassword || undefined,
+      new_password: newPassword,
+    },
+    cache: 'no-store',
+    fallbackError: t('changePasswordFailed'),
+  });
 
-    if (!accessToken) {
-      return { success: false, error: t('notLoggedIn') };
-    }
-
-    const response = await fetch(`${API_BASE}/auth/change-password`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${accessToken}`,
-        'X-API-Key': getApiKey(),
-      },
-      body: JSON.stringify({
-        old_password: oldPassword || undefined,
-        new_password: newPassword,
-      }),
-      cache: 'no-store',
-    });
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: t('changePasswordFailed') }));
-      const message = typeof error.detail === 'string' ? error.detail : error.detail?.message;
-      return {
-        success: false,
-        error: message || t('changePasswordFailed'),
-      };
-    }
-
-    // Backend đã thu hồi hết token của phiên này — xoá cookie ngay,
-    // buộc đăng nhập lại bằng mật khẩu mới (đúng hành vi bảo mật chuẩn
-    // sau khi đổi mật khẩu, xem docstring change_password()).
-    cookieStore.delete('access_token');
-    cookieStore.delete('refresh_token');
-    cookieStore.delete('user_data');
-
-    return { success: true };
-  } catch (error) {
-    console.error('Change password error:', error);
-    return { success: false, error: t('genericError') };
+  if (!result.success) {
+    console.error('Change password error:', result.status, result.error);
+    return { success: false, error: result.error };
   }
+
+  // Backend đã thu hồi hết token của phiên này — xoá cookie ngay,
+  // buộc đăng nhập lại bằng mật khẩu mới (đúng hành vi bảo mật chuẩn
+  // sau khi đổi mật khẩu, xem docstring change_password()).
+  const cookieStore = await cookies();
+  cookieStore.delete('access_token');
+  cookieStore.delete('refresh_token');
+  cookieStore.delete('user_data');
+
+  return { success: true };
 }
 
 // ------------------------------------------------------------------
@@ -518,29 +503,13 @@ export async function changePassword(newPassword: string, oldPassword?: string) 
  * staff.ts tự lọc lại theo role ở tầng gọi hàm này.
  */
 export async function listUsers(): Promise<User[]> {
-  try {
-    const cookieStore = await cookies();
-    const accessToken = cookieStore.get('access_token')?.value;
-    if (!accessToken) return [];
+  const result = await apiFetch<User[]>('/auth/users', { cache: 'no-store' });
 
-    const response = await fetch(`${API_BASE}/auth/users`, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'X-API-Key': getApiKey(),
-      },
-      cache: 'no-store',
-      signal: AbortSignal.timeout(30000),
-    });
-
-    if (!response.ok) {
-      console.error('Failed to list users:', response.status, response.statusText);
-      return [];
-    }
-    return await response.json();
-  } catch (error) {
-    console.error('Error listing users:', error);
+  if (!result.success) {
+    console.error('Failed to list users:', result.status, result.error);
     return [];
   }
+  return result.data;
 }
 
 /**
@@ -553,32 +522,17 @@ export async function createUser(
   data: UserCreatePayload
 ): Promise<{ success: boolean; user?: UserCreated; error?: string }> {
   const t = await getTranslations('actions.auth');
-  try {
-    const cookieStore = await cookies();
-    const accessToken = cookieStore.get('access_token')?.value;
-    if (!accessToken) return { success: false, error: t('notLoggedIn') };
+  const result = await apiFetch<UserCreated>('/auth/users', {
+    method: 'POST',
+    body: data,
+    fallbackError: t('createUserFailed'),
+  });
 
-    const response = await fetch(`${API_BASE}/auth/users`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${accessToken}`,
-        'X-API-Key': getApiKey(),
-      },
-      body: JSON.stringify(data),
-      signal: AbortSignal.timeout(30000),
-    });
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: response.statusText }));
-      return { success: false, error: error.detail != null ? await formatErrorDetail(error.detail) : t('createUserFailed') };
-    }
-    const user = await response.json();
-    return { success: true, user };
-  } catch (error) {
-    console.error('Error creating user:', error);
-    return { success: false, error: t('networkError') };
+  if (!result.success) {
+    console.error('Error creating user:', result.status, result.error);
+    return { success: false, error: result.error };
   }
+  return { success: true, user: result.data };
 }
 
 /** PATCH /auth/users/{id}/role — admin-only. Backend tự chặn admin tự đổi role chính mình (400). */
@@ -587,32 +541,17 @@ export async function updateUserRole(
   role: string
 ): Promise<{ success: boolean; user?: User; error?: string }> {
   const t = await getTranslations('actions.auth');
-  try {
-    const cookieStore = await cookies();
-    const accessToken = cookieStore.get('access_token')?.value;
-    if (!accessToken) return { success: false, error: t('notLoggedIn') };
+  const result = await apiFetch<User>(`/auth/users/${ssUserId}/role`, {
+    method: 'PATCH',
+    body: { role },
+    fallbackError: t('updateRoleFailed'),
+  });
 
-    const response = await fetch(`${API_BASE}/auth/users/${ssUserId}/role`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${accessToken}`,
-        'X-API-Key': getApiKey(),
-      },
-      body: JSON.stringify({ role }),
-      signal: AbortSignal.timeout(30000),
-    });
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: response.statusText }));
-      return { success: false, error: error.detail != null ? await formatErrorDetail(error.detail) : t('updateRoleFailed') };
-    }
-    const user = await response.json();
-    return { success: true, user };
-  } catch (error) {
-    console.error('Error updating user role:', error);
-    return { success: false, error: t('networkError') };
+  if (!result.success) {
+    console.error('Error updating user role:', result.status, result.error);
+    return { success: false, error: result.error };
   }
+  return { success: true, user: result.data };
 }
 
 /** PATCH /auth/users/{id}/active-status — admin-only. Backend tự chặn admin tự khoá chính mình (400). */
@@ -621,72 +560,43 @@ export async function updateUserActiveStatus(
   isActive: boolean
 ): Promise<{ success: boolean; user?: User; error?: string }> {
   const t = await getTranslations('actions.auth');
-  try {
-    const cookieStore = await cookies();
-    const accessToken = cookieStore.get('access_token')?.value;
-    if (!accessToken) return { success: false, error: t('notLoggedIn') };
+  const result = await apiFetch<User>(`/auth/users/${ssUserId}/active-status`, {
+    method: 'PATCH',
+    body: { is_active: isActive },
+    fallbackError: t('updateActiveStatusFailed'),
+  });
 
-    const response = await fetch(`${API_BASE}/auth/users/${ssUserId}/active-status`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${accessToken}`,
-        'X-API-Key': getApiKey(),
-      },
-      body: JSON.stringify({ is_active: isActive }),
-      signal: AbortSignal.timeout(30000),
-    });
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: response.statusText }));
-      return { success: false, error: error.detail != null ? await formatErrorDetail(error.detail) : t('updateActiveStatusFailed') };
-    }
-    const user = await response.json();
-    return { success: true, user };
-  } catch (error) {
-    console.error('Error updating user active status:', error);
-    return { success: false, error: t('networkError') };
+  if (!result.success) {
+    console.error('Error updating user active status:', result.status, result.error);
+    return { success: false, error: result.error };
   }
+  return { success: true, user: result.data };
 }
 
 /** GET /auth/users/{id}/applications — ss_team trở lên. */
 export async function getUserApplications(ssUserId: string): Promise<JobApplication[]> {
-  try {
-    const cookieStore = await cookies();
-    const accessToken = cookieStore.get('access_token')?.value;
-    if (!accessToken) return [];
+  const result = await apiFetch<JobApplication[]>(`/auth/users/${ssUserId}/applications`, {
+    cache: 'no-store',
+  });
 
-    const response = await fetch(`${API_BASE}/auth/users/${ssUserId}/applications`, {
-      headers: { Authorization: `Bearer ${accessToken}`, 'X-API-Key': getApiKey() },
-      cache: 'no-store',
-      signal: AbortSignal.timeout(30000),
-    });
-    if (!response.ok) return [];
-    return await response.json();
-  } catch (error) {
-    console.error('Error fetching user applications:', error);
+  if (!result.success) {
+    console.error('Error fetching user applications:', result.status, result.error);
     return [];
   }
+  return result.data;
 }
 
 /** GET /auth/users/{id}/saved-jobs — ss_team trở lên. */
 export async function getUserSavedJobs(ssUserId: string): Promise<SavedJob[]> {
-  try {
-    const cookieStore = await cookies();
-    const accessToken = cookieStore.get('access_token')?.value;
-    if (!accessToken) return [];
+  const result = await apiFetch<SavedJob[]>(`/auth/users/${ssUserId}/saved-jobs`, {
+    cache: 'no-store',
+  });
 
-    const response = await fetch(`${API_BASE}/auth/users/${ssUserId}/saved-jobs`, {
-      headers: { Authorization: `Bearer ${accessToken}`, 'X-API-Key': getApiKey() },
-      cache: 'no-store',
-      signal: AbortSignal.timeout(30000),
-    });
-    if (!response.ok) return [];
-    return await response.json();
-  } catch (error) {
-    console.error('Error fetching user saved jobs:', error);
+  if (!result.success) {
+    console.error('Error fetching user saved jobs:', result.status, result.error);
     return [];
   }
+  return result.data;
 }
 
 // ------------------------------------------------------------------
@@ -712,24 +622,21 @@ export async function register(data: {
   track?: string;
 }): Promise<{ success: boolean; message?: string; error?: string }> {
   const t = await getTranslations('actions.auth');
-  try {
-    const response = await fetch(`${API_BASE}/auth/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-API-Key': getApiKey() },
-      body: JSON.stringify(data),
-      signal: AbortSignal.timeout(30000),
-    });
+  // auth: false — route công khai (public_router, KHÔNG cần JWT), chỉ
+  // cần X-API-Key, không gắn Authorization/không có auto-refresh (chưa
+  // có phiên nào để refresh).
+  const result = await apiFetch<{ message?: string }>('/auth/register', {
+    method: 'POST',
+    body: data,
+    auth: false,
+    fallbackError: t('registerFailed'),
+  });
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: response.statusText }));
-      return { success: false, error: error.detail != null ? await formatErrorDetail(error.detail) : t('registerFailed') };
-    }
-    const body = await response.json();
-    return { success: true, message: body.message };
-  } catch (error) {
-    console.error('Register error:', error);
-    return { success: false, error: t('genericError') };
+  if (!result.success) {
+    console.error('Register error:', result.status, result.error);
+    return { success: false, error: result.error };
   }
+  return { success: true, message: result.data?.message };
 }
 
 /**
@@ -740,24 +647,18 @@ export async function register(data: {
  */
 export async function forgotPassword(email: string): Promise<{ success: boolean; message?: string; error?: string }> {
   const t = await getTranslations('actions.auth');
-  try {
-    const response = await fetch(`${API_BASE}/auth/forgot-password`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-API-Key': getApiKey() },
-      body: JSON.stringify({ email }),
-      signal: AbortSignal.timeout(30000),
-    });
+  const result = await apiFetch<{ message?: string }>('/auth/forgot-password', {
+    method: 'POST',
+    body: { email },
+    auth: false,
+    fallbackError: t('forgotPasswordFailed'),
+  });
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: response.statusText }));
-      return { success: false, error: error.detail != null ? await formatErrorDetail(error.detail) : t('forgotPasswordFailed') };
-    }
-    const body = await response.json();
-    return { success: true, message: body.message };
-  } catch (error) {
-    console.error('Forgot password error:', error);
-    return { success: false, error: t('genericError') };
+  if (!result.success) {
+    console.error('Forgot password error:', result.status, result.error);
+    return { success: false, error: result.error };
   }
+  return { success: true, message: result.data?.message };
 }
 
 /**
@@ -770,22 +671,16 @@ export async function resetPassword(
   newPassword: string
 ): Promise<{ success: boolean; message?: string; error?: string }> {
   const t = await getTranslations('actions.auth');
-  try {
-    const response = await fetch(`${API_BASE}/auth/reset-password`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-API-Key': getApiKey() },
-      body: JSON.stringify({ token, new_password: newPassword }),
-      signal: AbortSignal.timeout(30000),
-    });
+  const result = await apiFetch<{ message?: string }>('/auth/reset-password', {
+    method: 'POST',
+    body: { token, new_password: newPassword },
+    auth: false,
+    fallbackError: t('resetPasswordFailed'),
+  });
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: response.statusText }));
-      return { success: false, error: error.detail != null ? await formatErrorDetail(error.detail) : t('resetPasswordFailed') };
-    }
-    const body = await response.json();
-    return { success: true, message: body.message };
-  } catch (error) {
-    console.error('Reset password error:', error);
-    return { success: false, error: t('genericError') };
+  if (!result.success) {
+    console.error('Reset password error:', result.status, result.error);
+    return { success: false, error: result.error };
   }
+  return { success: true, message: result.data?.message };
 }

@@ -50,11 +50,31 @@ describe('Staff Server Actions', () => {
       expect(result).toHaveLength(3);
     });
 
-    it('should trả [] khi listUsers() lỗi (không có access_token)', async () => {
+    // REFACTOR (09/2026, "Đánh giá kiến trúc" #1): listUsers() (auth.ts)
+    // giờ dùng chung apiFetch() — KHÔNG còn tự chặn "if (!accessToken)"
+    // trước khi gọi API nữa (đồng nhất với mọi action khác trong app).
+    // Thiếu access_token -> vẫn gọi ra backend nhưng KHÔNG có
+    // Authorization -> backend tự trả 401 -> listUsers() vẫn trả [] như
+    // cũ (qua nhánh !result.success), chỉ khác đường đi tới đó.
+    it('should trả [] khi listUsers() lỗi (không có access_token, backend trả 401)', async () => {
       mockCookieGet.mockImplementation(() => undefined);
+      (global.fetch as jest.Mock).mockImplementationOnce(() =>
+        Promise.resolve({
+          ok: false,
+          status: 401,
+          json: async () => ({ detail: { error_code: 'missing_auth_header', message: 'Thiếu thông tin xác thực.' } }),
+        })
+      );
+
       const result = await getStaff();
+
       expect(result).toEqual([]);
-      expect(global.fetch).not.toHaveBeenCalled();
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/auth/users'),
+        expect.objectContaining({
+          headers: expect.not.objectContaining({ Authorization: expect.anything() }),
+        })
+      );
     });
   });
 
@@ -142,12 +162,28 @@ describe('Staff Server Actions', () => {
       expect(result.success).toBe(true);
     });
 
-    it('should trả Chưa đăng nhập khi thiếu access_token, KHÔNG gọi fetch', async () => {
+    // REFACTOR (09/2026, xem chú thích tương tự ở getStaff() bên trên) —
+    // updateUserActiveStatus() (auth.ts) không còn tự chặn trước, để
+    // backend trả 401 thật.
+    it('should gọi API không kèm Authorization khi thiếu access_token, và trả lỗi từ backend', async () => {
       mockCookieGet.mockImplementation(() => undefined);
+      (global.fetch as jest.Mock).mockImplementationOnce(() =>
+        Promise.resolve({
+          ok: false,
+          status: 401,
+          json: async () => ({ detail: { error_code: 'missing_auth_header', message: 'Thiếu thông tin xác thực.' } }),
+        })
+      );
+
       const result = await updateStaffActiveStatus(mockStaffUser.ss_user_id, false);
+
       expect(result.success).toBe(false);
-      expect(result.error).toBe('Chưa đăng nhập.');
-      expect(global.fetch).not.toHaveBeenCalled();
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining(`/auth/users/${mockStaffUser.ss_user_id}/active-status`),
+        expect.objectContaining({
+          headers: expect.not.objectContaining({ Authorization: expect.anything() }),
+        })
+      );
     });
   });
 });
