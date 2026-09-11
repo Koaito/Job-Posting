@@ -391,6 +391,7 @@
       "declineRequestFailed": "Không thể từ chối yêu cầu",
       "blockStudentFailed": "Không thể chặn học viên",
       "unblockFailed": "Không thể bỏ chặn",
+      "networkError": "Lỗi mạng",
       "emptyMessage": "Vui lòng nhập nội dung tin nhắn.",
       "messageTooLong": "Tin nhắn không được vượt quá 2000 ký tự.",
       "requestSentFallback": "Đã gửi yêu cầu nhắn tin.",
@@ -403,6 +404,7 @@
     "importExport": {
       "uploadRateLimited": "Đã upload quá nhiều lần (giới hạn 20 lần/giờ) — vui lòng thử lại sau.",
       "genericError": "Có lỗi xảy ra",
+      "networkError": "Lỗi mạng",
       "previewExportFailed": "Không thể xem trước dữ liệu export",
       "downloadExportFailed": "Không thể tải file export",
       "importFailed": "Không thể xử lý file import",
@@ -417,6 +419,7 @@
       "fetchUserFailed": "Không thể lấy thông tin người dùng",
       "notLoggedIn": "Chưa đăng nhập.",
       "genericError": "Đã xảy ra lỗi. Vui lòng thử lại.",
+      "networkError": "Lỗi mạng",
       "changePasswordFailed": "Đổi mật khẩu thất bại",
       "createUserFailed": "Không thể tạo tài khoản",
       "updateRoleFailed": "Không thể đổi vai trò",

@@ -99,7 +99,7 @@ describe('import-export.ts Server Actions', () => {
       const result = await getExportPreview('job');
 
       expect(result.success).toBe(false);
-      expect(result.error).toBe('Network error');
+      expect(result.error).toBe('Lỗi mạng');
     });
   });
 
@@ -370,7 +370,7 @@ describe('import-export.ts Server Actions', () => {
       const result = await confirmImport('job', 'preview-abc-123', {}, 'note');
 
       expect(result.success).toBe(false);
-      expect(result.error).toBe('Network error');
+      expect(result.error).toBe('Lỗi mạng');
     });
   });
 });

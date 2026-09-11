@@ -577,7 +577,7 @@ export async function createUser(
     return { success: true, user };
   } catch (error) {
     console.error('Error creating user:', error);
-    return { success: false, error: 'Network error' };
+    return { success: false, error: t('networkError') };
   }
 }
 
@@ -611,7 +611,7 @@ export async function updateUserRole(
     return { success: true, user };
   } catch (error) {
     console.error('Error updating user role:', error);
-    return { success: false, error: 'Network error' };
+    return { success: false, error: t('networkError') };
   }
 }
 
@@ -645,7 +645,7 @@ export async function updateUserActiveStatus(
     return { success: true, user };
   } catch (error) {
     console.error('Error updating user active status:', error);
-    return { success: false, error: 'Network error' };
+    return { success: false, error: t('networkError') };
   }
 }
 

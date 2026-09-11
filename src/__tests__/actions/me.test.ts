@@ -113,7 +113,7 @@ describe('me.ts Server Actions', () => {
       const result = await applyToJob('job-1', file);
 
       expect(result.success).toBe(false);
-      expect(result.error).toBe('Network error');
+      expect(result.error).toBe('Không thể kết nối với server');
     });
   });
 

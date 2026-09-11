@@ -163,6 +163,43 @@ const ERROR_TRANSLATIONS: Record<Locale, Record<string, string>> = {
 };
 
 /**
+ * BUG FIX (i18n audit 09/2026, Giai đoạn 2 Phần 3): 2 chỗ dưới đây
+ * (`formatErrorDetail()` fallback cuối cùng khi `detail` không có shape
+ * quen thuộc, và giá trị mặc định của `fallbackError` trong `apiFetch()`)
+ * trước đây hard-code "Có lỗi xảy ra" — LUÔN tiếng Việt bất kể locale
+ * đang chọn là "en", khác hẳn mọi message lỗi khác trong app (đều đã đi
+ * qua `t()`/`resolveErrorMessage()`). Dùng chung 1 map nhỏ + `getErrorLocale()`
+ * đã có sẵn ở trên cho nhất quán, khớp giá trị đã dùng ở `common.genericError`
+ * (src/messages/vi.json / en.json) thay vì tự bịa câu khác.
+ */
+const GENERIC_ERROR_BY_LOCALE: Record<Locale, string> = {
+  vi: 'Có lỗi xảy ra',
+  en: 'Something went wrong',
+};
+
+async function getGenericErrorMessage(): Promise<string> {
+  const locale = await getErrorLocale();
+  return GENERIC_ERROR_BY_LOCALE[locale];
+}
+
+/**
+ * Cùng đợt fix trên: lỗi network riêng của `apiFetch()` (fetch tự throw,
+ * KHÔNG phải backend trả !ok) cũng hard-code "Network error" tiếng Anh
+ * bất kể locale. Khớp câu chữ đã dùng ở `common.networkError`
+ * (vi.json/en.json) — cùng 1 khái niệm "không kết nối được server" mà
+ * CompanyForm.tsx/JobForm.tsx phía client đã hiển thị qua `tc('networkError')`.
+ */
+const NETWORK_ERROR_BY_LOCALE: Record<Locale, string> = {
+  vi: 'Không thể kết nối với server',
+  en: 'Could not connect to the server',
+};
+
+async function getNetworkErrorMessage(): Promise<string> {
+  const locale = await getErrorLocale();
+  return NETWORK_ERROR_BY_LOCALE[locale];
+}
+
+/**
  * Cơ chế template biến số cho error_code ĐỘNG (Giai đoạn 3, đợt "cơ chế
  * template biến số", 09/2026, phần 1/2).
  *
@@ -561,7 +598,7 @@ export async function formatErrorDetail(detail: unknown): Promise<string> {
     }
     return JSON.stringify(detail);
   }
-  return 'Có lỗi xảy ra';
+  return getGenericErrorMessage();
 }
 
 /**
@@ -788,14 +825,14 @@ export async function apiFetch<T = unknown>(
   path: string,
   options: ApiFetchOptions & { fallbackError?: string } = {}
 ): Promise<ApiResult<T>> {
-  const { fallbackError = 'Có lỗi xảy ra', ...fetchOptions } = options;
+  const { fallbackError, ...fetchOptions } = options;
 
   let response: Response;
   try {
     response = await apiFetchRaw(path, fetchOptions);
   } catch (error) {
     console.error(`apiFetch network error [${fetchOptions.method || 'GET'} ${path}]:`, error);
-    return { success: false, error: 'Network error', status: 0 };
+    return { success: false, error: await getNetworkErrorMessage(), status: 0 };
   }
 
   if (response.status === 204) {
@@ -807,7 +844,7 @@ export async function apiFetch<T = unknown>(
     const detail = (errorBody as { detail?: unknown } | null)?.detail;
     return {
       success: false,
-      error: detail != null ? await formatErrorDetail(detail) : fallbackError,
+      error: detail != null ? await formatErrorDetail(detail) : fallbackError ?? (await getGenericErrorMessage()),
       status: response.status,
     };
   }

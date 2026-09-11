@@ -165,7 +165,7 @@ export async function getExportPreview(
     return { success: true, preview };
   } catch (error) {
     console.error('Error fetching export preview:', error);
-    return { success: false, error: 'Network error' };
+    return { success: false, error: t('networkError') };
   }
 }
 
@@ -215,7 +215,7 @@ export async function exportEntity(
     return { success: true, filename, contentType, base64 };
   } catch (error) {
     console.error('Error exporting entity:', error);
-    return { success: false, error: 'Network error' };
+    return { success: false, error: t('networkError') };
   }
 }
 
@@ -274,7 +274,7 @@ export async function uploadImportFile(
     return { success: true, preview };
   } catch (error) {
     console.error('Error uploading import file:', error);
-    return { success: false, error: 'Network error' };
+    return { success: false, error: t('networkError') };
   }
 }
 
@@ -307,7 +307,7 @@ export async function getImportPreview(
     return { success: true, preview };
   } catch (error) {
     console.error('Error fetching import preview:', error);
-    return { success: false, error: 'Network error' };
+    return { success: false, error: t('networkError') };
   }
 }
 
@@ -354,7 +354,7 @@ export async function verifyField(
     return { success: true, row: data.row, fieldError: data.field_error ?? null };
   } catch (error) {
     console.error('Error verifying field:', error);
-    return { success: false, error: 'Network error' };
+    return { success: false, error: t('networkError') };
   }
 }
 
@@ -391,7 +391,7 @@ export async function resolveCompany(
     return { success: true, row: data.row };
   } catch (error) {
     console.error('Error resolving company:', error);
-    return { success: false, error: 'Network error' };
+    return { success: false, error: t('networkError') };
   }
 }
 
@@ -424,6 +424,6 @@ export async function confirmImport(
     return { success: true, result };
   } catch (error) {
     console.error('Error confirming import:', error);
-    return { success: false, error: 'Network error' };
+    return { success: false, error: t('networkError') };
   }
 }

@@ -218,7 +218,7 @@ describe('Jobs Server Actions', () => {
       const result = await createJob(newJobData);
 
       expect(result.success).toBe(false);
-      expect(result.error).toBe('Network error');
+      expect(result.error).toBe('Không thể kết nối với server');
     });
 
     it('should send API key in header', async () => {

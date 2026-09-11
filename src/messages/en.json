@@ -391,6 +391,7 @@
       "declineRequestFailed": "Could not decline the request",
       "blockStudentFailed": "Could not block the student",
       "unblockFailed": "Could not unblock",
+      "networkError": "Network error",
       "emptyMessage": "Please enter a message.",
       "messageTooLong": "Message must not exceed 2000 characters.",
       "requestSentFallback": "Message request sent.",
@@ -403,6 +404,7 @@
     "importExport": {
       "uploadRateLimited": "Too many uploads (limit: 20/hour) — please try again later.",
       "genericError": "An error occurred",
+      "networkError": "Network error",
       "previewExportFailed": "Could not preview the export data",
       "downloadExportFailed": "Could not download the export file",
       "importFailed": "Could not process the import file",
@@ -417,6 +419,7 @@
       "fetchUserFailed": "Could not fetch user information",
       "notLoggedIn": "Not logged in.",
       "genericError": "An error occurred. Please try again.",
+      "networkError": "Network error",
       "changePasswordFailed": "Failed to change password",
       "createUserFailed": "Could not create account",
       "updateRoleFailed": "Could not change role",

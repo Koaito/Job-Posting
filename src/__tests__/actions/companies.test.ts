@@ -137,7 +137,7 @@ describe('Companies Server Actions', () => {
       (global.fetch as jest.Mock).mockImplementation(() => mockFetchNetworkError());
       const result = await createCompany({ company_name: 'ACME Corp' });
       expect(result.success).toBe(false);
-      expect(result.error).toBe('Network error');
+      expect(result.error).toBe('Không thể kết nối với server');
     });
   });
 

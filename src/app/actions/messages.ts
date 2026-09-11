@@ -213,7 +213,7 @@ export async function sendMessage(
     };
   } catch (error) {
     console.error('Error sending message:', error);
-    return { success: false, error: 'Network error' };
+    return { success: false, error: t('networkError') };
   }
 }
 

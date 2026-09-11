@@ -108,7 +108,7 @@ describe('Crawl Server Actions', () => {
       (global.fetch as jest.Mock).mockImplementation(mockFetchNetworkError);
       const result = await startCrawl({ source: 'topcv', category: 'data-analyst' });
       expect(result.success).toBe(false);
-      expect(result.error).toBe('Network error');
+      expect(result.error).toBe('Không thể kết nối với server');
     });
   });
 
