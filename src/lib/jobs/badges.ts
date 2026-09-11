@@ -43,6 +43,30 @@ export function industryClass(value: string | null | undefined): string {
   return INDUSTRY_CLASS_MAP[value] ?? INDUSTRY_CLASS_FALLBACK;
 }
 
+// i18n (Giai đoạn 2 Phần 3, 09/2026): `matching_industry` thực tế đang
+// lưu 1 trong 5 giá trị tiếng Việt của INDUSTRY_OPTIONS (JobForm.tsx/
+// jobs/page.tsx, namespace dịch chung "industries") — KHÁC HẲN 6 giá
+// trị INDUSTRY_CLASS_MAP ở trên (Code/Business Analysis/...). Đây là 2
+// bộ giá trị không khớp nhau cho CÙNG 1 field — có vẻ là bug dữ liệu
+// tồn tại từ trước (industryClass() nhiều khả năng luôn rơi về
+// INDUSTRY_CLASS_FALLBACK cho job thật), nhưng KHÔNG thuộc phạm vi đợt
+// dịch text này — chỉ ghi chú lại, không tự sửa logic class ở đây.
+//
+// industryLabel(): giống jobStatusLabel(), giá trị lạ ngoài 5 giá trị
+// biết trước (dữ liệu cũ/nhập tay lệch) trả nguyên văn thay vì lỗi.
+const INDUSTRY_LABEL_KEY: Record<string, string> = {
+  'CNTT - Phần mềm': 'it',
+  'Marketing - PR': 'marketing',
+  'Kinh doanh - Bán hàng': 'sales',
+  'Thiết kế - Mỹ thuật': 'design',
+  Khác: 'other',
+};
+
+export function industryLabel(value: string, t: (key: string) => string): string {
+  const key = INDUSTRY_LABEL_KEY[value];
+  return key ? t(key) : value;
+}
+
 const JOB_STATUS_LABEL_VALUES = ['OPEN', 'CLOSED'] as const;
 
 export function jobStatusLabel(status: string, t: (key: string) => string): string {

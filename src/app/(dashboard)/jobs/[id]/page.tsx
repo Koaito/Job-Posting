@@ -1,7 +1,7 @@
 import { getJobById, getJobApplicants, getJobSavers } from '@/app/actions/jobs';
 import { getCurrentUser } from '@/app/actions/auth';
 import { getMyApplications, getMySavedJobs } from '@/app/actions/me';
-import { jobStatusChipClass, jobStatusLabel } from '@/lib/jobs/badges';
+import { industryLabel, jobStatusChipClass, jobStatusLabel } from '@/lib/jobs/badges';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getTranslations, getLocale } from 'next-intl/server';
@@ -26,6 +26,7 @@ export default async function JobDetailPage({
 }) {
   const t = await getTranslations('jobDetailPage');
   const tJobStatus = await getTranslations('jobStatus');
+  const ti = await getTranslations('industries');
   const dateLocale = toIntlLocale(await getLocale());
   const { id } = await params;
   const job = await getJobById(id);
@@ -90,7 +91,7 @@ export default async function JobDetailPage({
               {job.matching_industry && (
                 <>
                   <dt>{t('industry')}</dt>
-                  <dd>{job.matching_industry}</dd>
+                  <dd>{industryLabel(job.matching_industry, ti)}</dd>
                 </>
               )}
 

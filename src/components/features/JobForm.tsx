@@ -28,6 +28,7 @@ export default function JobForm({ mode, initialData }: JobFormProps) {
   const router = useRouter();
   const t = useTranslations('jobForm');
   const tp = useTranslations('provinces');
+  const ti = useTranslations('industries');
   const tc = useTranslations('common');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -166,11 +167,11 @@ export default function JobForm({ mode, initialData }: JobFormProps) {
             <option value="">{t('selectIndustryOption')}</option>
             {/* value giữ nguyên tiếng Việt — khớp đúng chuỗi backend
                 lưu/lọc theo matching_industry, chỉ TEXT hiển thị được dịch */}
-            <option value="CNTT - Phần mềm">{t('industryIt')}</option>
-            <option value="Marketing - PR">{t('industryMarketing')}</option>
-            <option value="Kinh doanh - Bán hàng">{t('industrySales')}</option>
-            <option value="Thiết kế - Mỹ thuật">{t('industryDesign')}</option>
-            <option value="Khác">{t('industryOther')}</option>
+            <option value="CNTT - Phần mềm">{ti('it')}</option>
+            <option value="Marketing - PR">{ti('marketing')}</option>
+            <option value="Kinh doanh - Bán hàng">{ti('sales')}</option>
+            <option value="Thiết kế - Mỹ thuật">{ti('design')}</option>
+            <option value="Khác">{ti('other')}</option>
           </select>
         </label>
 

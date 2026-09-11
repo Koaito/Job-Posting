@@ -18,7 +18,19 @@ interface SearchParams {
   page?: string;
 }
 
-const PROVINCE_OPTIONS = ['Hà Nội', 'Hồ Chí Minh', 'Đà Nẵng'];
+const PROVINCE_OPTIONS = ['Hà Nội', 'Hồ Chí Minh', 'Đà Nẵng'] as const;
+
+// i18n (Giai đoạn 2 Phần 3, 09/2026): value gửi lên backend (query param
+// ?province=...) PHẢI giữ nguyên tiếng Việt (khớp province_name lưu ở
+// DB) — chỉ TEXT hiển thị trong <option> đổi theo locale, dùng CHUNG
+// namespace "provinces" + cùng cách map value -> key đã dùng ở
+// CompanyForm.tsx/JobForm.tsx (PROVINCE_LABEL_KEY), tránh lệch nếu sau
+// này 1 trong 2 nơi đổi tên key.
+const PROVINCE_LABEL_KEY: Record<(typeof PROVINCE_OPTIONS)[number], 'hanoi' | 'hcm' | 'danang'> = {
+  'Hà Nội': 'hanoi',
+  'Hồ Chí Minh': 'hcm',
+  'Đà Nẵng': 'danang',
+};
 
 export default async function CompaniesPage({
   searchParams,
@@ -26,6 +38,7 @@ export default async function CompaniesPage({
   searchParams: Promise<SearchParams>;
 }) {
   const t = await getTranslations('companiesPage');
+  const tp = await getTranslations('provinces');
   const resolvedSearchParams = await searchParams;
   const page = parseInt(resolvedSearchParams.page || '1');
   const limit = 50;
@@ -77,7 +90,7 @@ export default async function CompaniesPage({
           <select name="province" defaultValue={resolvedSearchParams.province || ''}>
             <option value="">{t('allProvinces')}</option>
             {PROVINCE_OPTIONS.map((p) => (
-              <option key={p} value={p}>{p}</option>
+              <option key={p} value={p}>{tp(PROVINCE_LABEL_KEY[p])}</option>
             ))}
           </select>
           <button type="submit" className="btn">{t('filterButton')}</button>

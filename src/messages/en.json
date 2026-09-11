@@ -145,6 +145,13 @@
     "hcm": "Ho Chi Minh City",
     "danang": "Da Nang"
   },
+  "industries": {
+    "it": "IT - Software",
+    "marketing": "Marketing - PR",
+    "sales": "Business - Sales",
+    "design": "Design - Fine Arts",
+    "other": "Other"
+  },
   "jobForm": {
     "titleCreate": "New Job Details",
     "titleEdit": "Edit Job Details",
@@ -155,11 +162,6 @@
     "companyIdHint": "TODO: Replace with an autocomplete selector",
     "industryLabel": "Industry",
     "selectIndustryOption": "-- Select industry --",
-    "industryIt": "IT - Software",
-    "industryMarketing": "Marketing - PR",
-    "industrySales": "Business - Sales",
-    "industryDesign": "Design - Fine Arts",
-    "industryOther": "Other",
     "levelLabel": "Level",
     "selectLevelOption": "-- Select level --",
     "locationLabel": "Location",

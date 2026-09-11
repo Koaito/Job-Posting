@@ -1,5 +1,5 @@
 import { getJobs } from '@/app/actions/jobs';
-import { industryClass, jobStatusChipClass, jobStatusLabel } from '@/lib/jobs/badges';
+import { industryClass, industryLabel, jobStatusChipClass, jobStatusLabel } from '@/lib/jobs/badges';
 import Link from 'next/link';
 import { getTranslations, getLocale } from 'next-intl/server';
 import { toIntlLocale } from '@/i18n/config';
@@ -33,7 +33,17 @@ const INDUSTRY_OPTIONS = [
   'Khác',
 ];
 const LEVEL_OPTIONS = ['Intern', 'Fresher', 'Junior', 'Middle', 'Senior', 'Lead', 'Manager'];
-const PROVINCE_OPTIONS = ['Hà Nội', 'Hồ Chí Minh', 'Đà Nẵng'];
+const PROVINCE_OPTIONS = ['Hà Nội', 'Hồ Chí Minh', 'Đà Nẵng'] as const;
+
+// i18n (Giai đoạn 2 Phần 3, 09/2026): cùng cách map value -> key đã
+// dùng ở CompanyForm.tsx/companies/page.tsx — value gửi lên backend
+// (query param ?province=...) giữ nguyên tiếng Việt, chỉ TEXT hiển thị
+// đổi theo locale.
+const PROVINCE_LABEL_KEY: Record<(typeof PROVINCE_OPTIONS)[number], 'hanoi' | 'hcm' | 'danang'> = {
+  'Hà Nội': 'hanoi',
+  'Hồ Chí Minh': 'hcm',
+  'Đà Nẵng': 'danang',
+};
 
 interface SearchParams {
   search?: string;
@@ -53,6 +63,8 @@ export default async function JobsPage({
   searchParams: Promise<SearchParams>;
 }) {
   const t = await getTranslations('jobsPage');
+  const tp = await getTranslations('provinces');
+  const ti = await getTranslations('industries');
   const tJobStatus = await getTranslations('jobStatus');
   const dateLocale = toIntlLocale(await getLocale());
   const sp = await searchParams;
@@ -123,7 +135,7 @@ export default async function JobsPage({
         <select name="industry" defaultValue={sp.industry || ''}>
           <option value="">{t('allIndustries')}</option>
           {INDUSTRY_OPTIONS.map((i) => (
-            <option key={i} value={i}>{i}</option>
+            <option key={i} value={i}>{industryLabel(i, ti)}</option>
           ))}
         </select>
         <select name="level" defaultValue={sp.level || ''}>
@@ -135,7 +147,7 @@ export default async function JobsPage({
         <select name="province" defaultValue={sp.province || ''}>
           <option value="">{t('allProvinces')}</option>
           {PROVINCE_OPTIONS.map((p) => (
-            <option key={p} value={p}>{p}</option>
+            <option key={p} value={p}>{tp(PROVINCE_LABEL_KEY[p])}</option>
           ))}
         </select>
         <select name="status" defaultValue={sp.status || ''}>
@@ -169,7 +181,7 @@ export default async function JobsPage({
                   <span className="ticket-code">JOB-{job.job_id.slice(0, 8).toUpperCase()}</span>
                   {job.matching_industry && (
                     <span className={`ticket-industry ${industryClass(job.matching_industry)}`}>
-                      {job.matching_industry}
+                      {industryLabel(job.matching_industry, ti)}
                     </span>
                   )}
                   {job.level_code && <span className="ticket-level">{job.level_code}</span>}

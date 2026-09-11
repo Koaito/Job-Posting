@@ -4,7 +4,7 @@ import type { Job } from '@/types/jobs';
 import type { Company } from '@/types/companies';
 import type { CompanyContactWithCompany } from '@/types/contacts';
 import type { User } from '@/types/auth';
-import { industryClass, jobStatusChipClass, jobStatusLabel } from '@/lib/jobs/badges';
+import { industryClass, industryLabel, jobStatusChipClass, jobStatusLabel } from '@/lib/jobs/badges';
 import { partnershipPotentialClass, partnershipPotentialLabel } from '@/lib/companies/potential';
 import { toIntlLocale } from '@/i18n/config';
 
@@ -41,6 +41,7 @@ export async function ActivitySections({
   const t = await getTranslations('activitySections');
   const tPotential = await getTranslations('partnershipPotential');
   const tJobStatus = await getTranslations('jobStatus');
+  const ti = await getTranslations('industries');
   const dateLocale = toIntlLocale(await getLocale());
   return (
     <>
@@ -55,7 +56,7 @@ export async function ActivitySections({
                 <span className="ticket-code">JOB-{job.job_id.slice(0, 8).toUpperCase()}</span>
                 {job.matching_industry && (
                   <span className={`ticket-industry ${industryClass(job.matching_industry)}`}>
-                    {job.matching_industry}
+                    {industryLabel(job.matching_industry, ti)}
                   </span>
                 )}
                 {job.level_code && <span className="ticket-level">{job.level_code}</span>}

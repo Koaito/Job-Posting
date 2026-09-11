@@ -145,6 +145,13 @@
     "hcm": "Hồ Chí Minh",
     "danang": "Đà Nẵng"
   },
+  "industries": {
+    "it": "CNTT - Phần mềm",
+    "marketing": "Marketing - PR",
+    "sales": "Kinh doanh - Bán hàng",
+    "design": "Thiết kế - Mỹ thuật",
+    "other": "Khác"
+  },
   "jobForm": {
     "titleCreate": "Thông tin Job mới",
     "titleEdit": "Sửa thông tin Job",
@@ -155,11 +162,6 @@
     "companyIdHint": "TODO: Thay bằng autocomplete selector",
     "industryLabel": "Ngành",
     "selectIndustryOption": "-- Chọn ngành --",
-    "industryIt": "CNTT - Phần mềm",
-    "industryMarketing": "Marketing - PR",
-    "industrySales": "Kinh doanh - Bán hàng",
-    "industryDesign": "Thiết kế - Mỹ thuật",
-    "industryOther": "Khác",
     "levelLabel": "Level",
     "selectLevelOption": "-- Chọn level --",
     "locationLabel": "Địa điểm",
