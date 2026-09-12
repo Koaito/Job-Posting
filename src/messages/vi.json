@@ -156,6 +156,7 @@
   "jobForm": {
     "titleCreate": "Thông tin Job mới",
     "titleEdit": "Sửa thông tin Job",
+    "errorMissingInitialData": "Không có dữ liệu job ban đầu để cập nhật — vui lòng tải lại trang.",
     "jobTitleLabel": "Tên Job *",
     "jobTitlePlaceholder": "VD: Frontend Developer",
     "companyIdLabel": "Company ID *",

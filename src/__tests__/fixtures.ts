@@ -358,7 +358,7 @@ export const mockDashboardStatsResponse = {
 /**
  * Mock fetch responses
  */
-export function mockFetchSuccess(data: any) {
+export function mockFetchSuccess<T = unknown>(data: T) {
   return Promise.resolve({
     ok: true,
     status: 200,

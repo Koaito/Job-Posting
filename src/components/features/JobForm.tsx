@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { createJob, updateJob } from '@/app/actions/jobs';
+import type { JobDetail } from '@/types/jobs';
 
 /**
  * Reusable Job Form Component
@@ -21,7 +22,7 @@ import { createJob, updateJob } from '@/app/actions/jobs';
 
 interface JobFormProps {
   mode: 'create' | 'edit';
-  initialData?: any;
+  initialData?: JobDetail;
 }
 
 export default function JobForm({ mode, initialData }: JobFormProps) {
@@ -80,6 +81,12 @@ export default function JobForm({ mode, initialData }: JobFormProps) {
         // BUG FIX: JobCreate KHÔNG có field job_status/ss_team_notes —
         // gửi 2 field này khi tạo mới cũng bị 422 (extra="forbid").
         result = await createJob(basePayload);
+      } else if (!initialData) {
+        // Không nên xảy ra ở luồng bình thường — mode="edit" luôn được
+        // gọi kèm initialData (xem jobs/[id]/edit/page.tsx), giữ guard
+        // này chỉ để tránh crash nếu component bị dùng sai chỗ khác.
+        setError(t('errorMissingInitialData'));
+        return;
       } else {
         // JobUpdate CÓ job_status/ss_team_notes — chỉ hợp lệ khi sửa.
         result = await updateJob(initialData.job_id, {
@@ -287,7 +294,7 @@ export default function JobForm({ mode, initialData }: JobFormProps) {
             type="number"
             id="salary_min"
             name="salary_min"
-            defaultValue={initialData?.salary_min}
+            defaultValue={initialData?.salary_min ?? undefined}
             placeholder="10000000"
           />
         </label>
@@ -298,7 +305,7 @@ export default function JobForm({ mode, initialData }: JobFormProps) {
             type="number"
             id="salary_max"
             name="salary_max"
-            defaultValue={initialData?.salary_max}
+            defaultValue={initialData?.salary_max ?? undefined}
             placeholder="20000000"
           />
         </label>
@@ -321,7 +328,7 @@ export default function JobForm({ mode, initialData }: JobFormProps) {
             type="date"
             id="deadline"
             name="deadline"
-            defaultValue={initialData?.deadline}
+            defaultValue={initialData?.deadline ?? undefined}
           />
         </label>
 
@@ -346,7 +353,7 @@ export default function JobForm({ mode, initialData }: JobFormProps) {
               id="ss_team_notes"
               name="ss_team_notes"
               rows={4}
-              defaultValue={initialData?.ss_team_notes}
+              defaultValue={initialData?.ss_team_notes ?? undefined}
               placeholder={t('internalNotesPlaceholder')}
             />
           </label>

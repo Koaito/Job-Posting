@@ -156,6 +156,7 @@
   "jobForm": {
     "titleCreate": "New Job Details",
     "titleEdit": "Edit Job Details",
+    "errorMissingInitialData": "Missing initial job data to update — please reload the page.",
     "jobTitleLabel": "Job Title *",
     "jobTitlePlaceholder": "e.g. Frontend Developer",
     "companyIdLabel": "Company ID *",
