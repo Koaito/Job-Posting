@@ -7,7 +7,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { useRouter } from 'next/navigation';
 import JobForm from '@/components/features/JobForm';
 import { createJob } from '@/app/actions/jobs';
-import { mockJob } from '../fixtures';
+import { mockJob, mockJobEnums } from '../fixtures';
 
 // Mock Next.js router
 jest.mock('next/navigation', () => ({
@@ -33,7 +33,7 @@ describe('JobForm Component', () => {
 
   describe('Create Mode', () => {
     it('should render create form with all fields', () => {
-      render(<JobForm mode="create" />);
+      render(<JobForm mode="create" enums={mockJobEnums} />);
 
       expect(screen.getByLabelText(/Tên Job/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/Company ID/i)).toBeInTheDocument();
@@ -46,7 +46,7 @@ describe('JobForm Component', () => {
     });
 
     it('should show required indicator on job title', () => {
-      render(<JobForm mode="create" />);
+      render(<JobForm mode="create" enums={mockJobEnums} />);
 
       const jobTitleLabel = screen.getByText(/Tên Job/i).closest('label');
       expect(jobTitleLabel).toHaveTextContent('*');
@@ -58,7 +58,7 @@ describe('JobForm Component', () => {
         job: { ...mockJob, job_id: 'new-job-id' },
       });
 
-      render(<JobForm mode="create" />);
+      render(<JobForm mode="create" enums={mockJobEnums} />);
 
       // Fill required fields
       fireEvent.change(screen.getByLabelText(/Tên Job/i), {
@@ -87,7 +87,7 @@ describe('JobForm Component', () => {
         job: { ...mockJob, job_id: 'new-job-id' },
       });
 
-      render(<JobForm mode="create" />);
+      render(<JobForm mode="create" enums={mockJobEnums} />);
 
       fireEvent.change(screen.getByLabelText(/Tên Job/i), {
         target: { value: 'Backend Developer' },
@@ -110,7 +110,7 @@ describe('JobForm Component', () => {
         error: 'Company not found',
       });
 
-      render(<JobForm mode="create" />);
+      render(<JobForm mode="create" enums={mockJobEnums} />);
 
       fireEvent.change(screen.getByLabelText(/Tên Job/i), {
         target: { value: 'Backend Developer' },
@@ -130,7 +130,7 @@ describe('JobForm Component', () => {
         () => new Promise((resolve) => setTimeout(() => resolve({ success: true, job: mockJob }), 100))
       );
 
-      render(<JobForm mode="create" />);
+      render(<JobForm mode="create" enums={mockJobEnums} />);
 
       const submitButton = screen.getByRole('button', { name: /Tạo Job/i });
       
@@ -152,7 +152,7 @@ describe('JobForm Component', () => {
     });
 
     it('should call router.back() when cancel clicked', () => {
-      render(<JobForm mode="create" />);
+      render(<JobForm mode="create" enums={mockJobEnums} />);
 
       fireEvent.click(screen.getByRole('button', { name: /Hủy/i }));
 
@@ -162,7 +162,7 @@ describe('JobForm Component', () => {
 
   describe('Edit Mode', () => {
     it('should pre-fill form with initial data', () => {
-      render(<JobForm mode="edit" initialData={mockJob} />);
+      render(<JobForm mode="edit" initialData={mockJob} enums={mockJobEnums} />);
 
       const jobTitleInput = screen.getByLabelText(/Tên Job/i) as HTMLInputElement;
       const companyIdInput = screen.getByLabelText(/Company ID/i) as HTMLInputElement;
@@ -172,7 +172,7 @@ describe('JobForm Component', () => {
     });
 
     it('should show "Cập nhật" button text in edit mode', () => {
-      render(<JobForm mode="edit" initialData={mockJob} />);
+      render(<JobForm mode="edit" initialData={mockJob} enums={mockJobEnums} />);
 
       expect(screen.getByRole('button', { name: /Cập nhật/i })).toBeInTheDocument();
       expect(screen.queryByRole('button', { name: /Tạo Job/i })).not.toBeInTheDocument();
@@ -181,21 +181,21 @@ describe('JobForm Component', () => {
 
   describe('Form Validation', () => {
     it('should require job title', async () => {
-      render(<JobForm mode="create" />);
+      render(<JobForm mode="create" enums={mockJobEnums} />);
 
       const jobTitleInput = screen.getByLabelText(/Tên Job/i);
       expect(jobTitleInput).toHaveAttribute('required');
     });
 
     it('should require company id', async () => {
-      render(<JobForm mode="create" />);
+      render(<JobForm mode="create" enums={mockJobEnums} />);
 
       const companyIdInput = screen.getByLabelText(/Company ID/i);
       expect(companyIdInput).toHaveAttribute('required');
     });
 
     it('should show TODO note for company autocomplete', () => {
-      render(<JobForm mode="create" />);
+      render(<JobForm mode="create" enums={mockJobEnums} />);
 
       expect(screen.getByText(/TODO: Thay bằng autocomplete selector/i)).toBeInTheDocument();
     });
@@ -203,7 +203,7 @@ describe('JobForm Component', () => {
 
   describe('Salary Fields', () => {
     it('should accept numeric input for salary fields', () => {
-      render(<JobForm mode="create" />);
+      render(<JobForm mode="create" enums={mockJobEnums} />);
 
       const salaryMinInput = screen.getByLabelText(/Lương tối thiểu/i) as HTMLInputElement;
       const salaryMaxInput = screen.getByLabelText(/Lương tối đa/i) as HTMLInputElement;
@@ -213,7 +213,7 @@ describe('JobForm Component', () => {
     });
 
     it('should have salary type options', () => {
-      render(<JobForm mode="create" />);
+      render(<JobForm mode="create" enums={mockJobEnums} />);
 
       const salaryTypeSelect = screen.getByLabelText(/Loại lương/i) as HTMLSelectElement;
       const options = Array.from(salaryTypeSelect.options).map(opt => opt.value);

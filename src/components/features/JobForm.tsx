@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { createJob, updateJob } from '@/app/actions/jobs';
-import type { JobDetail } from '@/types/jobs';
+import type { JobDetail, JobEnums } from '@/types/jobs';
 
 /**
  * Reusable Job Form Component
@@ -18,14 +18,27 @@ import type { JobDetail } from '@/types/jobs';
  * `salary_type="NEGOTIABLE"`) nên chỉ dịch phần TEXT hiển thị, giữ
  * nguyên `value` gửi lên server — tương tự nguyên tắc đã áp dụng ở tầng
  * dịch `error_code` (Giai đoạn 3): không đổi dữ liệu, chỉ đổi hiển thị.
+ *
+ * Nối /enums (09/2026): 5 dropdown level_code/work_type/salary_type/
+ * salary_period/job_status trước đây tự hardcode value trực tiếp
+ * trong JSX (kèm TODO "Load from backend /enums" để lại trong code cũ)
+ * — giờ nhận qua prop `enums` (page.tsx cha gọi getJobEnums(), xem
+ * app/actions/jobs.ts), tự đồng bộ nếu constants.py (Scrap JD) đổi mà
+ * không cần sửa file này. Label hiển thị vẫn dịch qua `useTranslations`
+ * như cũ — chỉ value (chuỗi gửi backend) là đọc động, KHÔNG đổi cách
+ * dịch. matching_industry/province_name KHÔNG nằm trong /enums (2 field
+ * này không phải enum cố định ở backend — industry lấy từ
+ * JOB_CATEGORIES, province là chuỗi tên tỉnh tự do) nên vẫn giữ
+ * hardcode như trước, không đụng tới.
  */
 
 interface JobFormProps {
   mode: 'create' | 'edit';
   initialData?: JobDetail;
+  enums: JobEnums;
 }
 
-export default function JobForm({ mode, initialData }: JobFormProps) {
+export default function JobForm({ mode, initialData, enums }: JobFormProps) {
   const router = useRouter();
   const t = useTranslations('jobForm');
   const tp = useTranslations('provinces');
@@ -33,6 +46,34 @@ export default function JobForm({ mode, initialData }: JobFormProps) {
   const tc = useTranslations('common');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Map value backend (enums.*) -> key trong namespace "jobForm" —
+  // dùng khi .map() render <option> động từ prop enums, thay cho việc
+  // trước đây viết cứng từng <option>{t('...')}</option> theo thứ tự
+  // cố định. level_code KHÔNG cần map vì text hiển thị = value luôn
+  // (Intern/Fresher/... vốn đã là tiếng Anh, không dịch).
+  const workTypeLabelKey: Record<string, string> = {
+    FULL_TIME: 'workTypeFullTime',
+    PART_TIME: 'workTypePartTime',
+    INTERNSHIP: 'workTypeInternship',
+    OTHER: 'workTypeOther',
+  };
+  const salaryTypeLabelKey: Record<string, string> = {
+    RANGE: 'salaryTypeRange',
+    EXACT: 'salaryTypeExact',
+    UPTO: 'salaryTypeUpto',
+    STARTING_FROM: 'salaryTypeStartingFrom',
+    NEGOTIABLE: 'salaryTypeNegotiable',
+    UNPAID: 'salaryTypeUnpaid',
+  };
+  const salaryPeriodLabelKey: Record<string, string> = {
+    MONTH: 'salaryPeriodMonth',
+    YEAR: 'salaryPeriodYear',
+  };
+  const jobStatusLabelKey: Record<string, string> = {
+    OPEN: 'statusOpen',
+    CLOSED: 'statusClosed',
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -188,9 +229,10 @@ export default function JobForm({ mode, initialData }: JobFormProps) {
           </select>
         </label>
 
-        {/* Level - TODO: Load from backend /enums. Value là tiếng Anh
-            sẵn (Intern/Fresher/...), khớp đúng backend — không cần dịch
-            text lẫn value cho nhóm này. */}
+        {/* Level — value đọc động từ prop enums.level_code (GET /enums,
+            xem comment đầu file). Value là tiếng Anh sẵn (Intern/
+            Fresher/...), khớp đúng backend — không cần dịch text lẫn
+            value cho nhóm này. */}
         <label className="span-1" htmlFor="level_code">
           {t('levelLabel')}
           <select
@@ -201,21 +243,20 @@ export default function JobForm({ mode, initialData }: JobFormProps) {
             <option value="">{t('selectLevelOption')}</option>
             {/* BUG FIX: backend JobCreate/JobUpdate chỉ nhận level_code
                 dạng chuỗi (Intern|Fresher|Junior|Middle|Senior|Lead|Manager),
-                KHÔNG phải id số — value phải khớp đúng chuỗi backend mong đợi */}
-            <option value="Intern">Intern</option>
-            <option value="Fresher">Fresher</option>
-            <option value="Junior">Junior</option>
-            <option value="Middle">Middle</option>
-            <option value="Senior">Senior</option>
-            <option value="Lead">Lead</option>
-            <option value="Manager">Manager</option>
+                KHÔNG phải id số — value phải khớp đúng chuỗi backend mong đợi.
+                Text hiển thị = value luôn (đã là tiếng Anh sẵn), không dịch. */}
+            {enums.level_code.map((value) => (
+              <option key={value} value={value}>{value}</option>
+            ))}
           </select>
         </label>
 
-        {/* Province - TODO: Load from backend. Namespace "provinces"
-            dùng chung với CompanyForm.tsx (xem comment ở đó) — value
-            giữ nguyên tiếng Việt có dấu, khớp province_name backend lưu
-            trực tiếp, chỉ dịch TEXT hiển thị. */}
+        {/* Province — KHÔNG nằm trong GET /enums (chuỗi tên tỉnh tự do,
+            không phải enum cố định ở backend — khác Level ở trên), nên
+            vẫn hardcode 3 tỉnh phổ biến như trước, không đổi. Namespace
+            "provinces" dùng chung với CompanyForm.tsx (xem comment ở
+            đó) — value giữ nguyên tiếng Việt có dấu, khớp province_name
+            backend lưu trực tiếp, chỉ dịch TEXT hiển thị. */}
         <label className="span-1" htmlFor="province_name">
           {t('locationLabel')}
           <select
@@ -233,10 +274,9 @@ export default function JobForm({ mode, initialData }: JobFormProps) {
         </label>
 
         {/* Work Type — khớp _job_form.html gốc (work_types), trước đây
-            bị bỏ sót hoàn toàn khỏi form React. Value là mã enum
-            backend chờ (work_type_enum), nhãn hiển thị dịch theo
-            locale, khớp WORK_TYPE_MAP bên Flask (crawler_client/jobs.py)
-            cho bản tiếng Việt. */}
+            bị bỏ sót hoàn toàn khỏi form React. Value đọc động từ prop
+            enums.work_type (GET /enums), nhãn hiển thị dịch theo locale
+            qua workTypeLabelKey map ở trên. */}
         <label className="span-1" htmlFor="work_type">
           {t('workTypeLabel')}
           <select
@@ -245,10 +285,9 @@ export default function JobForm({ mode, initialData }: JobFormProps) {
             defaultValue={initialData?.work_type || ''}
           >
             <option value="">{t('selectWorkTypeOption')}</option>
-            <option value="FULL_TIME">{t('workTypeFullTime')}</option>
-            <option value="PART_TIME">{t('workTypePartTime')}</option>
-            <option value="INTERNSHIP">{t('workTypeInternship')}</option>
-            <option value="OTHER">{t('workTypeOther')}</option>
+            {enums.work_type.map((value) => (
+              <option key={value} value={value}>{t(workTypeLabelKey[value] ?? value)}</option>
+            ))}
           </select>
         </label>
 
@@ -259,16 +298,13 @@ export default function JobForm({ mode, initialData }: JobFormProps) {
             name="salary_type"
             defaultValue={initialData?.salary_type || 'NEGOTIABLE'}
           >
-            <option value="RANGE">{t('salaryTypeRange')}</option>
-            <option value="EXACT">{t('salaryTypeExact')}</option>
-            <option value="UPTO">{t('salaryTypeUpto')}</option>
-            <option value="STARTING_FROM">{t('salaryTypeStartingFrom')}</option>
-            <option value="NEGOTIABLE">{t('salaryTypeNegotiable')}</option>
-            {/* BUG FIX (đợt dọn nợ 09/2026): SALARY_TYPE_MAP bên Flask
-                gốc có 6 giá trị, form React trước đây chỉ có 5 — thiếu
-                UNPAID (job không lương, vd thực tập không hỗ trợ) nên
-                job loại này không tạo/sửa được đúng qua web. */}
-            <option value="UNPAID">{t('salaryTypeUnpaid')}</option>
+            {/* Value đọc động từ prop enums.salary_type (GET /enums) —
+                trước đây hardcode 6 option cứng (từng thiếu UNPAID, xem
+                lịch sử bug đã sửa 09/2026), giờ tự đồng bộ nếu
+                SALARY_TYPE_VALUES (constants.py) đổi. */}
+            {enums.salary_type.map((value) => (
+              <option key={value} value={value}>{t(salaryTypeLabelKey[value] ?? value)}</option>
+            ))}
           </select>
         </label>
 
@@ -283,8 +319,9 @@ export default function JobForm({ mode, initialData }: JobFormProps) {
             name="salary_period"
             defaultValue={initialData?.salary_period || 'MONTH'}
           >
-            <option value="MONTH">{t('salaryPeriodMonth')}</option>
-            <option value="YEAR">{t('salaryPeriodYear')}</option>
+            {enums.salary_period.map((value) => (
+              <option key={value} value={value}>{t(salaryPeriodLabelKey[value] ?? value)}</option>
+            ))}
           </select>
         </label>
 
@@ -340,8 +377,9 @@ export default function JobForm({ mode, initialData }: JobFormProps) {
               name="job_status"
               defaultValue={initialData?.job_status || 'OPEN'}
             >
-              <option value="OPEN">{t('statusOpen')}</option>
-              <option value="CLOSED">{t('statusClosed')}</option>
+              {enums.job_status.map((value) => (
+                <option key={value} value={value}>{t(jobStatusLabelKey[value] ?? value)}</option>
+              ))}
             </select>
           </label>
         )}

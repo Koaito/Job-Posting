@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
+import { getJobEnums } from '@/app/actions/jobs';
 import JobForm from '@/components/features/JobForm';
 
 /**
@@ -9,7 +10,10 @@ import JobForm from '@/components/features/JobForm';
  */
 
 export default async function JobNewPage() {
-  const t = await getTranslations('jobsNewPage');
+  const [t, enums] = await Promise.all([
+    getTranslations('jobsNewPage'),
+    getJobEnums(),
+  ]);
   return (
     // CHUYỂN 09/2026 (audit CSS): bỏ div "page-container" ngoài cùng và
     // "form-container" bọc JobForm — cả 2 đều là class ảo, không tồn
@@ -26,7 +30,7 @@ export default async function JobNewPage() {
         </div>
       </div>
 
-      <JobForm mode="create" />
+      <JobForm mode="create" enums={enums} />
     </>
   );
 }

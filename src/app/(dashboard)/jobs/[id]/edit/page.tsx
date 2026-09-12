@@ -5,7 +5,7 @@
 
 import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
-import { getJobById } from '@/app/actions/jobs';
+import { getJobById, getJobEnums } from '@/app/actions/jobs';
 import JobForm from '@/components/features/JobForm';
 
 interface PageProps {
@@ -13,9 +13,12 @@ interface PageProps {
 }
 
 export default async function JobEditPage({ params }: PageProps) {
-  const t = await getTranslations('jobsEditPage');
   const { id } = await params;
-  const job = await getJobById(id);
+  const [t, job, enums] = await Promise.all([
+    getTranslations('jobsEditPage'),
+    getJobById(id),
+    getJobEnums(),
+  ]);
 
   if (!job) {
     notFound();
@@ -30,7 +33,7 @@ export default async function JobEditPage({ params }: PageProps) {
         <h1>{t('title', { jobTitle: job.job_title })}</h1>
       </div>
 
-      <JobForm mode="edit" initialData={job} />
+      <JobForm mode="edit" initialData={job} enums={enums} />
     </>
   );
 }

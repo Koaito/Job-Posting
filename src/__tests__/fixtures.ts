@@ -29,6 +29,17 @@ export const mockJob = {
   updated_at: '2026-08-01T00:00:00Z',
 };
 
+// Fixture cho prop `enums` mới của JobForm.tsx (09/2026, nối GET /enums
+// thay hardcode) — khớp JobEnums (types/jobs.ts) và giá trị thật ở
+// constants.py (Scrap JD), xem app/actions/jobs.ts::getJobEnums().
+export const mockJobEnums = {
+  job_status: ['OPEN', 'CLOSED'],
+  work_type: ['FULL_TIME', 'PART_TIME', 'INTERNSHIP', 'OTHER'],
+  salary_type: ['RANGE', 'EXACT', 'UPTO', 'STARTING_FROM', 'NEGOTIABLE', 'UNPAID'],
+  salary_period: ['MONTH', 'YEAR'],
+  level_code: ['Intern', 'Fresher', 'Junior', 'Middle', 'Senior', 'Lead', 'Manager'],
+};
+
 export const mockJobClosed = {
   ...mockJob,
   job_id: 'job-2',

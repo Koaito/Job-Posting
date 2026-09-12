@@ -11,8 +11,8 @@
  * hành vi sai nữa.
  */
 
-import { getJobs, getJobById, createJob, updateJob, deleteJob, getJobApplicants, getJobSavers } from '@/app/actions/jobs';
-import { mockJob, mockJobClosed, mockJobsResponse, mockJobApplicant, mockJobSaver, mockFetchSuccess, mockFetchError, mockFetchNetworkError } from '../fixtures';
+import { getJobs, getJobById, getJobEnums, createJob, updateJob, deleteJob, getJobApplicants, getJobSavers } from '@/app/actions/jobs';
+import { mockJob, mockJobClosed, mockJobsResponse, mockJobApplicant, mockJobSaver, mockJobEnums, mockFetchSuccess, mockFetchError, mockFetchNetworkError } from '../fixtures';
 
 // Mock global fetch
 global.fetch = jest.fn();
@@ -140,6 +140,46 @@ describe('Jobs Server Actions', () => {
       const result = await getJobById('job-1');
 
       expect(result).toBeNull();
+    });
+  });
+
+  describe('getJobEnums()', () => {
+    it('should fetch enum values from /enums', async () => {
+      (global.fetch as jest.Mock).mockImplementation(() => mockFetchSuccess(mockJobEnums));
+
+      const result = await getJobEnums();
+
+      // GET /enums public — chỉ X-API-Key, không cần Authorization,
+      // giống getJobById() ở trên.
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/enums'),
+        expect.objectContaining({
+          headers: { 'X-API-Key': 'test-api-key' },
+        })
+      );
+      expect(result).toEqual(mockJobEnums);
+    });
+
+    it('should fall back to static enum values on network error', async () => {
+      // BUG FIX (đợt nối /enums 09/2026, thay hardcode ở JobForm.tsx):
+      // nếu backend tạm lỗi, JobForm vẫn phải còn dropdown dùng được —
+      // không được trả undefined/mảng rỗng khiến form vỡ.
+      (global.fetch as jest.Mock).mockImplementation(() => mockFetchNetworkError());
+
+      const result = await getJobEnums();
+
+      expect(result.job_status).toEqual(['OPEN', 'CLOSED']);
+      expect(result.level_code).toContain('Middle');
+      expect(result.work_type.length).toBeGreaterThan(0);
+    });
+
+    it('should fall back to static enum values on HTTP error', async () => {
+      (global.fetch as jest.Mock).mockImplementation(() => mockFetchError(500, 'Internal Server Error'));
+
+      const result = await getJobEnums();
+
+      expect(result.salary_type).toContain('UNPAID');
+      expect(result.salary_period).toEqual(['MONTH', 'YEAR']);
     });
   });
 

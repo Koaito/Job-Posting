@@ -10,6 +10,21 @@
  * chi tiết company hiện CompanyDetailOut.jobs).
  */
 
+/**
+ * Khớp 5 field JobForm cần trong response GET /enums
+ * (api/routers/meta.py::get_enums) — endpoint trả về 11 field, nhưng
+ * JobForm chỉ dùng đúng 5 field liên quan tới job. Không khai hết 11
+ * field ở đây vì phần còn lại (contact_status/partnership_potential/
+ * user_role/entity_type/action_type) không dùng cho form này.
+ */
+export interface JobEnums {
+  job_status: string[];
+  work_type: string[];
+  salary_type: string[];
+  salary_period: string[];
+  level_code: string[];
+}
+
 export interface ParsedContent {
   job_description?: string | null;
   requirements?: string | null;

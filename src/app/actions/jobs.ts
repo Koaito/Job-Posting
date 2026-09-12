@@ -10,7 +10,7 @@ import { apiFetch, buildParams } from '@/lib/api/client';
 // KHÔNG được import ở đâu cả (dead code, 2 nguồn sự thật cho cùng 1
 // entity). Sửa: dùng chung types/jobs.ts, xoá hẳn interface Job/JobFilters
 // tự khai ở đây — không còn 2 nguồn sự thật nữa.
-import type { JobDetail, JobFilters, JobCreatePayload, JobUpdatePayload, PaginatedJobs } from '@/types/jobs';
+import type { JobDetail, JobEnums, JobFilters, JobCreatePayload, JobUpdatePayload, PaginatedJobs } from '@/types/jobs';
 import type { JobApplicant, JobSaver } from '@/types/auth';
 
 /**
@@ -179,6 +179,39 @@ export async function getJobSavers(jobId: string): Promise<JobSaver[]> {
   if (!result.success) {
     console.error('Failed to fetch job savers:', result.status, result.error);
     return [];
+  }
+  return result.data;
+}
+
+// Fallback khớp ĐÚNG constants.py hiện hành (JOB_STATUS_VALUES/
+// WORK_TYPE_VALUES/SALARY_TYPE_VALUES/SALARY_PERIOD_VALUES/
+// LEVEL_CODE_VALUES) — dùng khi GET /enums lỗi mạng, để JobForm vẫn
+// còn dropdown dùng được thay vì trống trơn hoàn toàn. Xem
+// tests/test_stats.py::test_get_enums_matches_constants_module (Scrap
+// JD) cho bản gốc sự thật ở backend.
+const FALLBACK_JOB_ENUMS: JobEnums = {
+  job_status: ['OPEN', 'CLOSED'],
+  work_type: ['FULL_TIME', 'PART_TIME', 'INTERNSHIP', 'OTHER'],
+  salary_type: ['RANGE', 'EXACT', 'UPTO', 'STARTING_FROM', 'NEGOTIABLE', 'UNPAID'],
+  salary_period: ['MONTH', 'YEAR'],
+  level_code: ['Intern', 'Fresher', 'Junior', 'Middle', 'Senior', 'Lead', 'Manager'],
+};
+
+/**
+ * Enum values cho dropdown JobForm — GET /enums (api/routers/meta.py)
+ * trả 11 field, ở đây chỉ lấy 5 field job-related. Trước đây JobForm.tsx
+ * tự hardcode 5 danh sách này (TODO "Load from backend /enums" để lại
+ * trong code) — giờ đọc động từ backend, tự đồng bộ nếu constants.py
+ * đổi mà không cần sửa lại JobForm.tsx. Route public (chỉ cần
+ * X-API-Key), không đọc DB nên KHÔNG cần cache:'no-store' như các fetch
+ * dữ liệu — enum chỉ đổi khi deploy backend mới.
+ */
+export async function getJobEnums(): Promise<JobEnums> {
+  const result = await apiFetch<JobEnums>('/enums', { auth: false });
+
+  if (!result.success) {
+    console.error('Failed to fetch job enums, dùng fallback tĩnh:', result.status, result.error);
+    return FALLBACK_JOB_ENUMS;
   }
   return result.data;
 }
