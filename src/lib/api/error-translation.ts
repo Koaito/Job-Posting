@@ -421,6 +421,108 @@ const DYNAMIC_ERROR_HANDLERS: DynamicErrorHandler[] = [
 ];
 
 
+/**
+ * Cơ chế params có cấu trúc (Giai đoạn 3, Phần A, 09/2026) — backend
+ * (repo Scrap_JD, xem `api/error_codes.py` "đợt 1/2") đã bắt đầu trả
+ * thêm field `params` bên cạnh `error_code`/`message` cho 1 số
+ * error_code, tách riêng giá trị runtime khỏi câu đã ghép sẵn. Ưu tiên
+ * dùng params khi có: đáng tin hơn hẳn `DYNAMIC_ERROR_HANDLERS` ở trên
+ * (không còn phụ thuộc backend giữ NGUYÊN VĂN câu tiếng Việt — chỉ cần
+ * đổi 1 dấu câu là regex phía trên im lặng không khớp; interpolate
+ * thẳng từ params thì không có rủi ro đó).
+ *
+ * Đã đối chiếu trực tiếp source thật `api/routers/*.py` (không suy đoán
+ * từ mô tả) để lấy đúng 54 error_code hiện có params + đúng field name
+ * runtime của từng chỗ raise. error_code KHÔNG có trong 2 bảng dưới đây
+ * (kể cả 2 mã có params nhưng message TĨNH — xem `JOB_CURSOR_INVALID`/
+ * `JOB_CURSOR_WITH_OFFSET_NOT_ALLOWED`, đã thêm bản dịch tĩnh riêng ở
+ * errors.en.json thay vì qua cơ chế này) tự động rơi xuống
+ * `DYNAMIC_ERROR_HANDLERS`/regex cũ như trước — KHÔNG đổi hành vi của
+ * ~133 error_code còn lại mà backend chưa thêm params (đợt 2 của họ).
+ */
+function interpolate(template: string, params: Record<string, unknown>): string {
+  return template.replace(/\{(\w+)\}/g, (match, key: string) =>
+    key in params ? String(params[key]) : match,
+  );
+}
+
+/**
+ * 20 error_code dùng CHUNG 1 khuôn câu UUID (`api/error_codes.py`, họ
+ * `*_INVALID_UUID`) — chỉ khác tên field runtime, backend chỉ trả
+ * `params: {value}` (không kèm tên field), nên field name phải map thủ
+ * công từ error_code sang đây. KHÔNG gồm `job_company_id_invalid_uuid`
+ * — message thật dài hơn hẳn (có thêm câu hướng dẫn phía sau, xem
+ * `api/routers/jobs.py`), khai riêng trong `PARAMS_ERROR_TEMPLATES`.
+ */
+const UUID_FIELD_BY_ERROR_CODE: Record<string, string> = {
+  audit_log_company_id_invalid_uuid: 'company_id',
+  audit_log_actor_id_invalid_uuid: 'actor_id',
+  audit_log_log_id_invalid_uuid: 'log_id',
+  user_ss_user_id_invalid_uuid: 'ss_user_id',
+  company_created_by_invalid_uuid: 'created_by',
+  company_company_id_invalid_uuid: 'company_id',
+  contact_assigned_ss_user_invalid_uuid: 'assigned_ss_user',
+  contact_company_id_invalid_uuid: 'company_id',
+  contact_created_by_invalid_uuid: 'created_by',
+  contact_contact_id_invalid_uuid: 'contact_id',
+  crawl_triggered_by_invalid_uuid: 'triggered_by',
+  crawl_batch_id_invalid_uuid: 'batch_id',
+  crawl_run_id_invalid_uuid: 'run_id',
+  email_template_template_id_invalid_uuid: 'template_id',
+  import_preview_id_invalid_uuid: 'preview_id',
+  job_created_by_invalid_uuid: 'created_by',
+  job_job_id_invalid_uuid: 'job_id',
+  maintenance_triggered_by_invalid_uuid: 'triggered_by',
+  maintenance_run_id_invalid_uuid: 'run_id',
+  profile_job_id_invalid_uuid: 'job_id',
+};
+
+/**
+ * 10 error_code còn lại có params nhưng KHÔNG theo khuôn UUID chung —
+ * mỗi mã 1 template riêng, nhận thẳng object `params` thật backend trả
+ * (KHÔNG còn đoán ngược từ message tiếng Việt như handler cũ).
+ */
+const PARAMS_ERROR_TEMPLATES: Record<string, (params: Record<string, unknown>) => string> = {
+  import_entity_type_invalid: (p) =>
+    `entity_type: '${p.value}' is invalid — only job/company/contact are accepted.`,
+  import_entity_type_filter_status: (p) =>
+    `entity_type: '${p.value}' does not support the status filter.`,
+  import_entity_type_no_company_step: (p) =>
+    `entity_type: '${p.value}' has no company-selection step — only job/contact support it.`,
+  import_row_index_not_in_preview: (p) => `row_index ${p.value} is not in this preview.`,
+  // Message thật dài hơn khuôn UUID chung (có thêm câu hướng dẫn) —
+  // xem api/routers/jobs.py:201.
+  job_company_id_invalid_uuid: (p) =>
+    `company_id: '${p.value}' is not a valid UUID — check that you replaced it with a REAL ` +
+    `company_id from the response of POST /companies (or GET /companies?keyword=), not a ` +
+    `placeholder string.`,
+  job_company_not_found: (p) =>
+    `company_id: '${p.value}' does not exist — create the company first via POST /companies.`,
+  maintenance_required: (p) =>
+    `job_type: '${p.value}' calls Tavily/Gemini (real cost) — 'limit' is required when triggered ` +
+    `from the web; it can't be left empty (to avoid running against every company with no data).`,
+  profile_job_status_not_applicable: (p) =>
+    `This job is in status '${p.value}' and can't be applied to.`,
+  message_too_many_pending_requests: (p) =>
+    `You have too many pending message requests (max ${p.value} at a time). Please wait for the ` +
+    `SS to respond before sending a new request.`,
+  message_previous_request_rejected_cooldown: (p) =>
+    `Your previous request was declined — please try again ${p.value} days after it was declined.`,
+};
+
+function translateViaParams(
+  errorCode: string,
+  params: Record<string, unknown> | undefined,
+): string | null {
+  if (!params) return null;
+  const uuidField = UUID_FIELD_BY_ERROR_CODE[errorCode];
+  if (uuidField != null && 'value' in params) {
+    return interpolate(`${uuidField}: '{value}' is not a valid UUID.`, params);
+  }
+  const template = PARAMS_ERROR_TEMPLATES[errorCode];
+  return template ? template(params) : null;
+}
+
 function translateDynamicErrorMessage(errorCode: string, message: string): string | null {
   for (const handler of DYNAMIC_ERROR_HANDLERS) {
     if (handler.appliesTo(errorCode)) {
@@ -445,11 +547,24 @@ function translateDynamicErrorMessage(errorCode: string, message: string): strin
  *   `fallbackMessage` (tiếng Việt gốc), KHÔNG hiện lỗi trắng/"undefined".
  *   Đây là hành vi CHỦ Ý theo plan (Giai đoạn 3.2: "không dịch hết cùng
  *   lúc").
+ *
+ * CẬP NHẬT (Phần A, 09/2026): thêm bước tra `params` (khi backend có
+ * trả) NGAY SAU bảng tĩnh, TRƯỚC `DYNAMIC_ERROR_HANDLERS` — params
+ * đáng tin hơn regex nên ưu tiên trước; error_code chưa có params
+ * (~133 mã còn lại, đợt 2 của backend) vẫn rơi xuống regex cũ y hệt
+ * trước đây, không đổi hành vi.
  */
-function resolveErrorMessage(errorCode: string, fallbackMessage: string, locale: Locale): string {
+function resolveErrorMessage(
+  errorCode: string,
+  fallbackMessage: string,
+  locale: Locale,
+  params?: Record<string, unknown>,
+): string {
   if (locale === 'vi') return fallbackMessage;
   const staticTranslation = ERROR_TRANSLATIONS[locale]?.[errorCode];
   if (staticTranslation != null) return staticTranslation;
+  const paramsTranslation = translateViaParams(errorCode, params);
+  if (paramsTranslation != null) return paramsTranslation;
   const dynamicTranslation = translateDynamicErrorMessage(errorCode, fallbackMessage);
   if (dynamicTranslation != null) return dynamicTranslation;
   return fallbackMessage;
@@ -475,10 +590,17 @@ export async function formatErrorDetail(detail: unknown): Promise<string> {
   if (detail && typeof detail === 'object') {
     const message = (detail as { message?: unknown }).message;
     const errorCode = (detail as { error_code?: unknown }).error_code;
+    // Phần A (09/2026): đọc thêm field "params" nếu backend có trả
+    // (xem translateViaParams() ở trên) — object thường, không phải mảng.
+    const rawParams = (detail as { params?: unknown }).params;
+    const params =
+      rawParams && typeof rawParams === 'object' && !Array.isArray(rawParams)
+        ? (rawParams as Record<string, unknown>)
+        : undefined;
     if (typeof message === 'string') {
       if (typeof errorCode === 'string') {
         const locale = await getErrorLocale();
-        return resolveErrorMessage(errorCode, message, locale);
+        return resolveErrorMessage(errorCode, message, locale, params);
       }
       return message;
     }

@@ -85,5 +85,7 @@
   "message_student_not_found": "Student not found.",
   "message_ss_admin_moi_quyen_bo": "Only SS/admin can unblock.",
   "message_relationship_not_found_2": "Cannot unblock — the relationship does not exist, does not belong to you, or is not currently blocked.",
-  "import_internal_error": "Import failed due to a database error."
+  "import_internal_error": "Import failed due to a database error.",
+  "job_cursor_with_offset_not_allowed": "Cannot pass both cursor and offset at the same time — use offset for 'Page X/Y' mode, use cursor for infinite-scroll mode.",
+  "job_cursor_invalid": "cursor is not in the correct format — only use the next_cursor value taken from a previous GET /jobs response."
 }
