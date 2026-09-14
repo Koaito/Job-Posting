@@ -159,9 +159,7 @@
     "errorMissingInitialData": "Missing initial job data to update — please reload the page.",
     "jobTitleLabel": "Job Title *",
     "jobTitlePlaceholder": "e.g. Frontend Developer",
-    "companyIdLabel": "Company ID *",
-    "companyIdPlaceholder": "Company UUID",
-    "companyIdHint": "TODO: Replace with an autocomplete selector",
+    "companyIdLabel": "Company *",
     "industryLabel": "Industry",
     "selectIndustryOption": "-- Select industry --",
     "levelLabel": "Level",
@@ -193,6 +191,11 @@
     "internalNotesLabel": "Internal Notes",
     "internalNotesPlaceholder": "Notes for the SS team...",
     "submitCreate": "Create Job"
+  },
+  "companyCombobox": {
+    "placeholder": "— select an existing company —",
+    "emptyMessage": "No matching company found.",
+    "errorRequired": "Please select a company."
   },
   "companyForm": {
     "titleCreate": "New Company Details",

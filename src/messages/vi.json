@@ -159,9 +159,7 @@
     "errorMissingInitialData": "Không có dữ liệu job ban đầu để cập nhật — vui lòng tải lại trang.",
     "jobTitleLabel": "Tên Job *",
     "jobTitlePlaceholder": "VD: Frontend Developer",
-    "companyIdLabel": "Company ID *",
-    "companyIdPlaceholder": "UUID của công ty",
-    "companyIdHint": "TODO: Thay bằng autocomplete selector",
+    "companyIdLabel": "Công ty *",
     "industryLabel": "Ngành",
     "selectIndustryOption": "-- Chọn ngành --",
     "levelLabel": "Level",
@@ -193,6 +191,11 @@
     "internalNotesLabel": "Ghi chú nội bộ",
     "internalNotesPlaceholder": "Ghi chú cho team SS...",
     "submitCreate": "Tạo Job"
+  },
+  "companyCombobox": {
+    "placeholder": "— chọn công ty đã có —",
+    "emptyMessage": "Không tìm thấy công ty phù hợp.",
+    "errorRequired": "Vui lòng chọn công ty."
   },
   "companyForm": {
     "titleCreate": "Thông tin công ty mới",

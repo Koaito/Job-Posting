@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { createJob, updateJob } from '@/app/actions/jobs';
+import CompanyCombobox, { type CompanyComboboxHandle } from './CompanyCombobox';
 import type { JobDetail, JobEnums } from '@/types/jobs';
 
 /**
@@ -30,6 +31,16 @@ import type { JobDetail, JobEnums } from '@/types/jobs';
  * này không phải enum cố định ở backend — industry lấy từ
  * JOB_CATEGORIES, province là chuỗi tên tỉnh tự do) nên vẫn giữ
  * hardcode như trước, không đụng tới.
+ *
+ * Company combobox (09/2026, đợt "ưu tiên thấp"): ô company_id trước
+ * đây là input text trần bắt gõ tay UUID (TODO "Replace with
+ * autocomplete" treo từ đợt viết form React ban đầu) — giờ dùng
+ * <CompanyCombobox> (xem component đó để biết chi tiết hành vi/đối
+ * chiếu Flask gốc). company_id vẫn gửi lên server qua hidden input
+ * cùng tên "company_id" bên trong combobox — basePayload bên dưới
+ * KHÔNG cần đổi gì (vẫn formData.get('company_id')). Validate bắt buộc
+ * chọn công ty chạy qua companyComboboxRef.current.validate() ngay đầu
+ * handleSubmit, vì hidden input không tự validate HTML5 "required".
  */
 
 interface JobFormProps {
@@ -46,6 +57,7 @@ export default function JobForm({ mode, initialData, enums }: JobFormProps) {
   const tc = useTranslations('common');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const companyComboboxRef = useRef<CompanyComboboxHandle>(null);
 
   // Map value backend (enums.*) -> key trong namespace "jobForm" —
   // dùng khi .map() render <option> động từ prop enums, thay cho việc
@@ -77,6 +89,17 @@ export default function JobForm({ mode, initialData, enums }: JobFormProps) {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    // CompanyCombobox dùng hidden input cho company_id thật gửi lên —
+    // hidden input KHÔNG tự validate HTML5 "required" như <select> cũ,
+    // nên phải tự chặn submit ở đây (giống app.js gốc chặn ở submit
+    // listener cấp form, không phải cấp input). Chặn TRƯỚC khi
+    // setIsSubmitting(true) để nút Submit không bị disable oan khi chưa
+    // chọn công ty.
+    if (!companyComboboxRef.current?.validate()) {
+      return;
+    }
+
     setIsSubmitting(true);
     setError(null);
 
@@ -187,22 +210,19 @@ export default function JobForm({ mode, initialData, enums }: JobFormProps) {
           />
         </label>
 
-        {/* Company ID - TODO: Replace with autocomplete (Flask gốc dùng
-            _company_combobox.html — chưa làm ở Next.js, giữ input text
-            đơn giản, chỉ sửa cấu trúc/class cho đúng thật). */}
+        {/* Company — autocomplete tìm theo tên (thay input text nhập
+            UUID tay), khớp _company_combobox.html bên Flask gốc. Xem
+            CompanyCombobox.tsx để biết chi tiết hành vi. */}
         <label className="span-2" htmlFor="company_id">
           {t('companyIdLabel')}
-          <input
-            type="text"
+          <CompanyCombobox
+            ref={companyComboboxRef}
             id="company_id"
             name="company_id"
             required
-            defaultValue={initialData?.company_id}
-            placeholder={t('companyIdPlaceholder')}
+            initialValue={initialData?.company_id}
+            initialLabel={initialData?.company_name}
           />
-          <span style={{ fontSize: '12px', color: 'var(--muted)', fontWeight: 400 }}>
-            {t('companyIdHint')}
-          </span>
         </label>
 
         <label className="span-2" htmlFor="matching_industry">

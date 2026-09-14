@@ -1,13 +1,23 @@
 /**
  * Tests for JobForm Component
  * Matches Flask: tests/test_jobs.py::TestJobsAdd pattern
+ *
+ * BUG FIX (đợt "ưu tiên thấp", 09/2026): ô company_id đổi từ input text
+ * nhập tay UUID sang <CompanyCombobox> (search-as-you-type + chọn từ
+ * dropdown) — mọi test trước đây gõ thẳng UUID vào
+ * getByLabelText(/Company ID/i) không còn khớp hành vi thật (input hiển
+ * thị giờ chỉ nhận TÊN công ty để tìm, giá trị company_id thật nằm ở
+ * hidden input, chỉ được set khi thật sự CHỌN 1 option từ dropdown).
+ * Viết lại để mock getCompanies() (Server Action gọi trực tiếp từ
+ * CompanyCombobox) và mô phỏng đúng luồng gõ -> chọn option.
  */
 
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { useRouter } from 'next/navigation';
 import JobForm from '@/components/features/JobForm';
 import { createJob } from '@/app/actions/jobs';
-import { mockJob, mockJobEnums } from '../fixtures';
+import { getCompanies } from '@/app/actions/companies';
+import { mockJob, mockJobEnums, mockCompany, mockCompaniesResponse } from '../fixtures';
 
 // Mock Next.js router
 jest.mock('next/navigation', () => ({
@@ -19,6 +29,36 @@ jest.mock('@/app/actions/jobs', () => ({
   createJob: jest.fn(),
 }));
 
+jest.mock('@/app/actions/companies', () => ({
+  getCompanies: jest.fn(),
+}));
+
+/**
+ * Mô phỏng luồng chọn công ty qua CompanyCombobox: focus ô tìm, gõ tên
+ * công ty, chờ dropdown hiện option (getCompanies mock trả về
+ * mockCompaniesResponse), rồi "click" (mousedown, đúng cách component
+ * xử lý — xem CompanyCombobox.tsx) vào option để set hidden input thật.
+ */
+async function selectMockCompany() {
+  // BUG FIX (viết test): getByRole('combobox') là AMBIGUOUS trong file
+  // này — <select> HTML không có "multiple" cũng mang role ARIA ngầm
+  // định "combobox" (HTML-AAM), nên form có nhiều <select> khác (ngành,
+  // level, tỉnh...) cũng khớp cùng role. Dùng getByLabelText để lấy
+  // đúng ô input của CompanyCombobox qua liên kết <label htmlFor>.
+  const input = screen.getByLabelText(/Công ty/i) as HTMLInputElement;
+  fireEvent.focus(input);
+  fireEvent.change(input, { target: { value: mockCompany.company_name } });
+  // Tương tự, role="option" cũng bị <option> của mọi <select> khác
+  // khớp trùng — query thẳng theo class CSS thật của dropdown
+  // (.cbx-panel .cbx-opt, xem CompanyCombobox.tsx) cho chắc chắn.
+  const option = await waitFor(() => {
+    const el = document.querySelector('.cbx-panel .cbx-opt');
+    if (!el) throw new Error('company option not rendered yet');
+    return el as HTMLElement;
+  });
+  fireEvent.mouseDown(option);
+}
+
 describe('JobForm Component', () => {
   const mockPush = jest.fn();
   const mockBack = jest.fn();
@@ -29,6 +69,7 @@ describe('JobForm Component', () => {
       push: mockPush,
       back: mockBack,
     });
+    (getCompanies as jest.Mock).mockResolvedValue(mockCompaniesResponse);
   });
 
   describe('Create Mode', () => {
@@ -36,7 +77,7 @@ describe('JobForm Component', () => {
       render(<JobForm mode="create" enums={mockJobEnums} />);
 
       expect(screen.getByLabelText(/Tên Job/i)).toBeInTheDocument();
-      expect(screen.getByLabelText(/Company ID/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/Công ty/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/Ngành/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/Level/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/Địa điểm/i)).toBeInTheDocument();
@@ -64,9 +105,7 @@ describe('JobForm Component', () => {
       fireEvent.change(screen.getByLabelText(/Tên Job/i), {
         target: { value: 'Backend Developer' },
       });
-      fireEvent.change(screen.getByLabelText(/Company ID/i), {
-        target: { value: 'company-1' },
-      });
+      await selectMockCompany();
 
       // Submit form
       fireEvent.click(screen.getByRole('button', { name: /Tạo Job/i }));
@@ -75,7 +114,7 @@ describe('JobForm Component', () => {
         expect(createJob).toHaveBeenCalledWith(
           expect.objectContaining({
             job_title: 'Backend Developer',
-            company_id: 'company-1',
+            company_id: mockCompany.company_id,
           })
         );
       });
@@ -92,9 +131,7 @@ describe('JobForm Component', () => {
       fireEvent.change(screen.getByLabelText(/Tên Job/i), {
         target: { value: 'Backend Developer' },
       });
-      fireEvent.change(screen.getByLabelText(/Company ID/i), {
-        target: { value: 'company-1' },
-      });
+      await selectMockCompany();
       fireEvent.click(screen.getByRole('button', { name: /Tạo Job/i }));
 
       // BUG FIX: redirect thật dùng job.job_id (backend field thật),
@@ -115,9 +152,7 @@ describe('JobForm Component', () => {
       fireEvent.change(screen.getByLabelText(/Tên Job/i), {
         target: { value: 'Backend Developer' },
       });
-      fireEvent.change(screen.getByLabelText(/Company ID/i), {
-        target: { value: 'invalid-id' },
-      });
+      await selectMockCompany();
       fireEvent.click(screen.getByRole('button', { name: /Tạo Job/i }));
 
       await waitFor(() => {
@@ -133,13 +168,11 @@ describe('JobForm Component', () => {
       render(<JobForm mode="create" enums={mockJobEnums} />);
 
       const submitButton = screen.getByRole('button', { name: /Tạo Job/i });
-      
+
       fireEvent.change(screen.getByLabelText(/Tên Job/i), {
         target: { value: 'Backend Developer' },
       });
-      fireEvent.change(screen.getByLabelText(/Company ID/i), {
-        target: { value: 'company-1' },
-      });
+      await selectMockCompany();
       fireEvent.click(submitButton);
 
       // Button should be disabled while submitting
@@ -165,10 +198,17 @@ describe('JobForm Component', () => {
       render(<JobForm mode="edit" initialData={mockJob} enums={mockJobEnums} />);
 
       const jobTitleInput = screen.getByLabelText(/Tên Job/i) as HTMLInputElement;
-      const companyIdInput = screen.getByLabelText(/Company ID/i) as HTMLInputElement;
+      // Ô tìm hiển thị TÊN công ty (initialLabel), không phải UUID.
+      const companyInput = screen.getByLabelText(/Công ty/i) as HTMLInputElement;
 
       expect(jobTitleInput.value).toBe(mockJob.job_title);
-      expect(companyIdInput.value).toBe(mockJob.company_id);
+      expect(companyInput.value).toBe(mockJob.company_name);
+
+      // company_id thật (UUID) gửi lên server nằm ở hidden input riêng,
+      // không hiển thị trực tiếp cho người dùng gõ tay nữa.
+      const hiddenCompanyInput = document.querySelector('input[name="company_id"][type="hidden"]') as HTMLInputElement;
+      expect(hiddenCompanyInput).not.toBeNull();
+      expect(hiddenCompanyInput.value).toBe(mockJob.company_id);
     });
 
     it('should show "Cập nhật" button text in edit mode', () => {
@@ -187,17 +227,48 @@ describe('JobForm Component', () => {
       expect(jobTitleInput).toHaveAttribute('required');
     });
 
-    it('should require company id', async () => {
+    it('should block submit and show an error if no company is selected', async () => {
       render(<JobForm mode="create" enums={mockJobEnums} />);
 
-      const companyIdInput = screen.getByLabelText(/Company ID/i);
-      expect(companyIdInput).toHaveAttribute('required');
+      fireEvent.change(screen.getByLabelText(/Tên Job/i), {
+        target: { value: 'Backend Developer' },
+      });
+      // Không chọn công ty nào — chỉ gõ chữ, chưa click option nào cả,
+      // nên hidden input company_id vẫn rỗng.
+      fireEvent.click(screen.getByRole('button', { name: /Tạo Job/i }));
+
+      // BUG FIX: hidden input không tự validate HTML5 "required" như
+      // <select> cũ — JobForm phải tự chặn submit qua
+      // CompanyCombobox::validate() (xem CompanyCombobox.tsx).
+      expect(await screen.findByText(/Vui lòng chọn công ty/i)).toBeInTheDocument();
+      expect(createJob).not.toHaveBeenCalled();
     });
 
-    it('should show TODO note for company autocomplete', () => {
+    it('should let the user search and pick a company from the dropdown', async () => {
       render(<JobForm mode="create" enums={mockJobEnums} />);
 
-      expect(screen.getByText(/TODO: Thay bằng autocomplete selector/i)).toBeInTheDocument();
+      const input = screen.getByLabelText(/Công ty/i) as HTMLInputElement;
+      fireEvent.focus(input);
+      fireEvent.change(input, { target: { value: mockCompany.company_name } });
+
+      await waitFor(() => {
+        expect(getCompanies).toHaveBeenCalledWith(
+          expect.objectContaining({ keyword: mockCompany.company_name })
+        );
+      });
+
+      const option = await waitFor(() => {
+        const el = document.querySelector('.cbx-panel .cbx-opt');
+        if (!el) throw new Error('company option not rendered yet');
+        return el as HTMLElement;
+      });
+      expect(option).toHaveTextContent(mockCompany.company_name);
+      fireEvent.mouseDown(option);
+
+      // Sau khi chọn: ô hiển thị tên công ty, hidden input mang company_id.
+      expect(input.value).toBe(mockCompany.company_name);
+      const hiddenCompanyInput = document.querySelector('input[name="company_id"][type="hidden"]') as HTMLInputElement;
+      expect(hiddenCompanyInput.value).toBe(mockCompany.company_id);
     });
   });
 
