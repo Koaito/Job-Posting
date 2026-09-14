@@ -190,6 +190,25 @@ const DYNAMIC_ERROR_HANDLERS: DynamicErrorHandler[] = [
     },
   },
   /**
+   * BUG FIX (Phần B audit, 09/2026): `company_ma_so_thue_dung_boi`
+   * (COMPANY_TAX_ID_ALREADY_USED) trước đây bị đưa nhầm vào bảng TĨNH
+   * `errors.en.json` ("This tax ID is already used by another
+   * company.") dù message thật CÓ giá trị động
+   * (`f"Mã số thuế '{payload.tax_id}' đã được dùng bởi công ty khác."`,
+   * xem `api/routers/companies.py`) — người dùng chọn tiếng Anh mất
+   * hẳn giá trị mã số thuế thật. Backend chưa thêm `params` cho mã này
+   * (đợt 2) nên tạm dùng regex như các mã cùng khuôn khác; đã xoá entry
+   * sai trong `errors.en.json`.
+   */
+  {
+    appliesTo: (errorCode) => errorCode === 'company_ma_so_thue_dung_boi',
+    translate: (message) => {
+      const match = /^Mã số thuế '(.*)' đã được dùng bởi công ty khác\.$/.exec(message);
+      if (!match) return null;
+      return `Tax ID '${match[1]}' is already used by another company.`;
+    },
+  },
+  /**
    * crawl_not_found_2: giống họ "not tồn tại" ở trên nhưng có 2 giá trị
    * (category phụ thuộc source) — riêng 1 handler vì shape câu khác.
    */

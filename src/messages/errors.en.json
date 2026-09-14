@@ -37,7 +37,6 @@
   "audit_log_log_not_found": "Log not found",
   "audit_log_nguoi_thuc_hien_thao_tac": "Only the user who performed this action can edit its log note.",
   "audit_log_required": "This log requires a note — it cannot be left empty.",
-  "company_ma_so_thue_dung_boi": "This tax ID is already used by another company.",
   "contact_has_links": "Cannot delete this contact because it still has linked data.",
   "crawl_already_active": "A crawl is already active.",
   "crawl_batch_not_found": "Batch not found.",
