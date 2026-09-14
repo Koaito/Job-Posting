@@ -801,7 +801,8 @@
   "staffPage": {
     "eyebrow": "Career Hub / Management",
     "title": "Staff",
-    "lede": "{count} ss_team/admin accounts total"
+    "lede": "{count} ss_team/admin accounts total",
+    "staffOnly": "This page is for staff only (ss_team/admin)."
   },
   "staffActivityPage": {
     "title": "SS Team Activity",

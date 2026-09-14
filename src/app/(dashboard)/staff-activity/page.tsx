@@ -1,8 +1,8 @@
 import { getStaff } from '@/app/actions/staff';
 import { getCurrentUser } from '@/app/actions/auth';
 import { getTranslations } from 'next-intl/server';
-import { isStaffRole } from '@/lib/auth/roles';
 import { StaffActivityList } from '@/components/features/StaffActivityList';
+import { RequireRole } from '@/components/ui/guards/RequireRole';
 
 /**
  * Staff Activity — danh sách nhân viên (Nhân viên/BỔ SUNG 09/2026, rà
@@ -30,21 +30,8 @@ export default async function StaffActivityPage() {
   const t = await getTranslations('staffActivityPage');
   const [staff, currentUser] = await Promise.all([getStaff(), getCurrentUser()]);
 
-  if (!isStaffRole(currentUser?.role)) {
-    return (
-      <>
-        <div className="page-head">
-          <h1>{t('title')}</h1>
-        </div>
-        <div className="empty-state">
-          <p>{t('staffOnly')}</p>
-        </div>
-      </>
-    );
-  }
-
   return (
-    <>
+    <RequireRole role="staff" deniedTitle={t('title')} deniedMessage={t('staffOnly')}>
       <div className="page-head">
         <div>
           <span className="eyebrow">{t('eyebrow')}</span>
@@ -63,6 +50,6 @@ export default async function StaffActivityPage() {
           <p>{t('empty')}</p>
         </div>
       )}
-    </>
+    </RequireRole>
   );
 }

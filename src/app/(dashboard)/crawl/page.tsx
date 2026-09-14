@@ -7,7 +7,7 @@ import {
   getMaintenanceHistory,
 } from '@/app/actions/crawl';
 import { getCurrentUser } from '@/app/actions/auth';
-import { isStaffRole, isAdminRole } from '@/lib/auth/roles';
+import { isAdminRole } from '@/lib/auth/roles';
 import { getTranslations } from 'next-intl/server';
 import CrawlTrigger from '@/components/features/CrawlTrigger';
 import CrawlTabNav from '@/components/features/CrawlTabNav';
@@ -15,6 +15,7 @@ import DataHealthView from '@/components/features/DataHealthView';
 import MaintenanceGrid from '@/components/features/MaintenanceGrid';
 import HistoryView from '@/components/features/HistoryView';
 import type { MaintenanceStatus } from '@/types/crawl';
+import { RequireRole } from '@/components/ui/guards/RequireRole';
 
 /**
  * Crawl Page ("Van hanh du lieu") -- 4 tab, khop dung
@@ -64,27 +65,13 @@ export default async function CrawlPage({
 }) {
   const sp = await searchParams;
   const currentUser = await getCurrentUser();
-  const isStaff = isStaffRole(currentUser?.role);
   const isAdmin = isAdminRole(currentUser?.role);
   const t = await getTranslations('crawlPage');
-
-  if (!isStaff) {
-    return (
-      <>
-        <div className="page-head">
-          <h1>{t('staffOnlyTitle')}</h1>
-        </div>
-        <div className="empty-state">
-          <p>{t('staffOnlyMessage')}</p>
-        </div>
-      </>
-    );
-  }
 
   const tab = VALID_TABS.includes(sp.tab || '') ? (sp.tab as string) : 'crawl';
 
   return (
-    <>
+    <RequireRole role="staff" deniedTitle={t('staffOnlyTitle')} deniedMessage={t('staffOnlyMessage')}>
       <div className="page-head">
         <div>
           <span className="eyebrow">{t('eyebrow')}</span>
@@ -99,7 +86,7 @@ export default async function CrawlPage({
       {tab === 'status' && <StatusTabContent />}
       {tab === 'maintenance' && <MaintenanceTabContent isAdmin={isAdmin} />}
       {tab === 'history' && <HistoryTabContent sp={sp} />}
-    </>
+    </RequireRole>
   );
 }
 

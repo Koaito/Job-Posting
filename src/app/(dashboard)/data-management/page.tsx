@@ -1,10 +1,9 @@
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
-import { getCurrentUser } from '@/app/actions/auth';
-import { isStaffRole } from '@/lib/auth/roles';
 import type { ImportExportEntityType } from '@/types/import-export';
 import ExportPanel from '@/components/features/data-management/ExportPanel';
 import ImportPanel from '@/components/features/data-management/ImportPanel';
+import { RequireRole } from '@/components/ui/guards/RequireRole';
 
 /**
  * Data Management Page ("/data-management") — Phase 6.3, 09/2026.
@@ -36,22 +35,6 @@ export default async function DataManagementPage({
 }) {
   const sp = await searchParams;
   const t = await getTranslations('dataManagementPage');
-  const currentUser = await getCurrentUser();
-  const isStaff = isStaffRole(currentUser?.role);
-
-  if (!isStaff) {
-    return (
-      // BUG FIX (audit CSS 09/2026): bỏ "page-container" ảo.
-      <>
-        <div className="page-head">
-          <h1>{t('title')}</h1>
-        </div>
-        <div className="empty-state">
-          <p>{t('staffOnly')}</p>
-        </div>
-      </>
-    );
-  }
 
   const entity: ImportExportEntityType = isValidEntity(sp.entity) ? sp.entity : 'job';
   const tab: 'export' | 'import' = sp.tab === 'import' ? 'import' : 'export';
@@ -61,7 +44,7 @@ export default async function DataManagementPage({
 
   return (
     // BUG FIX (audit CSS 09/2026): bỏ "page-container" ảo.
-    <>
+    <RequireRole role="staff" deniedTitle={t('title')} deniedMessage={t('staffOnly')}>
       <div className="page-head">
         <div>
           <span className="eyebrow">{t('eyebrow')}</span>
@@ -106,6 +89,6 @@ export default async function DataManagementPage({
           <ImportPanel entityType={entity} />
         )}
       </div>
-    </>
+    </RequireRole>
   );
 }

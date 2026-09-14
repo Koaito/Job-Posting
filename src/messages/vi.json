@@ -801,7 +801,8 @@
   "staffPage": {
     "eyebrow": "Career Hub / Quản lý",
     "title": "Nhân viên",
-    "lede": "Tổng {count} tài khoản ss_team/admin"
+    "lede": "Tổng {count} tài khoản ss_team/admin",
+    "staffOnly": "Trang này chỉ dành cho nhân viên (ss_team/admin)."
   },
   "staffActivityPage": {
     "title": "Hoạt động team SS",

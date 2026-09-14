@@ -3,12 +3,13 @@ import Link from 'next/link';
 import { getTranslations, getLocale } from 'next-intl/server';
 import { getCurrentUser, listUsers } from '@/app/actions/auth';
 import { getStaffById } from '@/app/actions/staff';
-import { isStaffRole, roleLabel } from '@/lib/auth/roles';
+import { roleLabel } from '@/lib/auth/roles';
 import { getJobs } from '@/app/actions/jobs';
 import { getCompanies } from '@/app/actions/companies';
 import { getContacts } from '@/app/actions/contacts';
 import { ActivitySections } from '@/components/features/ActivitySections';
 import { toIntlLocale } from '@/i18n/config';
+import { RequireRole } from '@/components/ui/guards/RequireRole';
 
 /**
  * Staff Activity — chi tiết hoạt động 1 nhân viên (BỔ SUNG 09/2026, rà
@@ -36,6 +37,14 @@ import { toIntlLocale } from '@/i18n/config';
  * 404 (không phải trang trắng) nếu `userId` không tồn tại hoặc không
  * phải role ss_team/admin (vd học viên) — khớp `abort(404)` bên Flask
  * khi `staff_member is None`.
+ *
+ * BUG FIX (audit kiến trúc 09/2026, #4): check quyền (isStaffRole) giờ
+ * gom về <RequireRole> dùng chung. redirect()/notFound() PHẢI chỉ chạy
+ * SAU khi qua được guard role (đúng thứ tự cũ: không staff → chặn ngay,
+ * chưa kịp check redirect/notFound) — nên phần fetch dữ liệu + 2 lệnh
+ * gọi đó được tách ra component con `StaffActivityDetailContent`,
+ * React chỉ thực sự render (và gọi) component con này khi RequireRole
+ * render `children` ở nhánh ĐƯỢC PHÉP.
  */
 export default async function StaffActivityDetailPage({
   params,
@@ -48,20 +57,33 @@ export default async function StaffActivityDetailPage({
   const { userId } = await params;
   const currentUser = await getCurrentUser();
 
-  if (!isStaffRole(currentUser?.role)) {
-    return (
-      <>
-        <div className="page-head">
-          <h1>{t('title')}</h1>
-        </div>
-        <div className="empty-state">
-          <p>{t('staffOnly')}</p>
-        </div>
-      </>
-    );
-  }
+  return (
+    <RequireRole role="staff" deniedTitle={t('title')} deniedMessage={t('staffOnly')}>
+      <StaffActivityDetailContent
+        userId={userId}
+        currentUserId={currentUser?.ss_user_id}
+        t={t}
+        tRole={tRole}
+        dateLocale={dateLocale}
+      />
+    </RequireRole>
+  );
+}
 
-  if (userId === currentUser?.ss_user_id) {
+async function StaffActivityDetailContent({
+  userId,
+  currentUserId,
+  t,
+  tRole,
+  dateLocale,
+}: {
+  userId: string;
+  currentUserId: string | undefined;
+  t: Awaited<ReturnType<typeof getTranslations>>;
+  tRole: Awaited<ReturnType<typeof getTranslations>>;
+  dateLocale: string;
+}) {
+  if (userId === currentUserId) {
     redirect('/profile/activity');
   }
 
