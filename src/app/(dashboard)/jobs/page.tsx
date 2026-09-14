@@ -1,8 +1,10 @@
-import { getJobs } from '@/app/actions/jobs';
+import { getJobs, getJobEnums } from '@/app/actions/jobs';
 import { industryClass, industryLabel, jobStatusChipClass, jobStatusLabel } from '@/lib/jobs/badges';
 import Link from 'next/link';
 import { getTranslations, getLocale } from 'next-intl/server';
 import { toIntlLocale } from '@/i18n/config';
+import { PROVINCE_OPTIONS, PROVINCE_LABEL_KEY } from '@/lib/constants/provinces';
+import { INDUSTRY_OPTIONS } from '@/lib/constants/industries';
 
 /**
  * Jobs List Page
@@ -20,36 +22,21 @@ import { toIntlLocale } from '@/i18n/config';
  * dropdown còn thiếu, dùng lại ĐÚNG bộ giá trị enum mà JobForm.tsx đã
  * dùng (matching_industry/level_code/province_name) để không tạo ra 2
  * nguồn "danh sách hợp lệ" lệch nhau giữa form tạo job và form lọc job.
+ *
+ * REFACTOR (audit 09/2026, "Đánh giá kiến trúc" #1): industry/province
+ * trước đây khai TRỰC TIẾP ở file này (bản trùng lặp riêng, tách rời
+ * JobForm.tsx) — giờ import từ lib/constants/industries.ts và
+ * lib/constants/provinces.ts (1 nguồn sự thật duy nhất, dùng chung với
+ * CompanyForm.tsx/JobForm.tsx/companies/page.tsx).
+ *
+ * Đáng lo hơn: level_code trước đây có LEVEL_OPTIONS tĩnh RIÊNG ở đây,
+ * trong khi JobForm.tsx (dropdown TẠO job) đã đọc level_code ĐỘNG qua
+ * GET /enums (getJobEnums()) từ đợt trước — nghĩa là dropdown tạo job
+ * và dropdown lọc job (trang này) có 2 nguồn sự thật khác nhau, lệch
+ * nhau ngay khi backend đổi enum (đúng loại lỗi codebase từng dính với
+ * matching_industry, xem BUG FIX phía trên). Sửa: gọi lại getJobEnums()
+ * giống JobForm.tsx thay vì hardcode LEVEL_OPTIONS riêng.
  */
-
-// Trùng khớp có chủ ý với JobForm.tsx (matching_industry/level_code/
-// province_name) — backend hiện chưa có endpoint /enums thật (xem TODO
-// trong JobForm.tsx), nên cả 2 nơi đều tạm hard-code cùng 1 bộ giá trị.
-// BUG FIX (09/2026): "Trùng khớp có chủ ý với JobForm.tsx" ở trên vẫn
-// đúng tinh thần, nhưng bộ giá trị CŨ ở đây ("CNTT - Phần mềm"...) là
-// giá trị TỰ BỊA, không khớp matching_industry thật (xem badges.ts) —
-// đổi đúng 6 giá trị thật, khớp lại JobForm.tsx sau khi file đó cũng
-// được sửa cùng đợt.
-const INDUSTRY_OPTIONS = [
-  'Code',
-  'Data Analysis',
-  'Data Engineer',
-  'Data Scientist',
-  'Business Analysis',
-  'UI/UX Design',
-];
-const LEVEL_OPTIONS = ['Intern', 'Fresher', 'Junior', 'Middle', 'Senior', 'Lead', 'Manager'];
-const PROVINCE_OPTIONS = ['Hà Nội', 'Hồ Chí Minh', 'Đà Nẵng'] as const;
-
-// i18n (Giai đoạn 2 Phần 3, 09/2026): cùng cách map value -> key đã
-// dùng ở CompanyForm.tsx/companies/page.tsx — value gửi lên backend
-// (query param ?province=...) giữ nguyên tiếng Việt, chỉ TEXT hiển thị
-// đổi theo locale.
-const PROVINCE_LABEL_KEY: Record<(typeof PROVINCE_OPTIONS)[number], 'hanoi' | 'hcm' | 'danang'> = {
-  'Hà Nội': 'hanoi',
-  'Hồ Chí Minh': 'hcm',
-  'Đà Nẵng': 'danang',
-};
 
 interface SearchParams {
   search?: string;
@@ -82,15 +69,24 @@ export default async function JobsPage({
   // (tên form input, giữ nguyên cho UI) nhưng backend GET /jobs chờ
   // param "keyword" — map lại đúng tên khi gọi getJobs(), nếu không lọc
   // bị bỏ qua trong im lặng dù form không báo lỗi gì.
-  const { items: jobs, total } = await getJobs({
-    keyword: sp.search,
-    industry: sp.industry,
-    level: sp.level,
-    province: sp.province,
-    status: sp.status,
-    limit,
-    offset,
-  });
+  //
+  // REFACTOR (audit 09/2026, "Đánh giá kiến trúc" #1): gọi getJobEnums()
+  // song song với getJobs() — giống cách jobs/new/page.tsx truyền enums
+  // cho JobForm — để dropdown "Level" ở filter bar dùng ĐÚNG 1 nguồn
+  // sự thật (GET /enums, có fallback tĩnh nếu lỗi mạng) với dropdown
+  // Level ở form tạo/sửa job, thay vì LEVEL_OPTIONS tĩnh tự khai riêng.
+  const [{ items: jobs, total }, enums] = await Promise.all([
+    getJobs({
+      keyword: sp.search,
+      industry: sp.industry,
+      level: sp.level,
+      province: sp.province,
+      status: sp.status,
+      limit,
+      offset,
+    }),
+    getJobEnums(),
+  ]);
 
   const totalPages = Math.ceil(total / limit);
   const hasFilters = !!(sp.search || sp.industry || sp.level || sp.province || sp.status);
@@ -146,7 +142,7 @@ export default async function JobsPage({
         </select>
         <select name="level" defaultValue={sp.level || ''}>
           <option value="">{t('allLevels')}</option>
-          {LEVEL_OPTIONS.map((l) => (
+          {enums.level_code.map((l) => (
             <option key={l} value={l}>{l}</option>
           ))}
         </select>

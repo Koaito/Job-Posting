@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { createCompany, updateCompany } from '@/app/actions/companies';
 import { PARTNERSHIP_POTENTIAL_VALUES, partnershipPotentialLabel } from '@/lib/companies/potential';
+import { PROVINCE_OPTIONS, PROVINCE_LABEL_KEY } from '@/lib/constants/provinces';
 import type { CompanyDetail } from '@/types/companies';
 
 /**
@@ -46,9 +47,12 @@ import type { CompanyDetail } from '@/types/companies';
  * theo locale, `partnershipPotentialClass(value)` vẫn cố định tiếng
  * Việt để không vỡ CSS) — nhãn PARTNERSHIP_POTENTIAL_OPTIONS giờ ĐÃ
  * dịch qua `t` namespace `partnershipPotential`.
+ *
+ * REFACTOR (audit 09/2026, "Đánh giá kiến trúc" #1): PROVINCE_OPTIONS +
+ * PROVINCE_LABEL_KEY trước đây khai TRỰC TIẾP ở file này (bản trùng thứ
+ * N trong 4 bản y hệt rải rác toàn codebase) — giờ import từ
+ * lib/constants/provinces.ts (1 nguồn sự thật duy nhất, xem file đó).
  */
-
-const PROVINCE_OPTIONS = ['Hà Nội', 'Hồ Chí Minh', 'Đà Nẵng'] as const;
 
 interface CompanyFormProps {
   mode: 'create' | 'edit';
@@ -63,14 +67,6 @@ export default function CompanyForm({ mode, initialData }: CompanyFormProps) {
   const tPotential = useTranslations('partnershipPotential');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // value giữ nguyên tiếng Việt có dấu (khớp province_name backend lưu),
-  // chỉ tra label hiển thị theo locale qua namespace "provinces".
-  const PROVINCE_LABEL_KEY: Record<(typeof PROVINCE_OPTIONS)[number], 'hanoi' | 'hcm' | 'danang'> = {
-    'Hà Nội': 'hanoi',
-    'Hồ Chí Minh': 'hcm',
-    'Đà Nẵng': 'danang',
-  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();

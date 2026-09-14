@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { createJob, updateJob } from '@/app/actions/jobs';
 import CompanyCombobox, { type CompanyComboboxHandle } from './CompanyCombobox';
+import { PROVINCE_OPTIONS, PROVINCE_LABEL_KEY } from '@/lib/constants/provinces';
+import { INDUSTRY_OPTIONS, INDUSTRY_LABEL_KEY } from '@/lib/constants/industries';
 import type { JobDetail, JobEnums } from '@/types/jobs';
 
 /**
@@ -29,8 +31,17 @@ import type { JobDetail, JobEnums } from '@/types/jobs';
  * như cũ — chỉ value (chuỗi gửi backend) là đọc động, KHÔNG đổi cách
  * dịch. matching_industry/province_name KHÔNG nằm trong /enums (2 field
  * này không phải enum cố định ở backend — industry lấy từ
- * JOB_CATEGORIES, province là chuỗi tên tỉnh tự do) nên vẫn giữ
- * hardcode như trước, không đụng tới.
+ * JOB_CATEGORIES, province là chuỗi tên tỉnh tự do) nên vẫn giữ hardcode
+ * ở FE — nhưng từ đợt refactor #1 (09/2026) đã gom về
+ * lib/constants/industries.ts và lib/constants/provinces.ts thay vì
+ * khai riêng trong file này (xem comment REFACTOR bên dưới).
+ *
+ * REFACTOR (audit 09/2026, "Đánh giá kiến trúc" #1): danh sách industry
+ * (6 giá trị, trước đây hardcode thẳng 6 thẻ <option> trong JSX) và
+ * province (3 giá trị, trước đây khai const riêng trong file này) giờ
+ * import từ lib/constants/industries.ts và lib/constants/provinces.ts —
+ * cùng nguồn với jobs/page.tsx (trang lọc job) và CompanyForm.tsx/
+ * companies/page.tsx, tránh tình trạng 2 nơi có 2 danh sách lệch nhau.
  *
  * Company combobox (09/2026, đợt "ưu tiên thấp"): ô company_id trước
  * đây là input text trần bắt gõ tay UUID (TODO "Replace with
@@ -233,19 +244,15 @@ export default function JobForm({ mode, initialData, enums }: JobFormProps) {
             defaultValue={initialData?.matching_industry || ''}
           >
             <option value="">{t('selectIndustryOption')}</option>
-            {/* BUG FIX (09/2026): 5 option cũ ("CNTT - Phần mềm"...) là
-                giá trị TỰ BỊA, không khớp bất kỳ matching_industry thật
-                nào backend lưu (đối chiếu Scrap JD/config.py::
-                JOB_CATEGORIES + mindx-jobs/constants.py::INDUSTRIES —
-                xem badges.ts). Đổi đúng 6 giá trị thật, value giữ
-                nguyên tiếng Anh khớp backend, chỉ TEXT hiển thị dịch
-                theo locale qua namespace "industries" dùng chung. */}
-            <option value="Code">{ti('code')}</option>
-            <option value="Data Analysis">{ti('dataAnalysis')}</option>
-            <option value="Data Engineer">{ti('dataEngineer')}</option>
-            <option value="Data Scientist">{ti('dataScientist')}</option>
-            <option value="Business Analysis">{ti('businessAnalysis')}</option>
-            <option value="UI/UX Design">{ti('uiUxDesign')}</option>
+            {/* Value đọc từ INDUSTRY_OPTIONS (lib/constants/industries.ts)
+                — 6 giá trị thật khớp matching_industry backend lưu (đối
+                chiếu Scrap JD/config.py::JOB_CATEGORIES + mindx-jobs/
+                constants.py::INDUSTRIES, xem comment trong file constants).
+                Text hiển thị dịch theo locale qua namespace "industries"
+                dùng chung, key tra qua INDUSTRY_LABEL_KEY. */}
+            {INDUSTRY_OPTIONS.map((value) => (
+              <option key={value} value={value}>{ti(INDUSTRY_LABEL_KEY[value])}</option>
+            ))}
           </select>
         </label>
 
@@ -273,10 +280,11 @@ export default function JobForm({ mode, initialData, enums }: JobFormProps) {
 
         {/* Province — KHÔNG nằm trong GET /enums (chuỗi tên tỉnh tự do,
             không phải enum cố định ở backend — khác Level ở trên), nên
-            vẫn hardcode 3 tỉnh phổ biến như trước, không đổi. Namespace
-            "provinces" dùng chung với CompanyForm.tsx (xem comment ở
-            đó) — value giữ nguyên tiếng Việt có dấu, khớp province_name
-            backend lưu trực tiếp, chỉ dịch TEXT hiển thị. */}
+            vẫn hardcode ở FE, nhưng đọc từ PROVINCE_OPTIONS dùng chung
+            (lib/constants/provinces.ts) thay vì tự khai riêng. Namespace
+            "provinces" dùng chung với CompanyForm.tsx — value giữ
+            nguyên tiếng Việt có dấu, khớp province_name backend lưu
+            trực tiếp, chỉ dịch TEXT hiển thị. */}
         <label className="span-1" htmlFor="province_name">
           {t('locationLabel')}
           <select
@@ -287,9 +295,9 @@ export default function JobForm({ mode, initialData, enums }: JobFormProps) {
             <option value="">{tp('selectPlaceholder')}</option>
             {/* BUG FIX: backend nhận province_name dạng chuỗi tên tỉnh,
                 KHÔNG phải province_id số */}
-            <option value="Hà Nội">{tp('hanoi')}</option>
-            <option value="Hồ Chí Minh">{tp('hcm')}</option>
-            <option value="Đà Nẵng">{tp('danang')}</option>
+            {PROVINCE_OPTIONS.map((p) => (
+              <option key={p} value={p}>{tp(PROVINCE_LABEL_KEY[p])}</option>
+            ))}
           </select>
         </label>
 

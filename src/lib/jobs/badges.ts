@@ -25,6 +25,8 @@
  * `partnershipPotentialClass()` (src/lib/companies/potential.ts).
  */
 
+import { INDUSTRY_LABEL_KEY } from '@/lib/constants/industries';
+
 const INDUSTRY_CLASS_MAP: Record<string, string> = {
   Code: 'ind-code',
   'Business Analysis': 'ind-business-analysis',
@@ -60,15 +62,11 @@ export function industryClass(value: string | null | undefined): string {
 // biết trước (dữ liệu cũ trước bugfix này/nhập tay lệch) trả nguyên văn
 // thay vì lỗi — KHÔNG đổi INDUSTRY_CLASS_MAP hay industryClass() ở trên,
 // 2 hàm đó đã đúng từ đầu.
-const INDUSTRY_LABEL_KEY: Record<string, string> = {
-  Code: 'code',
-  'Data Analysis': 'dataAnalysis',
-  'Data Engineer': 'dataEngineer',
-  'Data Scientist': 'dataScientist',
-  'Business Analysis': 'businessAnalysis',
-  'UI/UX Design': 'uiUxDesign',
-};
-
+//
+// REFACTOR (audit 09/2026, "Đánh giá kiến trúc" #1): INDUSTRY_LABEL_KEY
+// trước đây khai TRỰC TIẾP ở file này — giờ import từ
+// lib/constants/industries.ts (1 nguồn sự thật duy nhất, dùng chung với
+// JobForm.tsx/jobs/page.tsx cho cả value lẫn label key).
 export function industryLabel(value: string, t: (key: string) => string): string {
   const key = INDUSTRY_LABEL_KEY[value];
   return key ? t(key) : value;

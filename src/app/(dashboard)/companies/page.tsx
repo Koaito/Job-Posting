@@ -2,6 +2,7 @@ import { getCompanies } from '@/app/actions/companies';
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
 import PotentialQuickEdit from '@/components/features/PotentialQuickEdit';
+import { PROVINCE_OPTIONS, PROVINCE_LABEL_KEY } from '@/lib/constants/provinces';
 
 /**
  * Companies List Page
@@ -10,6 +11,12 @@ import PotentialQuickEdit from '@/components/features/PotentialQuickEdit';
  *
  * BUG FIX (audit 09/2026 #16): trước đây "TODO: Implement in Phase 4"
  * — actions/companies.ts đã đủ từ đợt trước, chỉ chưa có trang thật.
+ *
+ * REFACTOR (audit 09/2026, "Đánh giá kiến trúc" #1): PROVINCE_OPTIONS +
+ * PROVINCE_LABEL_KEY trước đây khai TRỰC TIẾP ở file này (bản trùng thứ
+ * 3 trong 4 bản y hệt) — giờ import từ lib/constants/provinces.ts (1
+ * nguồn sự thật duy nhất, dùng chung với CompanyForm.tsx/JobForm.tsx/
+ * jobs/page.tsx).
  */
 
 interface SearchParams {
@@ -17,20 +24,6 @@ interface SearchParams {
   province?: string;
   page?: string;
 }
-
-const PROVINCE_OPTIONS = ['Hà Nội', 'Hồ Chí Minh', 'Đà Nẵng'] as const;
-
-// i18n (Giai đoạn 2 Phần 3, 09/2026): value gửi lên backend (query param
-// ?province=...) PHẢI giữ nguyên tiếng Việt (khớp province_name lưu ở
-// DB) — chỉ TEXT hiển thị trong <option> đổi theo locale, dùng CHUNG
-// namespace "provinces" + cùng cách map value -> key đã dùng ở
-// CompanyForm.tsx/JobForm.tsx (PROVINCE_LABEL_KEY), tránh lệch nếu sau
-// này 1 trong 2 nơi đổi tên key.
-const PROVINCE_LABEL_KEY: Record<(typeof PROVINCE_OPTIONS)[number], 'hanoi' | 'hcm' | 'danang'> = {
-  'Hà Nội': 'hanoi',
-  'Hồ Chí Minh': 'hcm',
-  'Đà Nẵng': 'danang',
-};
 
 export default async function CompaniesPage({
   searchParams,
