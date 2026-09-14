@@ -198,20 +198,109 @@ describe('formatErrorDetail()', () => {
       ).toBe("actor_id: 'không-phải-uuid' is not a valid UUID.");
     });
 
-    it('locale=en + error_code *_invalid_uuid nhưng message KHÔNG khớp pattern kỳ vọng -> fallback an toàn về vi gốc', async () => {
+    it('locale=en + error_code *_invalid_uuid nhưng message KHÔNG khớp pattern kỳ vọng, KHÔNG có params -> fallback an toàn về vi gốc', async () => {
       mockCookieGet.mockImplementation((name: string) =>
         name === 'locale' ? { value: 'en' } : undefined
       );
       // Mô phỏng đúng trường hợp cá biệt JOB_COMPANY_ID_INVALID_UUID
       // (api/routers/jobs.py) — message dài hơn các anh em cùng họ vì
       // có thêm câu hướng dẫn phía sau, không khớp regex neo cuối chuỗi
-      // -> PHẢI fallback về message gốc, không được hiện lỗi/undefined.
+      // -> PHẢI fallback về message gốc khi backend (giả lập) CHƯA gửi
+      // params, không được hiện lỗi/undefined.
       const detail = {
         error_code: 'job_company_id_invalid_uuid',
         message:
           "company_id 'xyz' không đúng định dạng UUID — kiểm tra lại đã thay đúng company_id THẬT lấy từ response của POST /companies chưa.",
       };
       expect(await formatErrorDetail(detail)).toBe(detail.message);
+    });
+
+    describe('Phần A (09/2026) — cơ chế params có cấu trúc, đọc thẳng params.value thay vì đoán ngược qua regex', () => {
+      beforeEach(() => {
+        mockCookieGet.mockImplementation((name: string) =>
+          name === 'locale' ? { value: 'en' } : undefined
+        );
+      });
+
+      it('error_code *_invalid_uuid CÓ params -> dịch qua params, không cần regex khớp message', async () => {
+        expect(
+          await formatErrorDetail({
+            error_code: 'job_job_id_invalid_uuid',
+            message: "job_id 'xyz' không đúng định dạng UUID.",
+            params: { value: 'xyz' },
+          })
+        ).toBe("job_id: 'xyz' is not a valid UUID.");
+      });
+
+      it('JOB_COMPANY_ID_INVALID_UUID CÓ params -> giờ dịch được (trước đây KHÔNG dịch được vì message dài hơn, quá regex)', async () => {
+        expect(
+          await formatErrorDetail({
+            error_code: 'job_company_id_invalid_uuid',
+            message:
+              "company_id 'xyz' không đúng định dạng UUID — kiểm tra lại đã thay đúng company_id THẬT lấy từ response của POST /companies (hoặc GET /companies?keyword=) chưa, không phải chuỗi mẫu/placeholder.",
+            params: { value: 'xyz' },
+          })
+        ).toBe(
+          "company_id: 'xyz' is not a valid UUID — make sure you used a REAL company_id from the response of POST /companies (or GET /companies?keyword=) instead of a placeholder/sample string."
+        );
+      });
+
+      it('9 mã đặc biệt còn lại CÓ params -> dịch qua template riêng', async () => {
+        expect(
+          await formatErrorDetail({
+            error_code: 'profile_job_status_not_applicable',
+            message: "Job đang ở trạng thái 'CLOSED', không thể ứng tuyển.",
+            params: { value: 'CLOSED' },
+          })
+        ).toBe("This job is in status 'CLOSED' and can't be applied to.");
+        expect(
+          await formatErrorDetail({
+            error_code: 'message_too_many_pending_requests',
+            message:
+              'Bạn đang có quá nhiều yêu cầu nhắn tin đang chờ xử lý (tối đa 3 cùng lúc). Vui lòng đợi SS phản hồi trước khi gửi yêu cầu mới.',
+            params: { value: 3 },
+          })
+        ).toBe('You have too many pending message requests (max 3 at a time). Please wait for the SS to respond before sending a new request.');
+        expect(
+          await formatErrorDetail({
+            error_code: 'import_row_index_not_in_preview',
+            message: 'row_index 42 không có trong preview này.',
+            params: { value: 42 },
+          })
+        ).toBe('row_index 42 is not in this preview.');
+      });
+
+      it('error_code có params NHƯNG params thiếu key "value" (shape lạ) -> bỏ qua an toàn, rơi về regex rồi vi gốc', async () => {
+        expect(
+          await formatErrorDetail({
+            error_code: 'job_job_id_invalid_uuid',
+            message: "job_id 'xyz' không đúng định dạng UUID.",
+            params: { unexpected: 'shape' },
+          })
+        ).toBe("job_id: 'xyz' is not a valid UUID."); // vẫn dịch được — rơi về regex bên dưới, không lỗi
+      });
+
+      it('error_code KHÔNG nằm trong 30 mã có params (đợt 2 backend chưa làm) NHƯNG detail lỡ có field params lạ -> bỏ qua, đi qua regex như cũ', async () => {
+        expect(
+          await formatErrorDetail({
+            error_code: 'crawl_not_found',
+            message: "Source 'linkedin' không tồn tại. Có sẵn: ['topcv', 'vietnamworks']",
+            params: { something: 'irrelevant' },
+          })
+        ).toBe("Source: 'linkedin' not found. Available: topcv, vietnamworks");
+      });
+    });
+
+    it('BUG FIX (Phần A, 09/2026): import_entity_type_no_company_step — code cũ sai (import_entity_type_buoc_chon_cong) khiến handler chết, giờ dịch được kể cả không có params', async () => {
+      mockCookieGet.mockImplementation((name: string) =>
+        name === 'locale' ? { value: 'en' } : undefined
+      );
+      expect(
+        await formatErrorDetail({
+          error_code: 'import_entity_type_no_company_step',
+          message: "entity_type 'contact' không có bước chọn công ty — chỉ job/contact.",
+        })
+      ).toBe("entity_type: 'contact' has no company-selection step — only job/contact support it.");
     });
 
     it('locale=en + nhóm "X không hợp lệ — có sẵn: [list]" (đợt "template biến số" 2/2, batch 1) -> dịch động + prettify list', async () => {
@@ -268,7 +357,7 @@ describe('formatErrorDetail()', () => {
       ).toBe("company_id: 'xyz' does not exist — create the company first via POST /companies.");
       expect(
         await formatErrorDetail({
-          error_code: 'profile_job_trang_thai_ung_tuyen',
+          error_code: 'profile_job_status_not_applicable',
           message: "Job đang ở trạng thái 'CLOSED', không thể ứng tuyển.",
         })
       ).toBe("This job is in status 'CLOSED' and can't be applied to.");
@@ -292,7 +381,7 @@ describe('formatErrorDetail()', () => {
       ).toBe("Category foo, bar not found for source 'topcv'. Available: data-analyst");
       expect(
         await formatErrorDetail({
-          error_code: 'import_row_index_preview',
+          error_code: 'import_row_index_not_in_preview',
           message: 'row_index 42 không có trong preview này.',
         })
       ).toBe('row_index 42 is not in this preview.');
@@ -310,13 +399,13 @@ describe('formatErrorDetail()', () => {
       ).toBe('run_ids (3 items) and after_ids (2 items) must have the SAME LENGTH, matched by order.');
       expect(
         await formatErrorDetail({
-          error_code: 'message_ban_qua_nhieu_yeu_cau',
+          error_code: 'message_too_many_pending_requests',
           message: 'Bạn đang có quá nhiều yêu cầu nhắn tin đang chờ xử lý (tối đa 3 cùng lúc). Vui lòng đợi SS phản hồi trước khi gửi yêu cầu mới.',
         })
       ).toBe('You have too many pending message requests (max 3 at a time). Please wait for the SS to respond before sending a new request.');
       expect(
         await formatErrorDetail({
-          error_code: 'message_yeu_cau_truoc_choi_vui',
+          error_code: 'message_previous_request_rejected_cooldown',
           message: 'Yêu cầu trước đã bị từ chối — vui lòng thử lại sau 7 ngày kể từ lúc bị từ chối.',
         })
       ).toBe('Your previous request was declined — please try again 7 days after it was declined.');

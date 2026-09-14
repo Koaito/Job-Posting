@@ -1,286 +1,233 @@
-# MindX Jobs Platform - Next.js Frontend
+# MindX Jobs Platform — Next.js Frontend
 
-> Migration từ Flask sang Next.js với kiến trúc modular, mở và linh hoạt
+> Migration từ Flask (`mindx-jobs`) sang Next.js, gọi backend FastAPI có sẵn
+> (`Scrap_JD`) qua kiến trúc BFF. Xem `plan_nextjs.md` (repo riêng, không nằm
+> trong repo này) để biết lịch sử/quyết định thiết kế chi tiết — file này chỉ
+> mô tả **trạng thái thật hiện tại** của code, không phải kế hoạch.
 
-## 🏗️ Kiến Trúc
+## 🏗️ Kiến trúc
 
-### BFF Pattern (Backend-For-Frontend)
 ```
-Browser → Next.js Server Actions → FastAPI → PostgreSQL
+Browser → Next.js Server Actions → FastAPI (Scrap_JD) → PostgreSQL
 ```
 
-**Lý do:**
-- ✅ Bảo mật API key (không expose ra browser)
-- ✅ Xử lý JWT cookie cross-origin
-- ✅ Tối ưu performance với caching
+**BFF Pattern (Backend-For-Frontend)** — mọi request tới FastAPI đều đi qua
+Server Actions (`'use server'`) chạy trên Next.js server, KHÔNG bao giờ gọi
+thẳng từ browser:
+- `X-API-Key` (biến `CRAWLER_API_KEY`) không bao giờ lộ ra client.
+- JWT (`access_token`/`refresh_token`) lưu ở HTTP-only cookie, đọc/ghi phía
+  server; middleware chỉ fast-path theo sự tồn tại của cookie (không tự verify
+  JWT), việc verify thật nằm ở FastAPI.
 
-### Cấu Trúc Modular
+**Rendering:** React Server Components là mặc định — mỗi `page.tsx` tự
+`await getX()` (Server Action) để lấy dữ liệu, không có tầng data-fetching
+phía client nào khác. Mutation (form submit, nút hành động) dùng Server
+Actions + `useTransition()` phía client, báo lỗi/thành công bằng khối
+`flash flash-error`/`flash flash-success` inline — không có toast library.
 
-Project được tổ chức theo **module pattern** giống Flask blueprints:
+> ⚠️ **Không dùng** TanStack Query, Zustand, hay `@tanstack/react-virtual` —
+> cả 3 từng có trong kế hoạch ban đầu nhưng không có trong `package.json`
+> hiện tại (đã bị dọn bỏ ở một đợt cleanup sau khi xác nhận không dùng thật).
+> `src/store/` vẫn còn tồn tại trên đĩa nhưng **rỗng hoàn toàn** — tàn dư
+> scaffold, không dùng, không import bởi bất kỳ đâu.
+
+## 🚀 Tech Stack (đúng theo `package.json`)
+
+- **Next.js 16** (App Router, Turbopack mặc định)
+- **React 19**
+- **TypeScript 5** (`strict: true`)
+- **next-intl** — i18n, chọn locale qua cookie (không dùng locale-prefix URL)
+- **react-hook-form** + **zod** (`@hookform/resolvers`) — form + validate
+- **date-fns** — format ngày tháng
+- **clsx** — ghép className có điều kiện
+- CSS thuần, chia theo file (`public/css/00-tokens.css` → `19-loading-skeletons.css`,
+  20 file), migrate gần như nguyên vẹn từ Flask, dùng CSS variables cho theme.
+
+Dev/test:
+- **Jest** + **@testing-library/react** + `jest-environment-jsdom`
+- **ESLint** (`eslint-config-next`)
+- `@next/bundle-analyzer` (chỉ dùng qua `npm run build:analyze`, bắt buộc cờ
+  `--webpack` vì bundle analyzer không tương thích Turbopack)
+
+## 📁 Cấu trúc thư mục (đúng theo code thật)
 
 ```
 src/
 ├── app/
-│   ├── (auth)/              # Auth routes (login, register)
-│   ├── (dashboard)/         # Protected routes
-│   │   ├── jobs/            # Job management
-│   │   ├── companies/       # Company management
-│   │   ├── contacts/        # Contact management
-│   │   ├── crawl/           # Crawler control
-│   │   ├── students/        # Student management
-│   │   ├── staff/           # Staff management
-│   │   └── messages/        # Messaging
-│   └── actions/             # Server Actions (1 file per module)
-│       ├── auth.ts
-│       ├── jobs.ts
-│       ├── companies.ts
-│       └── ...
+│   ├── (auth)/                  # login, register, forgot/reset-password,
+│   │                            # verify-email, change-password
+│   ├── (dashboard)/             # mọi route cần đăng nhập
+│   │   ├── dashboard/
+│   │   ├── jobs/[id]/{edit}, jobs/new
+│   │   ├── companies/[id]/{edit}, companies/new
+│   │   ├── contacts/            # KHÔNG có route riêng — luôn lồng trong
+│   │   │                        # company (list/new/edit qua modal/tab)
+│   │   ├── crawl/                # 4 tab: trigger, data-health, maintenance,
+│   │   │                        # history
+│   │   ├── data-management/     # import/export
+│   │   ├── students/[id]/
+│   │   ├── staff/
+│   │   ├── staff-activity/[userId]/   # admin xem hoạt động 1 nhân viên
+│   │   ├── messages/[partnerId]/, messages/new
+│   │   ├── my-applications/, saved-jobs/   # phía học viên ("my_stuff")
+│   │   ├── profile/{security,activity}/
+│   │   └── activity/            # audit log
+│   └── actions/                 # Server Actions, 1 file/module (13 file):
+│       auth, dashboard, jobs, companies, contacts, crawl, students, staff,
+│       messages, me (apply/save job), audit, email-templates, import-export
 ├── components/
-│   ├── features/            # Feature-specific components
-│   │   ├── jobs/
-│   │   ├── companies/
-│   │   └── ...
-│   └── ui/                  # Shared UI components
-│       ├── layout/
-│       ├── forms/
-│       └── tables/
-├── hooks/                   # React Query hooks (1 file per module)
-│   ├── useJobs.ts
-│   ├── useCompanies.ts
-│   └── ...
+│   ├── features/                # 39 component gắn với 1 module cụ thể
+│   │   (JobForm, CompanyContactsManager, CrawlTrigger, ConfirmActionButton
+│   │   dùng chung cho 3 nút xoá/rút đơn, MessageThread, ImportPanel...)
+│   └── ui/                      # 9 component dùng chung (layout, loading
+│                                 # skeleton, error boundary...)
+├── i18n/                        # config.ts (danh sách locale + cookie name),
+│                                 # request.ts (next-intl getRequestConfig)
 ├── lib/
-│   ├── api/                 # API client utilities
-│   ├── auth/                # Session management
-│   ├── utils/               # Utilities (format, validation)
-│   └── providers/           # React providers
-├── store/                   # Zustand stores (for client state)
-└── types/                   # TypeScript types (1 file per module)
-    ├── auth.ts
-    ├── jobs.ts
-    └── ...
-```
-
-## 🚀 Tech Stack
-
-### Core
-- **Next.js 15+** (App Router)
-- **React 19**
-- **TypeScript 5+**
-
-### State Management
-- **TanStack Query (React Query)** - Server state & caching
-- **Zustand** - Client state (draft data, UI state)
-
-### Forms & Validation
-- **React Hook Form** - Form handling
-- **Zod** - Schema validation
-
-### Performance
-- **@tanstack/react-virtual** - Virtualization cho 5000+ rows
-
-### Styling
-- **CSS Modules** - Migrated từ Flask (00-tokens.css → 18-messages.css)
-
-## 📦 Scripts
-
-```bash
-# Development
-npm run dev          # Start dev server (localhost:3000)
-
-# Build
-npm run build        # Production build
-npm run start        # Start production server
-
-# Lint
-npm run lint         # Run ESLint
+│   ├── api/
+│   │   ├── client.ts            # apiFetch<T>()/apiFetchRaw() dùng chung:
+│   │   │                        # tự gắn header, timeout (AbortSignal.timeout),
+│   │   │                        # auto-retry 1 lần khi error_code=token_expired
+│   │   ├── auth-tokens.ts       # refreshAccessToken(), setAuthCookies()
+│   │   ├── env.ts               # getApiKey()/getApiBase() — validate runtime,
+│   │   │                        # không dùng non-null assertion "!"
+│   │   └── error-translation.ts # dịch error_code backend → tiếng Anh khi
+│   │                             # locale=en (xem plan_language_polish.md)
+│   ├── auth/roles.ts             # isStaffRole()/isAdminRole()/roleLabel()
+│   ├── jobs/, crawl/, companies/, maintenance/  # badge/label helper theo domain
+│   ├── hooks/useKeyboardShortcut.ts
+│   └── utils/
+├── messages/                    # en.json, vi.json (UI) + errors.en.json,
+│                                 # errors.vi.json (dịch error_code backend)
+├── store/                       # RỖNG — không dùng, xem cảnh báo ở trên
+├── types/                       # 1 file/module, KHÔNG có barrel index.ts
+└── __tests__/                   # actions/, components/, lib/ (19 file test)
 ```
 
 ## 🔑 Environment Variables
 
-Tạo file `.env.local`:
+Biến môi trường **thật sự được đọc** trong code (đã grep `process.env.` toàn
+bộ `src/`):
 
 ```bash
-# Server-side only (NEVER use NEXT_PUBLIC_ prefix!)
-FASTAPI_URL=https://scrap-jd-api.onrender.com
-CRAWLER_API_KEY=your_api_key_here
-JWT_SECRET=your_jwt_secret_here
-
-# Optional: Supabase for file uploads
-SUPABASE_URL=
-SUPABASE_KEY=
+# .env.local — BẮT BUỘC, không có giá trị mặc định, thiếu sẽ throw lúc runtime
+# (KHÔNG phải lúc `next build`, xem lib/api/env.ts)
+FASTAPI_URL=https://scrap-jd-api.onrender.com   # base URL backend FastAPI
+CRAWLER_API_KEY=your_api_key_here                # header X-API-Key mọi request
 ```
 
-## 📚 Module Pattern
+`NODE_ENV` được đọc nhưng do Next.js tự set, không cần khai tay.
 
-Mỗi module (feature) có cấu trúc chuẩn:
+> Không có biến `JWT_SECRET`/`SUPABASE_URL`/`SUPABASE_KEY` nào ở phía
+> Next.js — verify JWT và upload file (CV) đều xử lý ở backend (`Scrap_JD`),
+> Next.js chỉ forward request kèm `X-API-Key`/cookie JWT, không tự ký hay
+> upload trực tiếp.
 
-### 1. Server Actions (`app/actions/{module}.ts`)
-```typescript
-'use server';
+## 🔐 Auth & phân quyền
 
-export async function getItems() { ... }
-export async function createItem(data) { ... }
-export async function updateItem(id, data) { ... }
-export async function deleteItem(id) { ... }
-```
+- **Server Actions**, không phải Route Handlers — `actions/auth.ts` gọi
+  thẳng FastAPI (`POST /auth/login`, `/auth/refresh`...), set cookie
+  HTTP-only (`access_token`, `refresh_token`) từ server.
+- **`middleware.ts`** chỉ đọc sự tồn tại của cookie `access_token` để
+  redirect nhanh (`/login` nếu vào trang cần đăng nhập mà chưa có token,
+  ngược lại đá về `/dashboard` nếu đã đăng nhập mà vào trang auth) — KHÔNG
+  tự verify chữ ký JWT ở middleware, xác thực thật nằm ở FastAPI mỗi request.
+- Backend enforce **single-session** (`active_session_id`) + **refresh
+  token rotation** nghiêm ngặt — hết hạn/bị thu hồi thì `apiFetch()` tự
+  retry 1 lần qua `refreshAccessToken()`, thất bại thì trả lỗi để UI xử lý
+  đăng xuất.
+- 3 role: `user` (học viên), `ss_team`, `admin` — dùng `isStaffRole()`/
+  `isAdminRole()` (`lib/auth/roles.ts`), **không** có field `is_staff` (bug
+  cũ đã sửa — backend không bao giờ trả field này).
 
-### 2. Types (`types/{module}.ts`)
-```typescript
-export interface Item { ... }
-export interface ItemFilters { ... }
-export interface ItemFormData { ... }
-```
+## 🌐 i18n
 
-### 3. Hooks (`hooks/use{Module}.ts`)
-```typescript
-export function useItems(filters) { ... }
-export function useItem(id) { ... }
-export function useCreateItem() { ... }
-export function useUpdateItem() { ... }
-export function useDeleteItem() { ... }
-```
+Hai tầng **độc lập nhau**, đừng nhầm:
 
-### 4. Routes (`app/(dashboard)/{module}/`)
-```
-{module}/
-├── page.tsx              # List page
-├── [id]/
-│   ├── page.tsx          # Detail page
-│   └── edit/
-│       └── page.tsx      # Edit page
-└── new/
-    └── page.tsx          # Create page
-```
+1. **UI strings** (`next-intl`, `src/messages/{vi,en}.json`) — đang dịch dần
+   theo từng đợt ("Giai đoạn 2 Phần 3" trong git log), chưa phủ 100% UI.
+   Chọn locale qua cookie (`LOCALE_COOKIE_NAME`, xem `i18n/config.ts`),
+   không dùng locale-prefix URL (`/en/...`).
+2. **Error message từ backend** (`src/lib/api/error-translation.ts` +
+   `errors.{vi,en}.json`) — dịch `error_code` mà FastAPI trả về. Khi
+   `locale=vi` luôn dùng thẳng message gốc tiếng Việt; khi `locale=en` tra
+   bảng tĩnh trước, sau đó thử cơ chế `params`/template cho error_code có
+   biến runtime (uuid sai, số lượng...), cuối cùng fallback về message tiếng
+   Việt gốc nếu chưa có bản dịch — không bao giờ hiện lỗi trắng.
 
-### 5. Components (`components/features/{module}/`)
-```
-{module}/
-├── {Module}Card.tsx
-├── {Module}Form.tsx
-├── {Module}Table.tsx
-└── ...
-```
+## 📦 Scripts
 
-## 🔐 Bảo Mật
-
-### ❌ WRONG - Expose API key
-```typescript
-// NEVER DO THIS!
-const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
-fetch('https://api.example.com', {
-  headers: { 'X-API-Key': API_KEY }
-});
-```
-
-### ✅ CORRECT - BFF Pattern
-```typescript
-// Server Action (server-side only)
-'use server';
-const API_KEY = process.env.CRAWLER_API_KEY; // No NEXT_PUBLIC_
-export async function getData() {
-  return fetch(API_URL, {
-    headers: { 'X-API-Key': API_KEY }
-  });
-}
-
-// Client Component
-'use client';
-import { getData } from '@/app/actions/module';
-const { data } = useQuery({
-  queryKey: ['data'],
-  queryFn: getData // Call Server Action
-});
-```
-
-## 📋 Migration Checklist
-
-### Phase 0: Setup ✅
-- [x] Next.js project setup
-- [x] Folder structure
-- [x] CSS migration
-- [x] TypeScript types
-- [x] Server Actions skeleton
-- [x] React Query setup
-
-### Phase 1: Authentication
-- [ ] Login/logout API routes
-- [ ] Auth middleware
-- [ ] Login page UI
-- [ ] Session management
-
-### Phase 2: Dashboard
-- [ ] Layout with sidebar
-- [ ] Dashboard stats
-- [ ] Recent activity
-
-### Phase 3+: Features
-- [ ] Jobs CRUD
-- [ ] Companies CRUD
-- [ ] Contacts CRUD
-- [ ] Crawler control
-- [ ] Students management
-- [ ] Staff management
-- [ ] Messages
-- [ ] Activity logs
-
-## 🎯 Best Practices
-
-### 1. Thêm Module Mới
 ```bash
-# 1. Tạo Server Actions
-src/app/actions/newModule.ts
-
-# 2. Tạo Types
-src/types/newModule.ts
-
-# 3. Tạo Hooks
-src/hooks/useNewModule.ts
-
-# 4. Tạo Routes
-src/app/(dashboard)/newModule/page.tsx
-
-# 5. Tạo Components
-src/components/features/newModule/
+npm run dev            # next dev — localhost:3000
+npm run build           # next build (Turbopack)
+npm run build:analyze   # next build --webpack, có bundle analyzer report
+npm run start           # next start (chạy bản đã build)
+npm run lint            # eslint
+npm test                # jest (chạy 1 lần)
+npm run test:watch      # jest --watch
 ```
 
-### 2. State Management
-- **Server state** → React Query (data từ API)
-- **Client state** → Zustand (UI state, draft data)
-- **Form state** → React Hook Form
+## 🧪 Testing
 
-### 3. Validation
-- Dùng Zod schemas từ `lib/utils/validation.ts`
-- Validate ở cả client và server
+- `jest.config.js` dùng `next/jest`, map alias `@/*` → `src/*`.
+- `jest.setup.js` mock `next-intl` (`useTranslations`/`getTranslations`) có
+  hỗ trợ interpolation `{param}` để khớp hành vi thật.
+- Test nằm ở `src/__tests__/{actions,components,lib}`, đặt tên
+  `*.test.ts(x)`.
+- Trước khi merge: `npx tsc --noEmit`, `npx eslint .`, `npx jest`, và
+  `npx next build` nên đều sạch — quy trình review hiện tại verify thủ công
+  theo 4 lệnh này (chưa có GitHub Actions riêng cho job-posting).
 
-### 4. Performance
-- Dùng `@tanstack/react-virtual` cho tables lớn (>100 rows)
-- Dùng React Query caching (đã config sẵn)
-- Lazy load components với `React.lazy()`
+## 🧩 Thêm 1 module mới — quy ước đang dùng thật
+
+Không theo khuôn cứng "1 hook + 1 type + 1 action" — linh hoạt theo nhu cầu
+module, nhưng nhất quán ở các điểm sau:
+
+1. **Server Action** — `src/app/actions/{module}.ts`, luôn bắt đầu bằng
+   `'use server'`, dùng `apiFetch<T>()`/`apiFetchRaw()` từ `lib/api/client.ts`
+   (không tự viết `fetch()` tay, không tự khai `AbortController`).
+2. **Type** — `src/types/{module}.ts`, không cần đăng ký vào barrel export
+   nào (không còn `types/index.ts`).
+3. **Route** — `src/app/(dashboard)/{module}/page.tsx` (+ `[id]/`, `new/`,
+   `[id]/edit/` nếu cần) — Server Component, `await getX()` trực tiếp.
+   **Nhớ thêm path mới vào `isProtectedPage` trong `middleware.ts`** nếu
+   route cần đăng nhập — đây là allowlist tập trung, không tự động phát
+   hiện route mới (đã có tiền lệ quên, gây bug UX — xem comment trong
+   `middleware.ts`).
+4. **Component** — `src/components/features/{Module}...tsx`. Nếu có hành
+   động "xoá/xác nhận" dùng `ConfirmActionButton` (`components/features/
+   ConfirmActionButton.tsx`) thay vì cài lại state machine riêng.
+5. **Filter/query params** dùng `buildParams()` (`lib/api/client.ts`) thay
+   vì tự viết logic bỏ qua field `undefined`/`null`/`''`.
+6. **Lỗi từ backend** — mọi Server Action nên để lỗi đi qua
+   `formatErrorDetail()` (`lib/api/error-translation.ts`), không tự parse
+   `detail` tay ở từng action.
 
 ## 🐛 Troubleshooting
 
-### CSS không load
-```bash
-# Check import order trong globals.css
-# Đảm bảo paths đúng: ../../public/css/
-```
+**CSS không load / thấy trang trắng style** — kiểm tra thứ tự import trong
+`globals.css` và đường dẫn `../../public/css/*.css` còn đúng không; toàn bộ
+class dùng trong `src/` đã được xác nhận khớp 100% với class khai trong
+`public/style.css` + `public/css/*.css` (không còn class ảo, xem
+`plan_nextjs.md` mục "Dọn CSS ảo").
 
-### API call failed
-```bash
-# Check .env.local có đúng không
-# Đảm bảo FastAPI CORS allow Next.js origin
-```
+**Gọi backend lỗi 401/403 khó hiểu** — kiểm tra `.env.local` có
+`FASTAPI_URL`/`CRAWLER_API_KEY` chưa; thiếu sẽ throw lỗi rõ ràng
+("Server chưa cấu hình..."), không còn im lặng gửi `"undefined"` như bug cũ.
 
-### Type errors
-```bash
-# Re-generate types từ OpenAPI
-npx openapi-typescript https://api.../openapi.json -o src/types/api.ts
-```
+**Route mới không tự đá về `/login` khi chưa đăng nhập** — quên thêm path
+vào `isProtectedPage` trong `middleware.ts`, xem mục "Thêm 1 module mới" ở
+trên.
 
-## 📖 Tài Liệu Thêm
+**Locale không đổi dù bấm nút chuyển ngôn ngữ** — `LanguageToggle.tsx` set
+cookie `locale` phía client; nếu không thấy đổi, kiểm tra cookie đó có bị
+`middleware.ts` ghi đè về `DEFAULT_LOCALE` do `isValidLocale()` trả `false`
+(giá trị cookie không nằm trong danh sách locale hợp lệ ở `i18n/config.ts`).
 
-- [Next.js Docs](https://nextjs.org/docs)
-- [React Query Docs](https://tanstack.com/query/latest)
-- [Zod Docs](https://zod.dev)
-- [Migration Plan](../plan_nextjs.md)
-# Job-Posting
+## 📖 Tài liệu liên quan (ngoài repo này)
+
+- `plan_nextjs.md` — kế hoạch migration tổng thể, lịch sử quyết định kiến
+  trúc, checklist done/todo đầy đủ.
+- `plan_language_polish.md` — kế hoạch riêng cho tầng dịch `error_code`.
+- `ARCHITECTURE_ANALYSIS.md` — phân tích kiến trúc backend/Flask chi tiết
+  hơn (viết sau khi đã đọc code thật, đáng tin hơn phần đầu `plan_nextjs.md`).
