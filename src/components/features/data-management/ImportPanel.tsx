@@ -17,6 +17,7 @@ import type {
   ImportConfirmSummary,
   ImportRowConflictStatus,
   ImportCompanySuggestion,
+  ImportFileRejectedError,
 } from '@/types/import-export';
 
 /**
@@ -95,9 +96,7 @@ export default function ImportPanel({ entityType }: ImportPanelProps) {
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [fileErrors, setFileErrors] = useState<
-    Array<{ row_number: number; field_name: string; rule: string; message: string }> | undefined
-  >();
+  const [fileErrors, setFileErrors] = useState<ImportFileRejectedError['errors'] | undefined>();
 
   const [preview, setPreview] = useState<ImportPreviewResult | null>(null);
   const [refreshing, setRefreshing] = useState(false);

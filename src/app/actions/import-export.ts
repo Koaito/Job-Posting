@@ -9,8 +9,10 @@ import type {
   ImportPreviewResult,
   ImportPreviewRow,
   ImportRowResolution,
+  ImportConfirmPayload,
   ImportConfirmSummary,
   ImportFieldError,
+  ImportFileRejectedError,
 } from '@/types/import-export';
 
 /**
@@ -96,7 +98,7 @@ function extractErrorInfo(
   fallback: string
 ): {
   message: string;
-  fileErrors?: Array<{ row_number: number; field_name: string; rule: string; message: string }>;
+  fileErrors?: ImportFileRejectedError['errors'];
 } {
   if (typeof detail === 'string') return { message: detail };
   if (Array.isArray(detail)) {
@@ -111,12 +113,10 @@ function extractErrorInfo(
     };
   }
   if (detail && typeof detail === 'object' && 'message' in detail) {
-    const d = detail as { message: unknown; errors?: unknown };
+    const d = detail as ImportFileRejectedError;
     return {
       message: String(d.message),
-      fileErrors: Array.isArray(d.errors)
-        ? (d.errors as Array<{ row_number: number; field_name: string; rule: string; message: string }>)
-        : undefined,
+      fileErrors: Array.isArray(d.errors) ? d.errors : undefined,
     };
   }
   return { message: fallback };
@@ -236,7 +236,7 @@ export async function uploadImportFile(
   success: boolean;
   preview?: ImportPreviewResult;
   error?: string;
-  fileErrors?: Array<{ row_number: number; field_name: string; rule: string; message: string }>;
+  fileErrors?: ImportFileRejectedError['errors'];
 }> {
   const t = await getTranslations('actions.importExport');
   try {
@@ -408,9 +408,10 @@ export async function confirmImport(
 ): Promise<{ success: boolean; result?: ImportConfirmSummary; error?: string }> {
   const t = await getTranslations('actions.importExport');
   try {
+    const payload: ImportConfirmPayload = { preview_id: previewId, note, resolutions };
     const response = await apiFetchRaw(`/import/${entityType}/confirm`, {
       method: 'POST',
-      body: { preview_id: previewId, note, resolutions },
+      body: payload,
       timeoutMs: HEAVY_TIMEOUT_MS,
     });
 

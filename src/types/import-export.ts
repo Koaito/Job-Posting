@@ -141,7 +141,11 @@ export interface ImportPreviewResult {
 
 /** Khớp detail 422 trả về từ POST /import/{entity_type}/preview khi
  * validate_dataframe() reject cả file (lỗi cấu trúc, không phải lỗi
- * từng dòng dạng field_errors) — xem file_parser/validation_engine. */
+ * từng dòng dạng field_errors) — xem file_parser/validation_engine.
+ * Dùng ở app/actions/import-export.ts (extractErrorInfo(),
+ * uploadImportFile()) và ImportPanel.tsx (state fileErrors) — trước
+ * đây 3 nơi này tự khai lặp lại đúng shape này inline (dead type,
+ * phát hiện ở rà soát kiến trúc 09/2026), giờ dùng chung 1 định nghĩa. */
 export interface ImportFileRejectedError {
   message: string;
   errors: Array<{
