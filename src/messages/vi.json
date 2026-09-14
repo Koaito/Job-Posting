@@ -486,6 +486,13 @@
     "applications": "Đã ứng tuyển",
     "activity": "Hoạt động"
   },
+  "crawlPage": {
+    "eyebrow": "Career Hub / Quản lý",
+    "title": "Vận hành dữ liệu",
+    "lede": "Kích hoạt crawl JD mới, bảo trì dữ liệu, và theo dõi tình trạng/lịch sử.",
+    "staffOnlyTitle": "Crawler",
+    "staffOnlyMessage": "Trang này chỉ dành cho nhân viên (ss_team/admin)."
+  },
   "crawlTabNav": {
     "crawl": "Crawl",
     "status": "Tình trạng dữ liệu",

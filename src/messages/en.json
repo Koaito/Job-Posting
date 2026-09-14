@@ -486,6 +486,13 @@
     "applications": "Applications",
     "activity": "Activity"
   },
+  "crawlPage": {
+    "eyebrow": "Career Hub / Management",
+    "title": "Data Operations",
+    "lede": "Trigger new JD crawls, run data maintenance, and track status/history.",
+    "staffOnlyTitle": "Crawler",
+    "staffOnlyMessage": "This page is for staff only (ss_team/admin)."
+  },
   "crawlTabNav": {
     "crawl": "Crawl",
     "status": "Data status",

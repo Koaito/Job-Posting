@@ -8,6 +8,7 @@ import {
 } from '@/app/actions/crawl';
 import { getCurrentUser } from '@/app/actions/auth';
 import { isStaffRole, isAdminRole } from '@/lib/auth/roles';
+import { getTranslations } from 'next-intl/server';
 import CrawlTrigger from '@/components/features/CrawlTrigger';
 import CrawlTabNav from '@/components/features/CrawlTabNav';
 import DataHealthView from '@/components/features/DataHealthView';
@@ -33,6 +34,13 @@ import type { MaintenanceStatus } from '@/types/crawl';
  * rieng nhu Flask that). Dot nay: them tab nav that + 3 tab con thieu
  * (status/maintenance/history) + doi bang lich su crawl sang dung tab
  * "history" cho khop kien truc goc.
+ *
+ * i18n (09/2026, ra soat kien truc) -- day la trang DUY NHAT con hard-code
+ * tieng Viet trong khi moi trang cung cap (jobs/companies/contacts...) da
+ * chuyen sang next-intl tu lau. Cac component con (CrawlTabNav, CrawlTrigger,
+ * DataHealthView...) da dung useTranslations() dung, chi rieng page.tsx nay
+ * (trang cha) bi bo sot. Them namespace crawlPage vao messages/{vi,en}.json,
+ * dung getTranslations() dung pattern cac page Server Component khac.
  */
 
 interface SearchParams {
@@ -58,15 +66,16 @@ export default async function CrawlPage({
   const currentUser = await getCurrentUser();
   const isStaff = isStaffRole(currentUser?.role);
   const isAdmin = isAdminRole(currentUser?.role);
+  const t = await getTranslations('crawlPage');
 
   if (!isStaff) {
     return (
       <>
         <div className="page-head">
-          <h1>Crawler</h1>
+          <h1>{t('staffOnlyTitle')}</h1>
         </div>
         <div className="empty-state">
-          <p>Trang nay chi danh cho nhan vien (ss_team/admin).</p>
+          <p>{t('staffOnlyMessage')}</p>
         </div>
       </>
     );
@@ -78,9 +87,9 @@ export default async function CrawlPage({
     <>
       <div className="page-head">
         <div>
-          <span className="eyebrow">Career Hub / Quan ly</span>
-          <h1>Van hanh du lieu</h1>
-          <p className="lede">Kich hoat crawl JD moi, bao tri du lieu, va theo doi tinh trang/lich su.</p>
+          <span className="eyebrow">{t('eyebrow')}</span>
+          <h1>{t('title')}</h1>
+          <p className="lede">{t('lede')}</p>
         </div>
       </div>
 
