@@ -103,6 +103,15 @@ describe('MessageThread Component', () => {
   describe('Gửi tin nhắn', () => {
     it('chặn gửi và hiện lỗi inline khi nội dung rỗng, KHÔNG gọi sendMessage', () => {
       render(<MessageThread {...baseProps} />);
+      // BUG FIX (mục #7b): textarea để trống hẳn có `required` (HTML5) —
+      // jsdom tự chặn submit ở tầng native TRƯỚC KHI onSubmit của React
+      // chạy, nên handleSend không bao giờ được gọi và formError không
+      // bao giờ set (đúng hành vi trình duyệt thật, không phải bug).
+      // Validation .trim() trong component chỉ thật sự chạy tới được
+      // khi nội dung vượt qua required (có ký tự) nhưng vẫn rỗng sau
+      // khi trim — tức là chuỗi toàn khoảng trắng.
+      const textarea = screen.getByPlaceholderText(/Nhập tin nhắn/i);
+      fireEvent.change(textarea, { target: { value: '   ' } });
       fireEvent.click(screen.getByRole('button', { name: /^Gửi$/i }));
 
       expect(screen.getByText(/Vui lòng nhập nội dung tin nhắn/i)).toBeInTheDocument();
@@ -127,7 +136,14 @@ describe('MessageThread Component', () => {
       await waitFor(() => {
         expect(screen.getByText('Chào bạn nhé')).toBeInTheDocument();
       });
-      expect((textarea as HTMLTextAreaElement).value).toBe('');
+      // BUG FIX (mục #7b): setContent('') chạy cùng lượt render với
+      // setHistory/setLastMessageId (cùng trong handleSend sau await
+      // sendMessage) nhưng không đảm bảo đã commit ngay tại thời điểm
+      // assertion phía trên chạy xong — bọc trong waitFor để tránh đọc
+      // textarea.value không đúng nhịp render.
+      await waitFor(() => {
+        expect((textarea as HTMLTextAreaElement).value).toBe('');
+      });
     });
 
     it('gửi thành công (status=pending) -> alert() + router.refresh(), KHÔNG chèn tin giả', async () => {

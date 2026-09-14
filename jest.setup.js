@@ -18,12 +18,30 @@ import viMessages from './src/messages/vi.json'
 // locale) vì test không mô phỏng SSR cookie — đủ cho mục đích test unit
 // UI, việc dịch en thật đã có test riêng ở tầng error_code
 // (client.test.ts) và sẽ có test riêng cho UI nếu cần re-test theo locale.
+// BUG FIX (mục #7, 09/2026): mock cũ chỉ nhận `key`, bỏ qua tham số thứ
+// 2 (values) — component gọi đúng chuẩn next-intl t('key', { name: x })
+// nhưng mock trả nguyên văn chuỗi trong vi.json, còn nguyên "{name}"
+// chưa thay thế, khiến test assert vào chuỗi đã interpolate xong bị
+// lệch với DOM thật. interpolate() dưới đây thay {param} bằng giá trị
+// tương ứng trong values (chỉ hỗ trợ placeholder đơn giản dạng {x},
+// đủ cho toàn bộ message hiện có trong vi.json — không cần ICU
+// plural/select đầy đủ).
+function interpolate(template, values) {
+  if (!values) return template
+  return template.replace(/\{(\w+)\}/g, (match, key) =>
+    key in values ? String(values[key]) : match
+  )
+}
+
 jest.mock('next-intl', () => ({
   useTranslations: (namespace) => {
     const ns = namespace
       .split('.')
       .reduce((acc, key) => (acc && typeof acc === 'object' ? acc[key] : undefined), viMessages)
-    return (key) => (ns && typeof ns === 'object' && key in ns ? ns[key] : key)
+    return (key, values) => {
+      const template = ns && typeof ns === 'object' && key in ns ? ns[key] : key
+      return interpolate(template, values)
+    }
   },
   useLocale: () => 'vi',
 }))
@@ -40,7 +58,10 @@ jest.mock('next-intl/server', () => ({
     const ns = namespace
       .split('.')
       .reduce((acc, key) => (acc && typeof acc === 'object' ? acc[key] : undefined), viMessages)
-    return (key) => (ns && typeof ns === 'object' && key in ns ? ns[key] : key)
+    return (key, values) => {
+      const template = ns && typeof ns === 'object' && key in ns ? ns[key] : key
+      return interpolate(template, values)
+    }
   },
   getLocale: async () => 'vi',
 }))
