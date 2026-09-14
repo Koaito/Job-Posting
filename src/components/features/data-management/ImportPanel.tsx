@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import {
-  uploadImportFile,
   confirmImport,
   verifyField,
   resolveCompany,
@@ -15,10 +14,13 @@ import type {
   ImportPreviewRow,
   ImportRowResolution,
   ImportConfirmSummary,
-  ImportRowConflictStatus,
-  ImportCompanySuggestion,
-  ImportFileRejectedError,
 } from '@/types/import-export';
+import UploadStep from './import-panel/UploadStep';
+import ImportDoneCard from './import-panel/ImportDoneCard';
+import ImportRowRow from './import-panel/ImportRowRow';
+import CompanyResolutionModal from './import-panel/CompanyResolutionModal';
+import { fieldKey, isRowFullyClean, DISPLAY_FIELDS } from './import-panel/types';
+import type { RowChoice, FieldFixState, CompanyModalState } from './import-panel/types';
 
 /**
  * Import tab — đợt 2 (sau Phase 6.3 MVP): đủ resolve tại chỗ cho mọi
@@ -39,53 +41,19 @@ import type {
  * tên trong file nếu staff không resolve qua modal. Vì vậy nút "Xác
  * nhận import" bị khoá cứng nếu còn dòng loại này chưa resolve, không
  * có lựa chọn "bỏ qua" cho riêng case này.
+ *
+ * TÁCH NHỎ (rà soát kiến trúc 09/2026, mục #8) — file gốc 732 dòng,
+ * 12 useState, 13 hàm xử lý, state phụ thuộc chéo nhau. Đợt này tách
+ * theo BƯỚC (UploadStep/ImportDoneCard/ImportRowRow/
+ * CompanyResolutionModal — xem thư mục import-panel/), component này
+ * giờ chỉ còn đóng vai trò ORCHESTRATOR: điều phối 3 bước (upload ->
+ * resolve -> done) + giữ state THẬT SỰ phụ thuộc chéo nhau giữa các
+ * dòng (preview, rowChoices, fieldFixes, companyModal — buildResolutions()
+ * lúc confirm cần đọc lại TOÀN BỘ state này của mọi dòng cùng lúc, nên
+ * KHÔNG tách xuống từng ImportRowRow được). 4 state chỉ có ý nghĩa
+ * trong bước upload (file/uploading/uploadError/fileErrors) đã chuyển
+ * hẳn thành state cục bộ của UploadStep, không còn ở đây nữa.
  */
-
-const STATUS_KEYS: Record<ImportRowConflictStatus, { key: string; tagClass: string }> = {
-  no_conflict: { key: 'statusNew', tagClass: 'dm-tag-new' },
-  conflict: { key: 'statusConflict', tagClass: 'dm-tag-conflict' },
-  conflict_inactive: { key: 'statusConflictInactive', tagClass: 'dm-tag-inactive' },
-  pending_company_resolution: { key: 'statusPendingCompany', tagClass: 'dm-tag-resolve' },
-  conflict_in_batch: { key: 'statusConflictInBatch', tagClass: 'dm-tag-dup-warn' },
-};
-
-const LEVEL_CODE_VALUES = ['Intern', 'Fresher', 'Junior', 'Middle', 'Senior', 'Lead', 'Manager'];
-
-/** Vài cột chính hiển thị trên bảng preview cho dễ quét mắt (bảng đầy
- * đủ dữ liệu row.data có thể rất nhiều cột, nhất là Job — export_columns
- * thật có tới 16 cột, không phù hợp hiện hết ở bảng resolve nhanh này). */
-const DISPLAY_FIELDS: Record<ImportExportEntityType, string[]> = {
-  job: ['job_title', 'company_name', 'level_code', 'deadline'],
-  company: ['company_name', 'tax_id', 'industry'],
-  contact: ['contact_name', 'company_name', 'work_email'],
-};
-
-function isRowFullyClean(row: ImportPreviewRow): boolean {
-  return row.conflict_status === 'no_conflict' && !row.needs_field_fix && !row.needs_level_resolve;
-}
-
-/** Trạng thái staff tự chọn cho 1 dòng (chưa gửi lên server) — dùng để
- * dựng resolutions thật lúc confirm. Không lưu field_fixes ở đây vì
- * field fix đã áp NGAY qua verifyField() (server-side), row.data cập
- * nhật trực tiếp, không cần gom lại gửi thêm ở bước confirm. */
-interface RowChoice {
-  action?: ImportRowResolution['action'];
-  confirmReactivate?: boolean;
-  levelCode?: string;
-}
-
-interface FieldFixState {
-  draft: string;
-  submitting: boolean;
-  error: string | null;
-}
-
-interface CompanyModalState {
-  rowIndex: number;
-  suggestions: ImportCompanySuggestion[];
-  loading: boolean;
-  error: string | null;
-}
 
 interface ImportPanelProps {
   entityType: ImportExportEntityType;
@@ -93,10 +61,6 @@ interface ImportPanelProps {
 
 export default function ImportPanel({ entityType }: ImportPanelProps) {
   const t = useTranslations('importPanel');
-  const [file, setFile] = useState<File | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
-  const [fileErrors, setFileErrors] = useState<ImportFileRejectedError['errors'] | undefined>();
 
   const [preview, setPreview] = useState<ImportPreviewResult | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -112,9 +76,6 @@ export default function ImportPanel({ entityType }: ImportPanelProps) {
   const [confirmResult, setConfirmResult] = useState<ImportConfirmSummary | null>(null);
 
   function resetAll() {
-    setFile(null);
-    setUploadError(null);
-    setFileErrors(undefined);
     setPreview(null);
     setRowChoices({});
     setFieldFixes({});
@@ -124,25 +85,11 @@ export default function ImportPanel({ entityType }: ImportPanelProps) {
     setConfirmResult(null);
   }
 
-  async function handleUpload() {
-    if (!file) return;
-    setUploading(true);
-    setUploadError(null);
-    setFileErrors(undefined);
-    setPreview(null);
+  function handleUploaded(uploadedPreview: ImportPreviewResult) {
     setRowChoices({});
     setFieldFixes({});
     setConfirmResult(null);
-
-    const result = await uploadImportFile(entityType, file);
-    setUploading(false);
-
-    if (result.success && result.preview) {
-      setPreview(result.preview);
-    } else {
-      setUploadError(result.error || t('uploadFailed'));
-      setFileErrors(result.fileErrors);
-    }
+    setPreview(uploadedPreview);
   }
 
   /** Tải lại nguyên preview từ server — dùng sau verify-field, vì 1 lần
@@ -174,10 +121,6 @@ export default function ImportPanel({ entityType }: ImportPanelProps) {
   // ------------------------------------------------------------------
   // Sửa tại chỗ 1 ô lỗi (needs_field_fix)
   // ------------------------------------------------------------------
-
-  function fieldKey(rowIndex: number, fieldName: string) {
-    return `${rowIndex}:${fieldName}`;
-  }
 
   function setFieldDraft(rowIndex: number, fieldName: string, draft: string) {
     const key = fieldKey(rowIndex, fieldName);
@@ -340,64 +283,11 @@ export default function ImportPanel({ entityType }: ImportPanelProps) {
   }
 
   if (!preview) {
-    return (
-      <div>
-        <div className="dm-import-upload-card">
-          <h2>{t('uploadTitle')}</h2>
-          <p className="dm-hint">
-            {t('uploadHint')}
-          </p>
-
-          <label className="dm-file-label">
-            {t('chooseFile')}
-            <input
-              type="file"
-              accept=".csv,.xlsx"
-              onChange={(e) => setFile(e.target.files?.[0] || null)}
-            />
-          </label>
-
-          {uploadError && (
-            <p style={{ color: '#B23A22', fontSize: '13.5px', marginBottom: '10px' }}>{uploadError}</p>
-          )}
-
-          {fileErrors && fileErrors.length > 0 && (
-            <ul className="dm-hint-list" style={{ marginBottom: '14px' }}>
-              {fileErrors.slice(0, 20).map((err, idx) => (
-                <li key={idx}>
-                  {t('fileErrorLine', { row: err.row_number, field: err.field_name, message: err.message })}
-                </li>
-              ))}
-              {fileErrors.length > 20 && <li>{t('andMoreErrors', { count: fileErrors.length - 20 })}</li>}
-            </ul>
-          )}
-
-          <div className="form-actions">
-            <button type="button" className="btn btn-primary" onClick={handleUpload} disabled={!file || uploading}>
-              {uploading ? t('processing') : t('uploadAndPreview')}
-            </button>
-          </div>
-        </div>
-      </div>
-    );
+    return <UploadStep entityType={entityType} onUploaded={handleUploaded} />;
   }
 
   if (confirmResult) {
-    return (
-      <div className="dm-import-upload-card">
-        <h2>{t('importDone')}</h2>
-        <p className="dm-hint">
-          {t('createdCount', { count: confirmResult.created })}
-          {confirmResult.updated > 0 && <> — {t('updatedCount', { count: confirmResult.updated })}</>}
-          {confirmResult.skipped > 0 && <> — {t('skippedCount', { count: confirmResult.skipped })}</>}.
-        </p>
-        <div className="form-actions">
-          <button type="button" className="btn btn-primary" onClick={resetAll}>
-            {t('importAnotherFile')}
-          </button>
-        </div>
-      </div>
-    );
+    return <ImportDoneCard summary={confirmResult} onImportAnother={resetAll} />;
   }
 
   const cleanCount = preview.rows.filter(isRowFullyClean).length;
@@ -408,6 +298,10 @@ export default function ImportPanel({ entityType }: ImportPanelProps) {
   if (pendingCompany.length > 0) blockedReasons.push(t('blockedPendingCompany', { count: pendingCompany.length }));
   if (missingBatchRows.length > 0) blockedReasons.push(t('blockedMissingBatch', { count: missingBatchRows.length }));
   const confirmBlocked = blockedReasons.length > 0;
+
+  const rawCompanyNameForModal = companyModal
+    ? String(preview.rows.find((r) => r.row_index === companyModal.rowIndex)?.data.company_name ?? '')
+    : '';
 
   return (
     <div>
@@ -462,180 +356,19 @@ export default function ImportPanel({ entityType }: ImportPanelProps) {
             </tr>
           </thead>
           <tbody>
-            {preview.rows.map((row) => {
-              const clean = isRowFullyClean(row);
-              const statusInfo = STATUS_KEYS[row.conflict_status];
-              const choice = rowChoices[row.row_index];
-
-              return (
-                <tr key={row.row_index} className={clean ? '' : 'dm-row-flag'}>
-                  <td>{row.row_index + 1}</td>
-                  <td>
-                    <span className={`dm-tag ${statusInfo.tagClass}`}>{t(statusInfo.key)}</span>
-                    {row.needs_field_fix && (
-                      <div>
-                        <span className="dm-tag dm-tag-fix">{t('formatErrors')}</span>
-                      </div>
-                    )}
-                    {row.needs_level_resolve && (
-                      <div>
-                        <span className={`dm-tag ${choice?.levelCode ? 'dm-tag-level-ok' : 'dm-tag-level'}`}>
-                          {choice?.levelCode ? t('levelChosen', { level: choice.levelCode }) : t('needsLevel')}
-                        </span>
-                      </div>
-                    )}
-                  </td>
-
-                  {DISPLAY_FIELDS[entityType].map((f) => {
-                    const fieldError = row.field_errors?.[f];
-                    if (!fieldError) {
-                      return <td key={f}>{String(row.data[f] ?? '')}</td>;
-                    }
-                    const key = fieldKey(row.row_index, f);
-                    const fixState = fieldFixes[key];
-                    const draft = fixState?.draft ?? String(row.data[f] ?? '');
-                    return (
-                      <td key={f} className="dm-cell-field-fix">
-                        <div className="dm-field-fix">
-                          <p className="dm-field-error-note">{fieldError.message}</p>
-                          <div className="dm-field-fix-row">
-                            {fieldError.widget_type === 'enum' && fieldError.options ? (
-                              <select
-                                className="dm-field-select"
-                                value={draft}
-                                onChange={(e) => setFieldDraft(row.row_index, f, e.target.value)}
-                              >
-                                <option value="">{t('chooseEllipsis')}</option>
-                                {fieldError.options.map((opt) => (
-                                  <option key={opt} value={opt}>
-                                    {opt}
-                                  </option>
-                                ))}
-                              </select>
-                            ) : (
-                              <input
-                                className="dm-field-input"
-                                type={fieldError.widget_type === 'date' ? 'text' : fieldError.widget_type === 'number' ? 'number' : 'text'}
-                                value={draft}
-                                placeholder={fieldError.widget_type === 'date' ? 'YYYY-MM-DD' : undefined}
-                                onChange={(e) => setFieldDraft(row.row_index, f, e.target.value)}
-                              />
-                            )}
-                            <button
-                              type="button"
-                              className="dm-btn-verify-field"
-                              disabled={fixState?.submitting}
-                              onClick={() => handleVerifyField(row, f)}
-                            >
-                              {fixState?.submitting ? '…' : t('confirm')}
-                            </button>
-                          </div>
-                          {fixState?.error && (
-                            <p className="dm-field-verify-note dm-field-verify-error">{fixState.error}</p>
-                          )}
-                        </div>
-                      </td>
-                    );
-                  })}
-
-                  <td>
-                    {clean ? (
-                      <span style={{ color: '#2E8B57', fontWeight: 500 }}>{t('willCreate')}</span>
-                    ) : row.conflict_status === 'pending_company_resolution' ? (
-                      <div className="dm-resolve-block">
-                        <span className="dm-resolve-current dm-resolve-pending">{t('companyNotChosen')}</span>
-                        <span className="dm-resolve-raw">{t('inFile')}: {String(row.data.company_name ?? '')}</span>
-                        <button type="button" className="btn btn-ghost dm-btn-choose-company" onClick={() => openCompanyModal(row)}>
-                          {t('chooseCompanyEllipsis')}
-                        </button>
-                      </div>
-                    ) : row.conflict_status === 'conflict_in_batch' ? (
-                      <div className="dm-action-radios">
-                        <span className="dm-dup-detail">
-                          {t('duplicateWithRow', {
-                            row: (row.duplicate_in_batch?.other_row_index ?? -1) + 1,
-                            percent: Math.round((row.duplicate_in_batch?.match_score ?? 0) * 100),
-                            fields: row.duplicate_in_batch?.matched_fields.join(', ') ?? '',
-                          })}
-                        </span>
-                        {[
-                          ['skip', t('skipRow')],
-                          ['create', t('stillCreateRow')],
-                          ['keep_this', t('keepThisRow')],
-                          ['keep_other', t('keepOtherRow')],
-                          ['import_both', t('bothCorrect')],
-                        ].map(([value, label]) => (
-                          <label key={value} className="dm-radio-opt">
-                            <input
-                              type="radio"
-                              name={`batch-${row.row_index}`}
-                              checked={choice?.action === value}
-                              onChange={() => updateRowChoice(row.row_index, { action: value as ImportRowResolution['action'] })}
-                            />
-                            {label}
-                          </label>
-                        ))}
-                      </div>
-                    ) : row.conflict_status === 'conflict' || row.conflict_status === 'conflict_inactive' ? (
-                      <div className="dm-action-radios">
-                        <label className="dm-radio-opt">
-                          <input
-                            type="radio"
-                            name={`conflict-${row.row_index}`}
-                            checked={(choice?.action ?? 'skip') === 'skip'}
-                            onChange={() => updateRowChoice(row.row_index, { action: 'skip' })}
-                          />
-                          {t('skipRow')}
-                        </label>
-                        <label className="dm-radio-opt">
-                          <input
-                            type="radio"
-                            name={`conflict-${row.row_index}`}
-                            checked={choice?.action === 'update'}
-                            onChange={() => updateRowChoice(row.row_index, { action: 'update' })}
-                          />
-                          {t('overwriteExisting')}
-                        </label>
-                        {row.conflict_status === 'conflict_inactive' && choice?.action === 'update' && (
-                          <div className="dm-inactive-confirm">
-                            <span className="dm-inactive-warn">{t('inactiveWarning')}</span>
-                            <div className="dm-inactive-btns">
-                              <button
-                                type="button"
-                                className={`btn ${choice?.confirmReactivate ? 'active' : ''}`}
-                                onClick={() => updateRowChoice(row.row_index, { confirmReactivate: true })}
-                              >
-                                {t('confirmReactivate')}
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ) : row.needs_level_resolve ? (
-                      <span className="dm-action-fixed">{t('chooseLevelHint')}</span>
-                    ) : (
-                      <span className="dm-action-fixed">{t('fixErrorHint')}</span>
-                    )}
-
-                    {row.needs_level_resolve && (
-                      <select
-                        className="dm-level-select"
-                        value={choice?.levelCode ?? ''}
-                        onChange={(e) => updateRowChoice(row.row_index, { levelCode: e.target.value || undefined })}
-                        style={{ marginTop: '6px' }}
-                      >
-                        <option value="">{t('chooseLevelOption')}</option>
-                        {LEVEL_CODE_VALUES.map((lvl) => (
-                          <option key={lvl} value={lvl}>
-                            {lvl}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
+            {preview.rows.map((row) => (
+              <ImportRowRow
+                key={row.row_index}
+                row={row}
+                entityType={entityType}
+                choice={rowChoices[row.row_index]}
+                fieldFixes={fieldFixes}
+                onFieldDraftChange={setFieldDraft}
+                onVerifyField={handleVerifyField}
+                onUpdateChoice={updateRowChoice}
+                onOpenCompanyModal={openCompanyModal}
+              />
+            ))}
           </tbody>
         </table>
       </div>
@@ -676,57 +409,13 @@ export default function ImportPanel({ entityType }: ImportPanelProps) {
         </div>
       </div>
 
-      {/* Modal chọn công ty */}
-      <div className="dm-modal-overlay" hidden={!companyModal}>
-        {companyModal && (
-          <div className="dm-modal">
-            <div className="dm-modal-head">
-              <h3>{t('chooseCompanyTitle')}</h3>
-              <button type="button" className="dm-modal-close" onClick={() => setCompanyModal(null)}>
-                ×
-              </button>
-            </div>
-            <div className="dm-modal-body">
-              <p className="dm-modal-hint">
-                {t('modalRowLabel', { row: companyModal.rowIndex + 1 })}{' '}
-                {String(preview.rows.find((r) => r.row_index === companyModal.rowIndex)?.data.company_name ?? '')}
-              </p>
-              {companyModal.error && <p className="dm-modal-error">{companyModal.error}</p>}
-              {companyModal.suggestions.length > 0 ? (
-                <ul className="dm-modal-suggestion-list">
-                  {companyModal.suggestions.map((s) => (
-                    <li key={s.company_id}>
-                      <button
-                        type="button"
-                        className="dm-modal-suggestion"
-                        disabled={resolvingCompany}
-                        onClick={() => handleChooseCompany(s.company_id)}
-                      >
-                        <span className="dm-modal-suggestion-name">
-                          {s.company_name}
-                          {!s.is_active && ` ${t('inactiveSuffix')}`}
-                        </span>
-                        {s.tax_id && <span className="dm-modal-suggestion-tax">{t('taxIdShort')}: {s.tax_id}</span>}
-                        <span className="dm-modal-suggestion-score">{Math.round(s.similarity * 100)}%</span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="dm-modal-hint">{t('noSimilarCompany')}</p>
-              )}
-              <button
-                type="button"
-                className="dm-modal-create-new"
-                disabled={resolvingCompany}
-                onClick={() => handleChooseCompany(null)}
-              >
-                {resolvingCompany ? t('processing') : t('createNewCompany')}
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
+      <CompanyResolutionModal
+        companyModal={companyModal}
+        resolvingCompany={resolvingCompany}
+        rawCompanyName={rawCompanyNameForModal}
+        onChoose={handleChooseCompany}
+        onClose={() => setCompanyModal(null)}
+      />
     </div>
   );
 }
