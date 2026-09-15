@@ -6,6 +6,7 @@ import { getCurrentUser, listUsers } from '@/app/actions/auth';
 import { getCompanies } from '@/app/actions/companies';
 import { isStaffRole } from '@/lib/auth/roles';
 import { toIntlLocale } from '@/i18n/config';
+import { ContentFullMarker } from '@/components/layout/ContentFullMarker';
 
 /**
  * Audit Logs Page ("Lịch sử thao tác")
@@ -74,6 +75,7 @@ export default async function ActivityPage({
       // BUG FIX (audit CSS 09/2026): bỏ "page-container" ảo, main.content
       // (root layout.tsx) đã lo container rồi.
       <>
+        <ContentFullMarker />
         <div className="page-head">
           <h1>{t('title')}</h1>
         </div>
@@ -125,6 +127,7 @@ export default async function ActivityPage({
     // BUG FIX (audit CSS 09/2026): bỏ "page-container" ảo — main.content
     // (root layout.tsx) đã lo container/padding cho mọi trang rồi.
     <>
+      <ContentFullMarker />
       <div className="page-head">
         <div>
           <span className="eyebrow">{t('eyebrow')}</span>

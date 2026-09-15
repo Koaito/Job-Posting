@@ -44,6 +44,19 @@
   max-width: none;
 }
 
+/* Next.js port (09/2026): root layout.tsx cố định <main className="content">
+   ở 1 chỗ duy nhất — không có cơ chế kế thừa qua page.tsx như
+   {% block content_class %}content-full{% endblock %} bên Flask, nên
+   page.tsx không thể tự thêm class "content-full" lên .content (cha
+   của nó). Dùng :has() để page con "báo ngược" lên cha: mỗi page cần
+   full-width chỉ cần render <ContentFullMarker /> (bất kỳ đâu trong
+   cây con của nó) — xem src/components/layout/ContentFullMarker.tsx.
+   Hỗ trợ tốt trên mọi trình duyệt hiện đại 2026 (Chrome/Edge 105+,
+   Safari 15.4+, Firefox 121+). */
+.content:has(.content-full-marker) {
+  max-width: none;
+}
+
 .page-head {
   display: flex;
   justify-content: space-between;

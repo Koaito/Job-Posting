@@ -2,6 +2,7 @@ import { getStudents } from '@/app/actions/students';
 import Link from 'next/link';
 import { getTranslations, getLocale } from 'next-intl/server';
 import { toIntlLocale } from '@/i18n/config';
+import { ContentFullMarker } from '@/components/layout/ContentFullMarker';
 
 /**
  * Students List Page (Học viên)
@@ -33,6 +34,7 @@ export default async function StudentsPage({
     // class ảo, main.content (root layout.tsx) đã lo container rồi
     // (giống fix ở jobs/page.tsx, companies/page.tsx).
     <>
+      <ContentFullMarker />
       <div className="page-head">
         <div>
           <span className="eyebrow">{t('eyebrow')}</span>

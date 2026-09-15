@@ -4,6 +4,7 @@ import { getDashboardStats, getRecentActivity } from '@/app/actions/dashboard';
 import { getCurrentUser } from '@/app/actions/auth';
 import { isStaffRole } from '@/lib/auth/roles';
 import { toIntlLocale } from '@/i18n/config';
+import { ContentFullMarker } from '@/components/layout/ContentFullMarker';
 
 /**
  * Dashboard Homepage
@@ -42,6 +43,7 @@ export default async function DashboardPage() {
     // CHUYỂN 09/2026 (audit CSS): bỏ div "page-container" bọc ngoài —
     // class ảo, main.content (root layout.tsx) đã lo container rồi.
     <>
+      <ContentFullMarker />
       <div className="page-head">
         <h1>{t('title')}</h1>
         <p className="lede">{t('subtitle')}</p>

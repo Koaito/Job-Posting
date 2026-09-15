@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { getTranslations, getLocale } from 'next-intl/server';
 import CvDownloadButton from '@/components/features/CvDownloadButton';
 import { toIntlLocale } from '@/i18n/config';
+import { ContentFullMarker } from '@/components/layout/ContentFullMarker';
 
 /**
  * Student Detail Page — hồ sơ học viên + đơn ứng tuyển + job đã lưu.
@@ -39,6 +40,7 @@ export default async function StudentDetailPage({
     // BUG FIX (audit CSS 09/2026): bỏ div "page-container" bọc ngoài —
     // class ảo, main.content (root layout.tsx) đã lo container rồi.
     <>
+      <ContentFullMarker />
       <div className="page-head">
         <div>
           <span className="eyebrow">

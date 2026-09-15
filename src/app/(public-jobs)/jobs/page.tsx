@@ -5,6 +5,7 @@ import { getTranslations, getLocale } from 'next-intl/server';
 import { toIntlLocale } from '@/i18n/config';
 import { PROVINCE_OPTIONS, PROVINCE_LABEL_KEY } from '@/lib/constants/provinces';
 import { INDUSTRY_OPTIONS } from '@/lib/constants/industries';
+import { ContentFullMarker } from '@/components/layout/ContentFullMarker';
 
 /**
  * Jobs List Page
@@ -113,6 +114,7 @@ export default async function JobsPage({
     // class ảo, không tồn tại trong CSS nào. main.content (root
     // layout.tsx) đã tự lo container/padding cho MỌI trang rồi.
     <>
+      <ContentFullMarker />
       <div className="page-head">
         <div>
           <span className="eyebrow">{t('eyebrow')}</span>

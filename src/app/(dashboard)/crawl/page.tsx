@@ -16,6 +16,7 @@ import MaintenanceGrid from '@/components/features/MaintenanceGrid';
 import HistoryView from '@/components/features/HistoryView';
 import type { MaintenanceStatus } from '@/types/crawl';
 import { RequireRole } from '@/components/ui/guards/RequireRole';
+import { ContentFullMarker } from '@/components/layout/ContentFullMarker';
 
 /**
  * Crawl Page ("Van hanh du lieu") -- 4 tab, khop dung
@@ -71,7 +72,9 @@ export default async function CrawlPage({
   const tab = VALID_TABS.includes(sp.tab || '') ? (sp.tab as string) : 'crawl';
 
   return (
-    <RequireRole role="staff" deniedTitle={t('staffOnlyTitle')} deniedMessage={t('staffOnlyMessage')}>
+    <>
+      <ContentFullMarker />
+      <RequireRole role="staff" deniedTitle={t('staffOnlyTitle')} deniedMessage={t('staffOnlyMessage')}>
       <div className="page-head">
         <div>
           <span className="eyebrow">{t('eyebrow')}</span>
@@ -87,6 +90,7 @@ export default async function CrawlPage({
       {tab === 'maintenance' && <MaintenanceTabContent isAdmin={isAdmin} />}
       {tab === 'history' && <HistoryTabContent sp={sp} />}
     </RequireRole>
+    </>
   );
 }
 

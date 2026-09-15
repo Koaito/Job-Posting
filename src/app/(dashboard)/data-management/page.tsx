@@ -4,6 +4,7 @@ import type { ImportExportEntityType } from '@/types/import-export';
 import ExportPanel from '@/components/features/data-management/ExportPanel';
 import ImportPanel from '@/components/features/data-management/ImportPanel';
 import { RequireRole } from '@/components/ui/guards/RequireRole';
+import { ContentFullMarker } from '@/components/layout/ContentFullMarker';
 
 /**
  * Data Management Page ("/data-management") — Phase 6.3, 09/2026.
@@ -44,7 +45,9 @@ export default async function DataManagementPage({
 
   return (
     // BUG FIX (audit CSS 09/2026): bỏ "page-container" ảo.
-    <RequireRole role="staff" deniedTitle={t('title')} deniedMessage={t('staffOnly')}>
+    <>
+      <ContentFullMarker />
+      <RequireRole role="staff" deniedTitle={t('title')} deniedMessage={t('staffOnly')}>
       <div className="page-head">
         <div>
           <span className="eyebrow">{t('eyebrow')}</span>
@@ -90,5 +93,6 @@ export default async function DataManagementPage({
         )}
       </div>
     </RequireRole>
+    </>
   );
 }

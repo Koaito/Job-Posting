@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
 import PotentialQuickEdit from '@/components/features/PotentialQuickEdit';
 import { PROVINCE_OPTIONS, PROVINCE_LABEL_KEY } from '@/lib/constants/provinces';
+import { ContentFullMarker } from '@/components/layout/ContentFullMarker';
 
 /**
  * Companies List Page
@@ -55,6 +56,7 @@ export default async function CompaniesPage({
     // layout.tsx) đã tự lo container/padding cho MỌI trang rồi (giống
     // fix đã áp dụng ở jobs/page.tsx).
     <>
+      <ContentFullMarker />
       <div className="page-head">
         <div>
           <span className="eyebrow">{t('eyebrow')}</span>

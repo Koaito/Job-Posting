@@ -10,6 +10,7 @@ import { getContacts } from '@/app/actions/contacts';
 import { ActivitySections } from '@/components/features/ActivitySections';
 import { toIntlLocale } from '@/i18n/config';
 import { RequireRole } from '@/components/ui/guards/RequireRole';
+import { ContentFullMarker } from '@/components/layout/ContentFullMarker';
 
 /**
  * Staff Activity — chi tiết hoạt động 1 nhân viên (BỔ SUNG 09/2026, rà
@@ -58,7 +59,9 @@ export default async function StaffActivityDetailPage({
   const currentUser = await getCurrentUser();
 
   return (
-    <RequireRole role="staff" deniedTitle={t('title')} deniedMessage={t('staffOnly')}>
+    <>
+      <ContentFullMarker />
+      <RequireRole role="staff" deniedTitle={t('title')} deniedMessage={t('staffOnly')}>
       <StaffActivityDetailContent
         userId={userId}
         currentUserId={currentUser?.ss_user_id}
@@ -67,6 +70,7 @@ export default async function StaffActivityDetailPage({
         dateLocale={dateLocale}
       />
     </RequireRole>
+    </>
   );
 }
 

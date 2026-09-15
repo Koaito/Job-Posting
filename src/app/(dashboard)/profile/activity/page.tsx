@@ -7,6 +7,7 @@ import { getCompanies } from '@/app/actions/companies';
 import { getContacts } from '@/app/actions/contacts';
 import ProfileSubnav from '@/components/features/ProfileSubnav';
 import { ActivitySections } from '@/components/features/ActivitySections';
+import { ContentFullMarker } from '@/components/layout/ContentFullMarker';
 
 /**
  * Trang cá nhân — Hoạt động. Khớp profile.activity() bên Flask gốc
@@ -59,6 +60,7 @@ export default async function ProfileActivityPage() {
   if (!isStaffRole(user.role)) {
     return (
       <>
+        <ContentFullMarker />
         <div className="page-head">
           <h1>{t('title')}</h1>
         </div>
@@ -86,6 +88,7 @@ export default async function ProfileActivityPage() {
 
   return (
     <div className="auth-shell">
+      <ContentFullMarker />
       <div className="auth-card profile-card">
         <h1>{t('heading')}</h1>
         <p className="lede">{t('lede')}</p>
