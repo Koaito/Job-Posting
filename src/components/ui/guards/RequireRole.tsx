@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react';
+import { getTranslations } from 'next-intl/server';
 import { getCurrentUser } from '@/app/actions/auth';
 import { isAdminRole, isStaffRole } from '@/lib/auth/roles';
+import { ErrorStateView } from '@/components/ui/error-boundary/ErrorStateView';
 
 export type RequiredRole = 'staff' | 'admin';
 
@@ -36,25 +38,38 @@ interface RequireRoleProps {
  * thêm gì.
  *
  * deniedTitle/deniedMessage do page.tsx tự truyền vào (thay vì component
- * này tự có 1 namespace i18n riêng) để giữ ĐÚNG NGUYÊN VĂN text/namespace
- * đã dùng ở từng trang trước đây (crawlPage dùng staffOnlyTitle/
- * staffOnlyMessage khác các trang còn lại dùng chung title/staffOnly) —
- * không đổi hành vi hiển thị, chỉ gom phần LOGIC kiểm tra quyền.
+ * này tự có 1 namespace i18n riêng cho title/message) để giữ ĐÚNG NGUYÊN
+ * VĂN text/namespace đã dùng ở từng trang trước đây (crawlPage dùng
+ * staffOnlyTitle/staffOnlyMessage khác các trang còn lại dùng chung
+ * title/staffOnly) — không đổi nội dung hiển thị, chỉ gom phần LOGIC
+ * kiểm tra quyền.
+ *
+ * UI (audit 09/2026, phần "error-code--warn"): trước đây khi bị chặn
+ * quyền, component tự vẽ bằng `.page-head` + `.empty-state` — khác hẳn
+ * Flask, nơi 403 render qua `templates/error.html` (tone="warn", xem
+ * app.py::handle_403). Giờ dùng chung `ErrorStateView` (component gom
+ * lại từ error.html — xem src/app/not-found.tsx dùng cho 404/tone
+ * "muted"), eyebrow/chipLabel lấy từ namespace i18n `forbidden` (dùng
+ * chung mọi trang, không phụ thuộc namespace riêng của từng page).
  */
 export async function RequireRole({ role, deniedTitle, deniedMessage, children }: RequireRoleProps) {
   const currentUser = await getCurrentUser();
   const allowed = role === 'admin' ? isAdminRole(currentUser?.role) : isStaffRole(currentUser?.role);
 
   if (!allowed) {
+    const t = await getTranslations('forbidden');
     return (
-      <>
-        <div className="page-head">
-          <h1>{deniedTitle}</h1>
-        </div>
-        <div className="empty-state">
-          <p>{deniedMessage}</p>
-        </div>
-      </>
+      <ErrorStateView
+        eyebrow={t('eyebrow')}
+        code="403"
+        tone="warn"
+        chipLabel={t('chipLabel')}
+        title={deniedTitle}
+        message={deniedMessage}
+        primaryHref="/jobs"
+        primaryLabel={t('primaryLabel')}
+        backLabel={t('backLabel')}
+      />
     );
   }
 

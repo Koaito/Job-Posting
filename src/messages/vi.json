@@ -1201,5 +1201,19 @@
     "message": "Trang này gặp sự cố khi hiển thị. Bạn có thể thử lại, hoặc quay về trang chủ.",
     "retry": "Thử lại",
     "goHome": "Về trang chủ"
+  },
+  "notFound": {
+    "eyebrow": "Career Hub / Lỗi 404",
+    "chipLabel": "Không tìm thấy",
+    "title": "Không tìm thấy trang này",
+    "message": "Đường dẫn không tồn tại, hoặc job/công ty này đã bị xoá hay ngừng tuyển. Kiểm tra lại link, hoặc quay về danh sách job.",
+    "primaryLabel": "Về danh sách job",
+    "backLabel": "← Quay lại"
+  },
+  "forbidden": {
+    "eyebrow": "Career Hub / Lỗi 403",
+    "chipLabel": "Không đủ quyền",
+    "primaryLabel": "Về danh sách job",
+    "backLabel": "← Quay lại"
   }
 }

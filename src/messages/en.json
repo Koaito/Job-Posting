@@ -1201,5 +1201,19 @@
     "message": "This page ran into a problem while rendering. You can try again, or go back to the homepage.",
     "retry": "Try again",
     "goHome": "Go to homepage"
+  },
+  "notFound": {
+    "eyebrow": "Career Hub / Error 404",
+    "chipLabel": "Not found",
+    "title": "This page could not be found",
+    "message": "The link doesn't exist, or this job/company has been removed or closed. Check the link, or go back to the jobs list.",
+    "primaryLabel": "Back to jobs list",
+    "backLabel": "← Go back"
+  },
+  "forbidden": {
+    "eyebrow": "Career Hub / Error 403",
+    "chipLabel": "Not enough permission",
+    "primaryLabel": "Back to jobs list",
+    "backLabel": "← Go back"
   }
 }
