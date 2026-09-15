@@ -5,24 +5,48 @@
 .sidebar {
   background: var(--ink);
   color: #EAF2EF;
+  /* FIX 09/2026 (khoảng trắng lộ ra dưới sidebar khi cuộn hết trang dài):
+     TRƯỚC ĐÂY `position: sticky` + `height: 100vh` nằm trực tiếp trên
+     CHÍNH element này — element này CŨNG LÀ 1 ô trong CSS Grid (.shell).
+     Grid item có height CỐ ĐỊNH sẽ KHÔNG tự giãn theo hàng (bỏ qua
+     default `align-items: stretch`), nên khi `.content` (ô cùng hàng)
+     cao hơn 1 viewport (nội dung dài), `.shell` (hàng grid) giãn theo
+     `.content`, nhưng `.sidebar` vẫn chỉ cao đúng 100vh — cuộn quá mốc
+     đó thì sticky "hết đà", lộ nền `.shell` phía dưới sidebar.
+     (Bug này giống hệt bên Flask gốc — cùng 1 khối CSS này, cùng
+     <aside class="sidebar"> phẳng không có wrapper con — chỉ ÍT LỘ HƠN
+     vì Flask phân trang 20 job/trang (JOBS_PER_PAGE), còn Next.js hiện
+     phân trang 50/trang nên .content thường dài hơn nhiều, dễ cuộn tới
+     điểm "hết đà" hơn.)
+
+     FIX: tách `position: sticky` + `height` sang 1 phần tử CON MỚI
+     (.sidebar-inner, xem ngay dưới) — element .sidebar (element NGOÀI,
+     mang màu nền) không còn set height cố định nữa, nên tự GIÃN theo
+     default `align-items: stretch` của .shell — LUÔN cao đúng bằng
+     .content dù dài bao nhiêu, nền tối phủ liên tục hết cột trái,
+     không còn khoảng hở. .sidebar-inner (bên trong) mới thật sự sticky,
+     giữ nội dung nav luôn dính ở trên khi cuộn — vì .sidebar (cha) giờ
+     luôn đủ cao, .sidebar-inner không bao giờ "hết chỗ" để sticky giữa
+     chừng nữa. */
+  display: flex; /* để .sidebar-inner lấp đầy chiều cao stretch của .sidebar */
+  flex-direction: column;
+}
+
+.sidebar-inner {
+  flex: 1;
   padding: 28px 20px;
   display: flex;
   flex-direction: column;
   position: sticky;
   top: 0;
-  /* GỐC RỄ (08/2026): `html { zoom: var(--zoom-scale) }` (00-tokens.css)
-     scale toàn trang xuống 90% SAU khi layout đã tính `100vh` theo
-     viewport thật — nên sidebar cao "100vh" chỉ phủ được 90% chiều cao
-     màn hình thật, hụt 10% ở đáy. Không liên quan gì tới khoảng cách/
-     scrollbar đã chỉnh trước đó. Bù lại bằng cách chia ngược cho chính
-     tỉ lệ zoom đang dùng: 100vh / 0.9 ≈ 111.1vh, sau khi bị zoom 90%
-     scale xuống thì đúng bằng 100% viewport thật. */
+  /* Xem giải thích tỉ lệ zoom ở .sidebar (bản cũ)/00-tokens.css —
+     KHÔNG đổi lý do, chỉ dời vị trí khai báo. */
   height: calc(100vh / var(--zoom-scale));
   overflow: hidden;
   transition: padding 0.18s ease;
 }
 
-html.sidebar-collapsed .sidebar {
+html.sidebar-collapsed .sidebar-inner {
   padding-left: 14px;
   padding-right: 14px;
 }
@@ -46,7 +70,7 @@ html.sidebar-collapsed .sidebar-foot .btn-block { text-align: center; padding-le
 /* Toggle button (« / ») pinned to the top of the sidebar, right below
    the MX brand mark — always inside the sidebar's visible viewport-height
    area, unlike the bottom of .sidebar-foot which can get clipped by
-   `.sidebar { overflow: hidden }` once a longer (logged-in) nav list
+   `.sidebar-inner { overflow: hidden }` once a longer (logged-in) nav list
    pushes total content past 100vh. */
 .sidebar-toggle {
   display: flex;
@@ -110,9 +134,9 @@ html.sidebar-collapsed .sidebar-foot .btn-block { text-align: center; padding-le
 /* flex: 1 lets .nav claim exactly the leftover space between the fixed
    top block (brand + toggle) and the fixed bottom block (.sidebar-foot),
    and overflow-y: auto scrolls ONLY the nav list when it doesn't fit —
-   instead of the whole flex column overflowing past .sidebar's 100vh and
-   getting silently clipped by `overflow: hidden` (which is what made the
-   toggle button, and then the logout button, "disappear" after login).
+   instead of the whole flex column overflowing past .sidebar-inner's 100vh
+   and getting silently clipped by `overflow: hidden` (which is what made
+   the toggle button, and then the logout button, "disappear" after login).
    This also future-proofs the sidebar: any new nav links or footer
    buttons added later just extend the scrollable middle section — they
    can never overlap or push .sidebar-foot off-screen again. */
