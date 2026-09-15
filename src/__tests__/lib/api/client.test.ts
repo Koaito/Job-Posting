@@ -315,7 +315,7 @@ describe('formatErrorDetail()', () => {
       ).toBe("action_type: 'FOO' is not valid — available: CREATE, UPDATE, DELETE");
       expect(
         await formatErrorDetail({
-          error_code: 'contact_contact_status_invalid',
+          error_code: 'contact_status_invalid',
           message: "contact_status 'bad' không hợp lệ — có sẵn: ['NEW', 'CONTACTED']",
         })
       ).toBe("contact_status: 'bad' is not valid — available: NEW, CONTACTED");
@@ -369,7 +369,7 @@ describe('formatErrorDetail()', () => {
       );
       expect(
         await formatErrorDetail({
-          error_code: 'auth_locked_2',
+          error_code: 'auth_too_many_failed_attempts',
           message: 'Sai mật khẩu quá 5 lần liên tiếp — tài khoản bị khoá tạm 15 phút.',
         })
       ).toBe('Wrong password too many times in a row (5x) — account temporarily locked for 15 minutes.');
@@ -393,7 +393,7 @@ describe('formatErrorDetail()', () => {
       ).toBe("status: 'bad' is not valid for 'job' — only OPEN, CLOSED accepted.");
       expect(
         await formatErrorDetail({
-          error_code: 'maintenance_run_ids_muc_after_ids',
+          error_code: 'maintenance_run_ids_after_ids_length_mismatch',
           message: 'run_ids (3 mục) và after_ids (2 mục) phải có CÙNG SỐ LƯỢNG, khớp theo thứ tự.',
         })
       ).toBe('run_ids (3 items) and after_ids (2 items) must have the SAME LENGTH, matched by order.');

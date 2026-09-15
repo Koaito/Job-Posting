@@ -292,7 +292,7 @@ const DYNAMIC_ERROR_HANDLERS: DynamicErrorHandler[] = [
       [
         'audit_log_action_type_invalid',
         'audit_log_entity_type_invalid',
-        'contact_contact_status_invalid',
+        'contact_status_invalid',
         'crawl_status_invalid',
         'maintenance_status_invalid',
       ].includes(errorCode),
@@ -404,7 +404,7 @@ const DYNAMIC_ERROR_HANDLERS: DynamicErrorHandler[] = [
   ...(
     [
       {
-        code: 'auth_locked_2',
+        code: 'auth_too_many_failed_attempts',
         pattern: /^Sai mật khẩu quá (\d+) lần liên tiếp — tài khoản bị khoá tạm (\d+) phút\.$/,
         template: (m: RegExpExecArray) =>
           `Wrong password too many times in a row (${m[1]}x) — account temporarily locked for ${m[2]} minutes.`,
@@ -420,7 +420,7 @@ const DYNAMIC_ERROR_HANDLERS: DynamicErrorHandler[] = [
           `Category ${prettifyPythonListRepr(m[1])} not found for source '${m[2]}'. Available: ${prettifyPythonListRepr(m[3])}`,
       },
       {
-        code: 'import_preview_id_thuoc_entity_type',
+        code: 'import_preview_entity_type_mismatch',
         pattern: /^preview_id này thuộc entity_type '(.*)', không phải '(.*)'\.$/,
         template: (m: RegExpExecArray) => `This preview_id belongs to entity_type '${m[1]}', not '${m[2]}'.`,
       },
@@ -443,12 +443,12 @@ const DYNAMIC_ERROR_HANDLERS: DynamicErrorHandler[] = [
           `status: '${m[1]}' is not valid for '${m[2]}' — only ${prettifyPythonListRepr(m[3])} accepted.`,
       },
       {
-        code: 'maintenance_after_id_ung_run_id',
+        code: 'maintenance_after_id_invalid',
         pattern: /^after_id '(.*)' \(ứng với run_id '(.*)'\) phải là số nguyên >= 0\.$/,
         template: (m: RegExpExecArray) => `after_id '${m[1]}' (for run_id '${m[2]}') must be an integer >= 0.`,
       },
       {
-        code: 'maintenance_dry_run_check_deadline_only',
+        code: 'maintenance_dry_run_job_type_mismatch',
         pattern: /^'dry_run'\/'check_deadline_only' chỉ áp dụng cho job_type '(.*)', không áp dụng cho '(.*)'\.$/,
         template: (m: RegExpExecArray) =>
           `'dry_run'/'check_deadline_only' only applies to job_type '${m[1]}', not to '${m[2]}'.`,
@@ -461,7 +461,7 @@ const DYNAMIC_ERROR_HANDLERS: DynamicErrorHandler[] = [
           `job_type: '${m[1]}' calls Tavily/Gemini (real cost) — 'limit' is required when triggered from the web; it can't be left empty (to avoid running against every company with no data).`,
       },
       {
-        code: 'maintenance_run_ids_muc_after_ids',
+        code: 'maintenance_run_ids_after_ids_length_mismatch',
         pattern: /^run_ids \((\d+) mục\) và after_ids \((\d+) mục\) phải có CÙNG SỐ LƯỢNG, khớp theo thứ tự\.$/,
         template: (m: RegExpExecArray) =>
           `run_ids (${m[1]} items) and after_ids (${m[2]} items) must have the SAME LENGTH, matched by order.`,
