@@ -3,7 +3,7 @@
 import { cache } from 'react';
 import { cookies } from 'next/headers';
 import { getTranslations } from 'next-intl/server';
-import { getApiKey, getApiBase, refreshAccessToken, setAuthCookies, apiFetch } from '@/lib/api/client';
+import { getApiKey, getApiBase, refreshAccessToken, setAuthCookies, apiFetch, formatErrorDetail } from '@/lib/api/client';
 import type { User, UserCreatePayload, UserCreated, JobApplication, SavedJob } from '@/types/auth';
 
 /**
@@ -105,10 +105,27 @@ export async function login(email: string, password: string) {
     });
 
     if (!tokenResponse.ok) {
-      const error = await tokenResponse.json().catch(() => ({ detail: 'Login failed' }));
+      // BUG FIX (theo yêu cầu, sau khi deploy — React error #31 "Objects
+      // are not valid as a React child"): trước đây dùng thẳng
+      // `error.detail || t('invalidCredentials')` — nhưng backend
+      // (FastAPI) trả lỗi có cấu trúc dạng `detail: {error_code, message}`
+      // (OBJECT, không phải string) cho phần lớn lỗi nghiệp vụ (sai mật
+      // khẩu, tài khoản bị khoá...), CHỈ MỘT SỐ ÍT lỗi (vd lỗi validate
+      // Pydantic mặc định) mới có `detail` là string thuần. Gán thẳng
+      // object đó vào `error` (state string ở LoginPage) rồi render
+      // `{error}` trong JSX khiến React crash ngay khi admin/bất kỳ ai
+      // gặp lỗi đăng nhập có cấu trúc — đúng loại lỗi mà formatErrorDetail()
+      // (lib/api/error-translation.ts) đã được viết ra để xử lý (string,
+      // mảng lỗi validate, VÀ object {error_code, message} — dịch theo
+      // locale hiện tại qua error_code khi có thể) nhưng login() lại
+      // không gọi tới, tự parse tay và bỏ sót trường hợp phổ biến nhất.
+      const errorBody = await tokenResponse.json().catch(() => null);
+      const errorMessage = errorBody
+        ? await formatErrorDetail(errorBody.detail)
+        : t('invalidCredentials');
       return {
         success: false,
-        error: error.detail || t('invalidCredentials'),
+        error: errorMessage,
       };
     }
 

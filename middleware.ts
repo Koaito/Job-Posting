@@ -36,8 +36,18 @@ export function middleware(request: NextRequest) {
 
   // Define protected and auth-only routes
   const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/register');
+  // CHAT (sau khi deploy, theo yêu cầu): "/jobs" đã bỏ khỏi danh sách
+  // protected — /jobs (danh sách) và /jobs/[id] (chi tiết) chuyển sang
+  // route group (public-jobs), không còn bị (dashboard)/layout.tsx bắt
+  // buộc đăng nhập nữa, giống hành vi Flask gốc (trang job công khai,
+  // chỉ cần đăng nhập khi lưu job/ứng tuyển). Middleware này match theo
+  // TIỀN TỐ đường dẫn nên trước đây chặn nhầm luôn cả "/jobs" dù route
+  // thật đã chuyển raa khỏi (dashboard) — khách vào "/jobs" bị đá vòng
+  // về "/login?next=/jobs" sai, không liên quan gì tới lỗi phía server.
+  // "/jobs/new" và "/jobs/[id]/edit" (tạo/sửa job) VẪN yêu cầu đăng
+  // nhập — nhưng do (dashboard)/layout.tsx tự kiểm tra ở server
+  // (getCurrentUser() + redirect), không cần middleware liệt kê riêng.
   const isProtectedPage = pathname.startsWith('/dashboard') || 
-                          pathname.startsWith('/jobs') ||
                           pathname.startsWith('/companies') ||
                           pathname.startsWith('/contacts') ||
                           pathname.startsWith('/crawl') ||
