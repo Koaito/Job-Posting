@@ -10,14 +10,17 @@ import { useTranslations } from 'next-intl';
  * cả `mindx-jobs` lẫn `Scrap JD`) — đây là tính năng MỚI cho Next.js,
  * không phải port.
  *
- * 3 lựa chọn, lưu `localStorage["theme"]`: "light" | "dark" | "system"
- * (mặc định — coi như key không tồn tại, tự theo
- * `prefers-color-scheme` của hệ điều hành). Đồng bộ với script
- * anti-FOUC ở `app/layout.tsx` (set `data-theme` trên `<html>` TRƯỚC
- * paint để không nháy sáng/tối 1 nhịp lúc tải trang) — cùng cơ chế
- * với `sidebar-collapsed` (`components/ui/layout/Sidebar.tsx`), chỉ
- * khác dùng `data-theme` attribute thay vì class vì có 3 trạng thái
- * chứ không phải bật/tắt nhị phân.
+ * CHAT (sau khi deploy lần đầu, theo yêu cầu): đã bỏ lựa chọn "System"
+ * — trước đây có 3 lựa chọn và "system" khiến trang tự đổi tối/sáng
+ * theo `prefers-color-scheme` của hệ điều hành/trình duyệt, khác hẳn
+ * Flask gốc (luôn sáng cố định) và gây lỗi "màu web bị ngược" ngay lần
+ * đầu vào web trên máy đang bật chế độ tối hệ thống. Giờ chỉ còn đúng
+ * 2 lựa chọn, lưu `localStorage["theme"]`: "light" | "dark". Chưa từng
+ * bấm nút (localStorage trống) = luôn "light", không dò theo OS nữa.
+ * Đồng bộ với script anti-FOUC ở `app/layout.tsx` (set `data-theme`
+ * trên `<html>` TRƯỚC paint để không nháy sáng/tối 1 nhịp lúc tải
+ * trang) — cùng cơ chế với `sidebar-collapsed`
+ * (`components/ui/layout/Sidebar.tsx`).
  *
  * Đọc giá trị hiện tại từ chính attribute `data-theme` trên `<html>`
  * (đã được script anti-FOUC set sẵn trước khi component này mount)
@@ -29,27 +32,18 @@ import { useTranslations } from 'next-intl';
  * Preferences) đã có ở LanguageToggle.tsx riêng, không liên quan file
  * này.
  */
-type ThemeChoice = 'light' | 'dark' | 'system';
+type ThemeChoice = 'light' | 'dark';
 
-const OPTION_KEYS: ThemeChoice[] = ['light', 'dark', 'system'];
+const OPTION_KEYS: ThemeChoice[] = ['light', 'dark'];
 
 function applyTheme(choice: ThemeChoice) {
-  if (choice === 'system') {
-    document.documentElement.removeAttribute('data-theme');
-    try {
-      localStorage.removeItem('theme');
-    } catch {
-      // localStorage bị chặn (chế độ ẩn danh nghiêm ngặt...) — bỏ qua,
-      // theme vẫn áp dụng đúng cho phiên hiện tại, chỉ không nhớ lại
-      // lần sau (giống hệt cách Sidebar.tsx xử lý lỗi này).
-    }
-    return;
-  }
   document.documentElement.setAttribute('data-theme', choice);
   try {
     localStorage.setItem('theme', choice);
   } catch {
-    // Xem chú thích ở nhánh 'system' phía trên.
+    // localStorage bị chặn (chế độ ẩn danh nghiêm ngặt...) — bỏ qua,
+    // theme vẫn áp dụng đúng cho phiên hiện tại, chỉ không nhớ lại lần
+    // sau (giống hệt cách Sidebar.tsx xử lý lỗi này).
   }
 }
 
@@ -64,9 +58,9 @@ export default function ThemeToggle() {
   // — SSR luôn không biết trước lựa chọn đã lưu của trình duyệt, nên 3
   // nút bên dưới có suppressHydrationWarning, y hệt nút thu gọn sidebar.
   const [active, setActive] = useState<ThemeChoice>(() => {
-    if (typeof document === 'undefined') return 'system';
+    if (typeof document === 'undefined') return 'light';
     const attr = document.documentElement.getAttribute('data-theme');
-    return attr === 'light' || attr === 'dark' ? attr : 'system';
+    return attr === 'dark' ? 'dark' : 'light';
   });
 
   // Component này render bên trong 1 Server Component cha

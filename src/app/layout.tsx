@@ -47,14 +47,13 @@ export default async function RootLayout({
           // component) chỉ cần đọc lại đúng class/attribute này để
           // đồng bộ nút, không tự gắn lần đầu.
           //
-          // data-theme chỉ set khi user CHỦ ĐỘNG chọn "light"/"dark" —
-          // để trống (mặc định "system") thì CSS tự theo
-          // prefers-color-scheme của hệ điều hành (xem 00-tokens.css),
-          // không set cứng "light" ở đây để không đè lên lựa chọn hệ
-          // thống của người chưa từng bấm nút.
+          // CHAT: đã bỏ lựa chọn "system" (tự theo prefers-color-scheme
+          // của hệ điều hành) — luôn set data-theme="light" khi chưa
+          // lưu gì (t !== "dark"), giống hệt Flask (luôn sáng cố định
+          // cho tới khi người dùng chủ động bấm ThemeToggle sang tối).
           dangerouslySetInnerHTML={{
             __html:
-              '(function(){try{if(localStorage.getItem("sidebarCollapsed")==="1"){document.documentElement.classList.add("sidebar-collapsed");}var t=localStorage.getItem("theme");if(t==="light"||t==="dark"){document.documentElement.setAttribute("data-theme",t);}}catch(e){}})();',
+              '(function(){try{if(localStorage.getItem("sidebarCollapsed")==="1"){document.documentElement.classList.add("sidebar-collapsed");}var t=localStorage.getItem("theme");document.documentElement.setAttribute("data-theme",t==="dark"?"dark":"light");}catch(e){}})();',
           }}
         />
         <link rel="stylesheet" href="/css/00-tokens.css" />
